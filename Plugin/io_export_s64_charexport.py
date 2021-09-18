@@ -6,14 +6,13 @@ bl_info = {
     "blender": (2, 80, 0),
     "location": "File > Export > Sausage64 Character (.S64)",
     "warning": "",
-    "wiki_url": "",
+    "wiki_url": "https://github.com/buu342/Blender-Sausage64",
     "tracker_url": "",
     "support": 'COMMUNITY',
     "category": "Import-Export"
 }
 
 # TODO:
-## Blender 2.8
 ## Correct vertex indices for when different objects share the same bone
 ## Correct vertex indices for when different vertices in an object share different bones
 ## bpy.context.scene.render.fps

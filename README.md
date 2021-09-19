@@ -4,7 +4,9 @@
 
 Sausage64 is a plugin for Blender 2.7 onwards, which allows you to export "sausage link" style character models with animations. 
 
-The plugin exports the data as an easily parsable text file. This file should be easy to convert to other formats, more suitable for your target platform. 
+The plugin exports the data as an easily parsable text file. This file should be simple to convert to other formats, more suitable for your target platform. 
+
+The plugin's code is documented, and contains a ton of helper classes that store the information before exporting. This should allow you to modify the script to instead output the data in a format you want, as opposed to an intermediary format like s64.
 
 This repository contains three folders:
 * `Plugin` - The Blender plugin itself. Installation instructions provided in a further section of this README. 

@@ -14,7 +14,7 @@ This repository contains three folders:
 ### What do you mean by Sausage Links?
 Sausage link characters are made out of different unconnected segments. 
 
-<img src=".github/C29E784C-ABFE-493E-A042-FC4DFDF86F3D.jpeg" width="340" height="428"/>
+<img src=".github/2F87C4EB-0B40-4EAC-A125-D2401BFB8256.jpeg" width="340" height="428"/>
 Photo taken from: https://bradh2002.wordpress.com/a2-task-3-video-game-history/
 </br></br>
 

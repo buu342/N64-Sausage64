@@ -17,7 +17,7 @@ This repository contains three folders:
 Sausage link characters are made out of different unconnected segments. 
 
 <img src=".github/mario.jpeg" width="340" height="428"/>
-Photo taken from: https://bradh2002.wordpress.com/a2-task-3-video-game-history/
+<sup>Photo taken from: https://bradh2002.wordpress.com/a2-task-3-video-game-history/</sup>
 </br></br>
 
 This method of character design was highly popular in the N64 and PS1 era, where animating vertex skinned characters was considered a very heavy operation. Instead, these models leverage the fact that each segment can easily be transformed via a matrix.

@@ -13,6 +13,7 @@ bl_info = {
 }
 
 # TODO:
+## More vertex normals
 ## Correct vertex indices for when different objects share the same bone
 ## Correct vertex indices for when different vertices in an object share different bones
 ## bpy.context.scene.render.fps
@@ -163,13 +164,13 @@ def writeFile(self, object, finalList, animList):
     self.report({'INFO'}, 'File exported sucessfully!')
     return {'FINISHED'}
 
-def addFace(finalList, f, name, vertex_colors, vertex_uvs, materials_list):
+def addFace(finalList, f, name, vertex_normals, vertex_colors, vertex_uvs, materials_list):
     face = S64Face()
     for vi in f.verts:
         face.verts.append(vi.index)
         vert = S64Vertex()
         vert.coor = vi.co[:]
-        vert.norm = vi.normal[:]
+        vert.norm = vertex_normals[vi.index][:]
         try:
             vert.colr = vertex_colors[vi.index][:]
         except KeyError:
@@ -212,13 +213,21 @@ def setupData(self, object, skeletonList, meshList, settingsList):
     
     # Now go through all the meshes and find out which bone they belong to
     for m in meshList:
+    
+        # If auto smooth is enabled, calculate the split normals
+        if (m.data.has_custom_normals):
+            m.data.calc_normals_split()
+        
+        # Create a copy of the mesh
+        mcopy = None
+        if (isNewBlender()):
+            mcopy = m.evaluated_get(bpy.context.evaluated_depsgraph_get()).to_mesh()
+        else:
+            mcopy = m.to_mesh(scene=bpy.context.scene, apply_modifiers=True, settings='PREVIEW', calc_undeformed=True)
         
         # Setup a bmesh and validate the data
         bm = bmesh.new()
-        if (isNewBlender()):
-            bm.from_mesh(m.evaluated_get(bpy.context.evaluated_depsgraph_get()).to_mesh())
-        else:
-            bm.from_mesh(m.to_mesh(scene=bpy.context.scene, apply_modifiers=True, settings='PREVIEW', calc_undeformed=True))
+        bm.from_mesh(mcopy)
         if (settingsList.triangulate):
             bmesh.ops.triangulate(bm, faces=bm.faces[:], quad_method=0, ngon_method=0)
         bm.verts.index_update()
@@ -229,6 +238,17 @@ def setupData(self, object, skeletonList, meshList, settingsList):
             tris = bm.calc_loop_triangles()
         else:
             tris = bm.calc_tessface()
+            
+        # Get the vertex normals and create a dictionary that maps their normals to their indices
+        vertex_normals = {}
+        if (m.data.has_custom_normals):
+            for l in m.data.loops:
+                vertex_normals[l.vertex_index] = l.normal
+        else:
+            for f in bm.faces:
+                for l in f.loops:
+                    for vi in f.verts:
+                        vertex_normals[vi.index] = vi.normal
 
         # Get the vertex colors and create a dictionary that maps their colors to their indices
         vertex_colors = {}
@@ -273,7 +293,7 @@ def setupData(self, object, skeletonList, meshList, settingsList):
                     # If the vertex has weights, add all verts in this face to the list of vertices and faces in this mesh
                     if (g[1] > 0.5): 
                         try:
-                            addFace(finalList, f, vgroup_names[g[0]], vertex_colors, vertex_uvs, materials_list)
+                            addFace(finalList, f, vgroup_names[g[0]], vertex_normals, vertex_colors, vertex_uvs, materials_list)
                         except KeyError:
                             self.report({'ERROR'}, 'Vertex group "'+vgroup_names[g[0]]+'" does not match any bone names.')
                             return 'CANCELLED'
@@ -282,7 +302,7 @@ def setupData(self, object, skeletonList, meshList, settingsList):
                         break
         else:
             for f in bm.faces:
-                addFace(finalList, f, "None", vertex_colors, vertex_uvs, materials_list) # These faces/vertices have no weights
+                addFace(finalList, f, "None", vertex_normals, vertex_colors, vertex_uvs, materials_list) # These faces/vertices have no weights
 
     # Remove any list element that's empty
     for i in list(finalList.keys()):

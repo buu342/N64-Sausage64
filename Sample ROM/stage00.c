@@ -27,6 +27,7 @@ Handles the first level of the game.
 
 void handle_mesh(int part);
 void draw_catherine();
+void draw_menu();
 
 
 /*********************************
@@ -38,6 +39,7 @@ static Mtx projection, viewing, modeling;
 static u16 normal;
 
 // Animations
+static u8 useanims;
 static u32 animtick;
 static Animation* curanim;
 static KeyFrame* currentframe;
@@ -49,20 +51,26 @@ static u8 findex;
 static FaceAnim* curfanim;
 
 // Time between animation keyframes
-static OSTime frametime = 0;
+static OSTime frametime;
 
 // Lights
 static Light light_amb;
 static Light light_dir;
 
-// USB
-static char uselight = TRUE;
-static char freezelight = FALSE;
-static char usb_buffer[USB_BUFFER_SIZE];
+// Menu
+static char menuopen = FALSE;
+static s8   curx = 0;
+static s8   cury = 0;
 
 // Camera
 static float campos[3] = {0, -100, -300};
 static float camang[3] = {0, 0, -90};
+
+// USB
+static char uselight = TRUE;
+static char freezelight = FALSE;
+static char useinterpolate = TRUE;
+static char usb_buffer[USB_BUFFER_SIZE];
 
 
 /*==============================
@@ -72,13 +80,19 @@ static float camang[3] = {0, 0, -90};
 
 void stage00_init(void)
 {
-    findex = 0;
+    // Initialize the animations
+    useanims = TRUE;
     animtick = 0;
-    fanimtick = 60;
     curanim = &anim_Walk;
-    curfanim = &catherine_faces[0];
     currentframe = &curanim->keyframes[0];
     nextframe = &curanim->keyframes[1];
+    
+    // Initialize the face animations
+    findex = 0;
+    fanimtick = 60;
+    curfanim = &catherine_faces[0];
+    
+    // Initialize the next frame time
     frametime = osGetTime() + OS_USEC_TO_CYCLES(22222);
 }
 
@@ -92,10 +106,13 @@ void stage00_update(void)
 {
     int i;
     
+    // Poll for USB commands
     debug_pollcommands();
+    
     
     /* -------- Animation Keyframes -------- */
     
+    // If the frame time has elapsed
     if (frametime < osGetTime())
     {
         // Increment the animation tick
@@ -153,12 +170,17 @@ void stage00_update(void)
     // Reset the camera when START is pressed
     if (contdata[0].trigger & START_BUTTON)
     {
-        for (i=0; i<3; i++)
-        {
-            campos[i] = 0;
-            camang[i] = 0;
-        }
+        campos[0] = 0;
+        campos[1] = -100;
+        campos[2] = -300;
+        camang[0] = 0;
+        camang[1] = 0;
+        camang[2] = -90;
     }
+    
+    // Toggle the menu when L is pressed
+    if (contdata[0].trigger & L_TRIG)
+        menuopen = !menuopen;
     
     // Handle camera movement and rotation
     if (contdata[0].button & Z_TRIG)
@@ -174,6 +196,70 @@ void stage00_update(void)
     {
         campos[0] += contdata->stick_x/10;
         campos[1] += contdata->stick_y/10;
+    }
+
+
+    /* -------- Menu -------- */
+    
+    // If the menu is open
+    if (menuopen)
+    {
+        int menuyscale[4] = {TOTALANIMS+1, TOTALFACES, 2, 1};
+    
+        // Moving the cursor left/right
+        if (contdata[0].trigger & R_JPAD)
+            curx = (curx+1)%4;
+        if (contdata[0].trigger & L_JPAD)
+        {
+            curx--;
+            if (curx < 0)
+                curx = 3;
+        }
+        
+        // Moving the cursor up/down
+        if (contdata[0].trigger & D_JPAD)
+            cury++;
+        if (contdata[0].trigger & U_JPAD)
+            cury--;
+            
+        // Correct the Y position
+        if (cury < 0)
+            cury = menuyscale[curx]-1;
+        cury %= menuyscale[curx];
+        
+        // Pressing A to do stuff
+        if (contdata[0].trigger & A_BUTTON)
+        {
+            switch (curx)
+            {
+                case 0:
+                    if (cury != 0)
+                    {
+                        useanims = TRUE;
+                        animtick = 0;
+                        curanim = catherine_anims[cury-1].anim;
+                        currentframe = &curanim->keyframes[0];
+                        nextframe = &curanim->keyframes[1];
+                    }
+                    else
+                        useanims = FALSE;
+                    break;
+                case 1:
+                    fanimtick = 60;
+                    findex = 0;
+                    curfanim = &catherine_faces[cury];
+                    break;
+                case 2:
+                    if (cury == 0)
+                        uselight = !uselight;
+                    else
+                        freezelight = !freezelight;
+                    break;
+                case 3:
+                    useinterpolate = !useinterpolate;
+                    break;
+            }
+        }
     }
 }
 
@@ -198,7 +284,7 @@ void stage00_draw(void)
     // Setup the projection matrix
     guPerspective(&projection, &normal, 45, (float)SCREEN_WD / (float)SCREEN_HT, 10.0, 1000.0, 0.01);
     
-    // Rotate the view
+    // Rotate and position the view
     guMtxIdentF(fmat1);
     guRotateRPYF(fmat2, camang[2], camang[0], camang[1]);
     guMtxCatF(fmat1, fmat2, fmat1);
@@ -249,7 +335,13 @@ void stage00_draw(void)
     
     // Ensure we haven't gone over the display list size and start the graphics task
     debug_assert((glistp-glist) < GLIST_LENGTH);
-    nuGfxTaskStart(glist, (s32)(glistp - glist) * sizeof(Gfx), NU_GFX_UCODE_F3DEX, NU_SC_SWAPBUFFER);
+    nuGfxTaskStart(glist, (s32)(glistp - glist) * sizeof(Gfx), NU_GFX_UCODE_F3DEX, NU_SC_NOSWAPBUFFER);
+    
+    // Draw the menu
+    nuDebConClear(NU_DEB_CON_WINDOW0);
+    if (menuopen)
+        draw_menu();
+    nuDebConDisp(NU_SC_SWAPBUFFER);
 }
 
 
@@ -257,43 +349,59 @@ void stage00_draw(void)
     handle_mesh
     Handles the positioning and 
     drawing of a mesh
-    @param The MESJ_ macro to draw
+    @param The MESH_ macro to draw
 ==============================*/
 
 void handle_mesh(int part)
 {
-    FrameData* cframe = &currentframe->framedata[part];
-    FrameData* nframe = &nextframe->framedata[part];
-    float l = ((float)(animtick-(currentframe->framenumber)))/((float)((nextframe->framenumber)-(currentframe->framenumber)));
-    
-    // Create the root matricies
-    guTranslate(&mparts[part].mtx_iroot, -roots[part].pos[0], -roots[part].pos[1], -roots[part].pos[2]);
-    guTranslate(&mparts[part].mtx_root, roots[part].pos[0], roots[part].pos[1], roots[part].pos[2]);
-    
-    // Create the rotation and translation matricies
-    guRotateRPY(&mparts[part].mtx_rotation, 
-        lerp(cframe->rot[0], nframe->rot[0], l), 
-        lerp(cframe->rot[1], nframe->rot[1], l),
-        lerp(cframe->rot[2], nframe->rot[2], l));
-    guTranslate(&mparts[part].mtx_translation, 
-        lerp(cframe->pos[0], nframe->pos[0], l), 
-        lerp(cframe->pos[1], nframe->pos[1], l), 
-        lerp(cframe->pos[2], nframe->pos[2], l));
-    
-    // Apply the matricies
-    gSPMatrix(glistp++, OS_K0_TO_PHYSICAL(&mparts[part].mtx_root), G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_PUSH);
-    gSPMatrix(glistp++, OS_K0_TO_PHYSICAL(&mparts[part].mtx_translation), G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_PUSH);
-    gSPMatrix(glistp++, OS_K0_TO_PHYSICAL(&mparts[part].mtx_rotation), G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_PUSH);
-    gSPMatrix(glistp++, OS_K0_TO_PHYSICAL(&mparts[part].mtx_iroot), G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_PUSH);
+    // If animations are enabled
+    if (useanims)
+    {
+        FrameData* cframe = &currentframe->framedata[part];
+        FrameData* nframe = &nextframe->framedata[part];
+        float l = ((float)(animtick-(currentframe->framenumber)))/((float)((nextframe->framenumber)-(currentframe->framenumber)));
+        
+        // Create the root matricies
+        guTranslate(&mparts[part].mtx_iroot, -roots[part].pos[0], -roots[part].pos[1], -roots[part].pos[2]);
+        guTranslate(&mparts[part].mtx_root, roots[part].pos[0], roots[part].pos[1], roots[part].pos[2]);
+        
+        // Create the rotation and translation matricies
+        if (useinterpolate)
+        {
+            guRotateRPY(&mparts[part].mtx_rotation, 
+                lerp(cframe->rot[0], nframe->rot[0], l), 
+                lerp(cframe->rot[1], nframe->rot[1], l),
+                lerp(cframe->rot[2], nframe->rot[2], l));
+            guTranslate(&mparts[part].mtx_translation, 
+                lerp(cframe->pos[0], nframe->pos[0], l), 
+                lerp(cframe->pos[1], nframe->pos[1], l), 
+                lerp(cframe->pos[2], nframe->pos[2], l));
+        }
+        else
+        {
+            guRotateRPY(&mparts[part].mtx_rotation, cframe->rot[0], cframe->rot[1], cframe->rot[2]);
+            guTranslate(&mparts[part].mtx_translation, cframe->pos[0], cframe->pos[1], cframe->pos[2]);    
+        }
+        
+        // Apply the matricies
+        gSPMatrix(glistp++, OS_K0_TO_PHYSICAL(&mparts[part].mtx_root), G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_PUSH);
+        gSPMatrix(glistp++, OS_K0_TO_PHYSICAL(&mparts[part].mtx_translation), G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_PUSH);
+        gSPMatrix(glistp++, OS_K0_TO_PHYSICAL(&mparts[part].mtx_rotation), G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_PUSH);
+        gSPMatrix(glistp++, OS_K0_TO_PHYSICAL(&mparts[part].mtx_iroot), G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_PUSH);
+    }
     
     // Draw the body part
     gSPDisplayList(glistp++, mparts[part].dl);
     
-    // Pop all the previous transformations
-    gSPPopMatrix(glistp++, G_MTX_MODELVIEW);
-    gSPPopMatrix(glistp++, G_MTX_MODELVIEW);
-    gSPPopMatrix(glistp++, G_MTX_MODELVIEW);
-    gSPPopMatrix(glistp++, G_MTX_MODELVIEW);
+    // If animations are enabled
+    if (useanims)
+    {
+        // Pop all the previous transformations
+        gSPPopMatrix(glistp++, G_MTX_MODELVIEW);
+        gSPPopMatrix(glistp++, G_MTX_MODELVIEW);
+        gSPPopMatrix(glistp++, G_MTX_MODELVIEW);
+        gSPPopMatrix(glistp++, G_MTX_MODELVIEW);
+    }
 }
 
 
@@ -378,6 +486,70 @@ void draw_catherine()
 
 
 /*==============================
+    draw_menu
+    Draws the menu
+==============================*/
+
+void draw_menu()
+{
+    int i, cx;
+    
+    // List the animations
+    nuDebConTextPos(NU_DEB_CON_WINDOW0, 3, 3);
+    nuDebConCPuts(NU_DEB_CON_WINDOW0, "Anims");
+    nuDebConTextPos(NU_DEB_CON_WINDOW0, 4, 5);
+    nuDebConCPuts(NU_DEB_CON_WINDOW0, "None");
+    for (i=0; i<TOTALANIMS; i++)
+    {
+        nuDebConTextPos(NU_DEB_CON_WINDOW0, 4, 6+i);
+        nuDebConCPuts(NU_DEB_CON_WINDOW0, catherine_anims[i].name);
+    }
+    
+    // List the faces
+    nuDebConTextPos(NU_DEB_CON_WINDOW0, 15, 3);
+    nuDebConCPuts(NU_DEB_CON_WINDOW0, "Faces");
+    for (i=0; i<TOTALFACES; i++)
+    {
+        nuDebConTextPos(NU_DEB_CON_WINDOW0, 16, 5+i);
+        nuDebConCPuts(NU_DEB_CON_WINDOW0, catherine_faces[i].name);
+    }
+    
+    // List the light options
+    nuDebConTextPos(NU_DEB_CON_WINDOW0, 24, 3);
+    nuDebConCPuts(NU_DEB_CON_WINDOW0, "Light");
+    nuDebConTextPos(NU_DEB_CON_WINDOW0, 25, 5);
+    nuDebConCPuts(NU_DEB_CON_WINDOW0, "Toggle");
+    nuDebConTextPos(NU_DEB_CON_WINDOW0, 25, 6);
+    nuDebConCPuts(NU_DEB_CON_WINDOW0, "Freeze");
+    
+    // List the other options
+    nuDebConTextPos(NU_DEB_CON_WINDOW0, 32, 3);
+    nuDebConCPuts(NU_DEB_CON_WINDOW0, "Other");
+    nuDebConTextPos(NU_DEB_CON_WINDOW0, 33, 5);
+    nuDebConCPuts(NU_DEB_CON_WINDOW0, "Lerp");
+    
+    // Draw a nice little bar separating everything
+    nuDebConTextPos(NU_DEB_CON_WINDOW0, 3, 4);
+    nuDebConCPuts(NU_DEB_CON_WINDOW0, "-------------------------------------");
+    
+    // Draw the cursor
+    switch(curx)
+    {
+        case 0: cx = 3;  break;
+        case 1: cx = 15; break;
+        case 2: cx = 24; break;
+        case 3: cx = 32; break;
+    }
+    nuDebConTextPos(NU_DEB_CON_WINDOW0, cx, 5+cury);
+    nuDebConCPuts(NU_DEB_CON_WINDOW0, ">");
+}
+
+
+/*********************************
+      USB Command Functions
+*********************************/
+
+/*==============================
     command_listanims
     USB Command for listing animations
 ==============================*/
@@ -387,9 +559,14 @@ char* command_listanims()
     int i;
     memset(usb_buffer, 0, USB_BUFFER_SIZE);
     
+    // Add the none animation to the string
+    sprintf(usb_buffer, "None\n");
+    
+    // Go through all the animations names and append them to the string
     for (i=0; i<TOTALANIMS; i++)
         sprintf(usb_buffer, "%s%s\n", usb_buffer, catherine_anims[i].name);
 
+    // Return the string of animation names
     return usb_buffer;
 }
 
@@ -409,18 +586,28 @@ char* command_setanim()
         return "Name larger than USB buffer";
     debug_parsecommand(usb_buffer);
     
+    // If the none animation is requested, then disable animations
+    if (!strcmp("None", usb_buffer))
+    {
+        useanims = FALSE;
+        return "Animations disabled.";
+    }
+    
     // Compare the animation names
     for (i=0; i<TOTALANIMS; i++)
     {
         if (!strcmp(catherine_anims[i].name, usb_buffer))
         {
+            useanims = TRUE;
             animtick = 0;
             curanim = catherine_anims[i].anim;
             currentframe = &curanim->keyframes[0];
             nextframe = &curanim->keyframes[1];
-            return "Animation set!";
+            return "Animation set.";
         }
     }
+    
+    // No animation found
     return "Unkown animation name";
 }
 
@@ -493,4 +680,16 @@ char* command_freezelight()
 {
     freezelight = !freezelight;
     return "Light state altered";
+}
+
+
+/*==============================
+    command_togglelerp
+    USB Command for toggling lerp
+==============================*/
+
+char* command_togglelerp()
+{
+    useinterpolate = !useinterpolate;
+    return "Interpolation Toggled";
 }

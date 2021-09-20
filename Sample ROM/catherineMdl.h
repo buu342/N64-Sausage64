@@ -2,7 +2,8 @@
                          catherineMdl.h
                                
 Model data generated from the .s64 file, using a custom parsing 
-tool.
+tool. The display lists were also manually modified slightly to
+improve their efficiency.
 ***************************************************************/
 
 

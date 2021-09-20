@@ -51,6 +51,7 @@ void mainproc(void)
     debug_addcommand("SetFace", "Set the face", command_setface);
     debug_addcommand("ToggleLight", "Toggle lighting", command_togglelight);
     debug_addcommand("FreezeLight", "Freeze the light position", command_freezelight);
+    debug_addcommand("ToggleLerp", "Toggle animation interpolation", command_togglelerp);
     debug_printcommands();
         
     // Initialize stage 0

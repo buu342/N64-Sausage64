@@ -13,7 +13,7 @@ bl_info = {
 }
 
 # TODO:
-## More vertex normals
+## Support multiple UV's per vertex by embedding that information to each face instead
 ## Correct vertex indices for when different objects share the same bone
 ## Correct vertex indices for when different vertices in an object share different bones
 ## bpy.context.scene.render.fps

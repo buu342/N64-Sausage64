@@ -50,7 +50,7 @@ class S64Face:
 class S64Mesh:
     def __init__(self, name):
         self.name  = name # Skeleton name
-        self.verts = {}   # Dict of vertices (We'll later convert to list)
+        self.verts = {}   # Dict of vertices
         self.faces = []   # List of faces
         self.root  = None # Bone root location
     def __str__(self):

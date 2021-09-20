@@ -364,8 +364,8 @@ def setupData(self, object, skeletonList, meshList, settingsList):
                         boneframe = S64KeyFrame(b.name)
                         
                         # Grab the bone data for its rest and posed version
-                        obone = bpy.data.objects['Armature'].data.bones[b.name]
-                        pbone = bpy.data.objects['Armature'].pose.bones[b.name]
+                        obone = s.data.bones[b.name]
+                        pbone = s.pose.bones[b.name]
 
                         # Get the translation matricies from the head location
                         trans = mathutils.Matrix.Translation(obone.head_local)

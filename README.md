@@ -24,8 +24,8 @@ This method of character design was highly popular in the N64 and PS1 era, where
 
 ### Installation 
 1. Grab the python file that is inside the `Plugin` folder.
-2. Open Blender, and go to your user preferences
-3. Go to the addons tab, and select "Install External Script"
+2. Open Blender, and go to your user preferences.
+3. Go to the addons tab, and select `Install...` or `Install from File` button (the name depends on your version of Blender).
 4. Find the python script in the file browser and open it. 
 5. The script `Sausage64 Character Export` should appear. Tick the checkbox to enable it. 
 6. If you are on Blender 2.8 onwards, you're all set! If you are on an earlier version of Blender, you will get a warning that the script is for a newer version of Blender. You can safely ignore this warning. Don't forget to press the `Save User Preferences` button. 

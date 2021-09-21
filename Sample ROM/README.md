@@ -12,6 +12,7 @@ The controls are:
 * Use the control stick to pan the camera.
 * Hold R and use the control stick to rotate the camera.
 * Hold Z and use the control stick to zoom the view.
+* Press START to reset the camera position
 * Press L to toggle the menu. You can select menu entries with the D pad, and toggle them with the A button.
 
 The menu allows you to modify the model and face animations, toggle lighting, freeze the light position (which, by default, is always being projected from the camera), and to disable animation interpolation.
@@ -22,4 +23,4 @@ Assuming you have the Libultra SDK installed in your machine, simply run `makeme
 
 
 ### USB
-If you modify `debug.h` by chaning `DEBUG_MODE` to `1`, you can enable USB input+output for flashcarts, allowing you to modify the ROM with your command prompt. This requires loading the ROM using a program such as [UNFLoader](https://github.com/buu342/N64-UNFLoader) with debug mode enabled.
+If you modify `debug.h` by changing `DEBUG_MODE` to `1`, you can enable USB input+output for flashcarts, allowing you to modify the ROM with your command prompt. This requires loading the ROM using a program such as [UNFLoader](https://github.com/buu342/N64-UNFLoader) with debug mode enabled.

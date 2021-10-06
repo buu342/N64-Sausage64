@@ -449,6 +449,16 @@ class ObjectExport(bpy.types.Operator):
     setting_selected    = bpy.props.BoolProperty(name="Selected only", description="Export selected objects only", default=False)
     setting_visible     = bpy.props.BoolProperty(name="Visible only", description="Export visible objects only", default=True)
     filepath            = bpy.props.StringProperty(subtype='FILE_PATH')    
+
+    # If we are running on Blender 2.9.3 or newer, it will expect the new "annotation"
+    # syntax on these parameters. In order to make newer versions of blender happy
+    # we will hack these parameters into the annotation dictionary
+    if isNewBlender():
+        __annotations__ = {"filter_glob" : filter_glob,
+                           "setting_triangulate" : setting_triangulate,
+                           "setting_selected" : setting_selected,
+                           "setting_visible" : setting_visible,
+                           "filepath" : filepath}
     
     def execute(self, context):
         skeletonList = []

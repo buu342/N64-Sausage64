@@ -93,6 +93,7 @@ class settingsExport:
     triangulate  = None
     onlyvisible  = None
     onlyselected = None
+    rolloverfix  = None
     
 def isNewBlender():
     return bpy.app.version >= (2, 80)
@@ -229,7 +230,7 @@ def setupData(self, object, skeletonList, meshList, settingsList):
         bm = bmesh.new()
         bm.from_mesh(mcopy)
         if (settingsList.triangulate):
-            bmesh.ops.triangulate(bm, faces=bm.faces[:], quad_method=0, ngon_method=0)
+            bmesh.ops.triangulate(bm, faces=bm.faces[:])
         bm.verts.index_update()
         bm.verts.ensure_lookup_table()
         bm.edges.ensure_lookup_table()
@@ -337,6 +338,9 @@ def setupData(self, object, skeletonList, meshList, settingsList):
            
             # Get the current frame so that we can reset it later
             framebefore = bpy.context.scene.frame_current
+            
+            # For angle rollover correction
+            oldangle = {}
            
             # Now that we have a list of places where keyframes exist, lets get anim data for that frame
             for k in anim.frames:
@@ -377,8 +381,14 @@ def setupData(self, object, skeletonList, meshList, settingsList):
                         
                         # Store the different data from the matricies
                         boneframe.pos   = mat_final.to_translation()
-                        boneframe.ang   = mat_final.to_euler()
                         boneframe.scale = mat_final.to_scale()
+                        
+                        # Store the rotation, correcting for angle rollover
+                        if (b.name in oldangle and settingsList.rolloverfix):
+                            boneframe.ang   = mat_final.to_euler(oldangle[b.name].order, oldangle[b.name])
+                        else:
+                            boneframe.ang   = mat_final.to_euler()
+                        oldangle[b.name] = boneframe.ang
                         
                         # Add this bone's frame data to the to the list of frame data for this keyframe
                         anim.frames[k][b.name] = boneframe
@@ -448,6 +458,7 @@ class ObjectExport(bpy.types.Operator):
     setting_triangulate = bpy.props.BoolProperty(name="Triangulate", description="Triangulate objects", default=False)
     setting_selected    = bpy.props.BoolProperty(name="Selected only", description="Export selected objects only", default=False)
     setting_visible     = bpy.props.BoolProperty(name="Visible only", description="Export visible objects only", default=True)
+    setting_rolloverfix = bpy.props.BoolProperty(name="Correct angle rollover", description="Add/Subtract 360 degrees to angles that roll over", default=True)
     filepath            = bpy.props.StringProperty(subtype='FILE_PATH')    
 
     # If we are running on Blender 2.9.3 or newer, it will expect the new "annotation"
@@ -458,6 +469,7 @@ class ObjectExport(bpy.types.Operator):
                            "setting_triangulate" : setting_triangulate,
                            "setting_selected" : setting_selected,
                            "setting_visible" : setting_visible,
+                           "setting_rolloverfix" : setting_rolloverfix,
                            "filepath" : filepath}
     
     def execute(self, context):
@@ -470,6 +482,7 @@ class ObjectExport(bpy.types.Operator):
         settingsList.triangulate  = self.setting_triangulate
         settingsList.onlyselected = self.setting_selected
         settingsList.onlyvisible  = self.setting_visible
+        settingsList.rolloverfix  = self.setting_rolloverfix
         
         # Pick out what objects we're going to look over
         list = bpy.data.objects

@@ -8,9 +8,11 @@ The plugin exports the data as an easily parsable text file. This file should be
 
 The plugin's code is documented, and contains a ton of helper classes that store the information before exporting. This should allow you to modify the script to instead output the data in a format you want, as opposed to an intermediary format like s64.
 
-This repository contains three folders:
+This repository contains five folders:
 * `Plugin` - The Blender plugin itself. Installation instructions provided in a further section of this README. 
 * `Sample Model` - An example character model with animations, with the source files available alongside the .s64 file exported by the plugin. The Blender file is for 2.7 but can be opened on newer versions, at the expense of the materials looking different. 
+* `Sample Parser` - An example Sausage64 to N64 display list converter, written in C. More info about the program in the folder's README. 
+* `Sample Library` - An example library for the N64, designed for the output from `Sample Parser`. More info about the library in the folder's README. 
 * `Sample ROM` - An example N64 ROM displaying the character and the animations in action. The .s64 file and the textures were converted to display lists and other parsable data with a custom tool (which is currently not in this repository). More information available in the folder's README. 
 
 ### What do you mean by Sausage Links?

@@ -9,6 +9,7 @@
     #define TRUE  1
     #define HASHTABLE_SIZE 32
 
+
     /*********************************
                Custom Types
     *********************************/
@@ -70,7 +71,7 @@
         float x;
         float y;
     } Vector2D;
-    
+
     
     /*********************************
                 Functions
@@ -79,10 +80,10 @@
     // Linked list functions
     extern listNode* list_append(linkedList* list, void* data);
     extern void      list_combine(linkedList* dest, linkedList* list);
-    extern void      list_remove(linkedList* list, void* data);
+    extern listNode* list_remove(linkedList* list, void* data);
     extern void      list_destroy(linkedList* list);
     extern void      list_destroy_deep(linkedList* list);
-    extern void      list_swapindex_withlist(linkedList* dest, int index, linkedList* list);
+    extern listNode* list_swapindex_withlist(linkedList* dest, int index, linkedList* list);
     extern listNode* list_node_from_index(linkedList* list, int index);
     
     // Dictionary functions

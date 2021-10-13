@@ -55,18 +55,22 @@ listNode* list_append(linkedList* list, void* data)
 
 void list_combine(linkedList* dest, linkedList* list)
 {
+    // Make sure the lists are not null, and we're not feeding into ourselves
+    if (list == NULL || dest == NULL || dest == list)
+        return;
+    
+    // If the list has stuff in it, then attach to the tail. Otherwise, attach to the head
     if (dest->head != NULL)
     {
         dest->tail->next = list->head;
         dest->tail = list->tail;
-        dest->size += list->size;
     }
     else
     {
         dest->head = list->head;
         dest->tail = list->tail;
-        dest->size += list->size;    
     }
+    dest->size += list->size;
 }
 
 
@@ -75,16 +79,19 @@ void list_combine(linkedList* dest, linkedList* list)
     Removes data from a linked list
     @param The linked list to append to
     @param The data to append
-    @returns The created node
+    @returns The removed node
 ==============================*/
 
-void list_remove(linkedList* list, void* data)
+listNode* list_remove(linkedList* list, void* data)
 {
-    listNode* lastnode = NULL;
-    listNode* thisnode = list->head;
+    listNode* lastnode = NULL, *thisnode;
+    
+    // Ensure the list is not null
+    if (list == NULL)
+        return NULL;
     
     // Iterate through the linked list
-    while (thisnode != NULL)
+    for (thisnode = list->head; thisnode != NULL; thisnode = thisnode->next)
     {
         // If we found the data we want to remove
         if (thisnode->data == data)
@@ -110,14 +117,15 @@ void list_remove(linkedList* list, void* data)
             
             // Decrement the list size, and then stop
             list->size--;
-            return;
+            return thisnode;
         }
         
         // Continue searching
         lastnode = thisnode;
-        thisnode = thisnode->next;
     }
+    return NULL;
 }
+
 
 /*==============================
     list_destroy
@@ -127,20 +135,23 @@ void list_remove(linkedList* list, void* data)
 
 void list_destroy(linkedList* list)
 {
-    listNode* curnode = list->head;
-    listNode* nextnode = list->head;
+    listNode* curnode;
+    
+    // Make sure the list exists
+    if (list == NULL)
+        return;
     
     // Iterate through the linked list
-    while (curnode != NULL)
+    for (curnode = list->head; curnode != NULL;)
     {
-        nextnode = curnode->next;
+        listNode* nextnode = curnode->next;
         
-        // Free the node
+        // Free the node, then go to the next node
         free(curnode);
-            
-        // Go to the next node
         curnode = nextnode;
     }
+    
+    // Set the linked list back to 0
     memset(list, 0, sizeof(linkedList));
 }
 
@@ -153,22 +164,26 @@ void list_destroy(linkedList* list)
 
 void list_destroy_deep(linkedList* list)
 {
-    listNode* curnode = list->head;
-    listNode* nextnode = list->head;
+    listNode* curnode;
+    
+    // Make sure the list exists
+    if (list == NULL)
+        return;
     
     // Iterate through the linked list
-    while (curnode != NULL)
+    for (curnode = list->head; curnode != NULL;)
     {
-        nextnode = curnode->next;
+        listNode* nextnode = curnode->next;
         
-        // Free the node data, and then the node itself
+        // Free the data, then the node itself
         free(curnode->data);
         free(curnode);
-            
+        
         // Go to the next node
         curnode = nextnode;
     }
-    list->size = 0;
+    
+    // Set the linked list back to 0
     memset(list, 0, sizeof(linkedList));
 }
 
@@ -198,24 +213,40 @@ listNode* list_node_from_index(linkedList* list, int index)
     @param The destination list
     @param The index to change
     @param The list to attach
+    @return The replaced node
 ==============================*/
 
-void list_swapindex_withlist(linkedList* dest, int index, linkedList* list)
+listNode* list_swapindex_withlist(linkedList* dest, int index, linkedList* list)
 {
     int cindex = 0;
-    listNode* previous = dest->head;
-    listNode* curnode = dest->head;
+    listNode* curnode, *previous = NULL;
     
+    // Stop if the lists don't exist, the index is invalid, or the destination is empty
+    if (dest == NULL || list == NULL || index < 0 || dest->size == 0 || list->size == 0)
+        return NULL;
+        
+    // If we want the first element, then replace the head
+    if (index == 0)
+    {
+        list->tail->next = dest->head->next;
+        dest->head = list->head;
+        dest->size += list->size-1;
+        return curnode;
+    }
+        
     // Go to the n'th element
-    while (curnode != NULL)
+    for (curnode = dest->head; curnode != NULL; curnode = curnode->next)
     {
         if (cindex == index)
             break;
         cindex++;
         previous = curnode;
-        curnode = curnode->next;
     }
     
+    // Stop if the element wasn't found
+    if (curnode == NULL)
+        return NULL;
+        
     // Replace the pointers
     previous->next = list->head;
     list->tail->next = curnode->next;
@@ -226,8 +257,11 @@ void list_swapindex_withlist(linkedList* dest, int index, linkedList* list)
         dest->head = list->head;
     if (dest->tail == curnode)
         dest->tail = list->tail;
-    //free(curnode);
+    
+    // Return the replaced node
+    return curnode;
 }
+
 
 /*********************************
        Dictionary Functions

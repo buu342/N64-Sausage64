@@ -318,13 +318,9 @@ dictNode* dict_getkey(Dictionary* dict, int key)
         return NULL;
 
     // Search through the dictionary
-    curnode = dict->head;
-    while (curnode != NULL)
-    {
+    for (curnode = dict->head; curnode != NULL; curnode = curnode->next)
         if (curnode->key == key)
             return curnode;
-        curnode = curnode->next;
-    }
     
     // Didn't find the key, return NULL
     return NULL;
@@ -347,10 +343,8 @@ void dict_destroy(Dictionary* dict)
     {
         nextnode = curnode->next;
         
-        // Free the node
+        // Free the node, and then go to the next node
         free(curnode);
-            
-        // Go to the next node
         curnode = nextnode;
     }
     memset(dict, 0, sizeof(Dictionary));

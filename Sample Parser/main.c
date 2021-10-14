@@ -2,12 +2,6 @@
                              main.c
                              
 Program entrypoint
-TODO: More texture info (like mirror, etc...)
-TODO: Properly test with varied stuff
-TODO: Release
-TODO: Write an easy to use N64 library
-TODO: Run through with a debugger to check on memory leaks
-TODO: Sort output meshes by texture loading order
 ***************************************************************/
 
 #include <stdio.h>
@@ -36,13 +30,11 @@ linkedList list_meshes = EMPTY_LINKEDLIST;
 linkedList list_animations = EMPTY_LINKEDLIST;
 linkedList list_textures = EMPTY_LINKEDLIST;
 
-// Output data
-linkedList list_output = EMPTY_LINKEDLIST;
-
 // Program settings
 bool global_quiet = FALSE;
 bool global_fixroot = TRUE;
 bool global_binaryout = FALSE;
+bool global_initialload = TRUE;
 char* global_outputname = "outdlist.h";
 char* global_modelname = "MyModel";
 unsigned int global_cachesize = 32;
@@ -73,6 +65,7 @@ int main(int argc, char* argv[])
             "\t-f <File>\tThe file to load\n"
             //"\t-b \t\t(optional) Binary Display List\n" // TODO
             "\t-c <Int>\t(optional) Vertex cache size (default '32')\n"
+            "\t-i \t\t(optional) Omit initial display list setup\n"
             "\t-n <Name>\t(optional) Model name (default 'MyModel')\n"
             "\t-o <File>\t(optional) Output filename (default 'outdlist.h')\n"
             "\t-q \t\t(optional) Quiet mode\n"
@@ -92,7 +85,6 @@ int main(int argc, char* argv[])
     parse_sausage(fp_m);
     
     // Construct a display list
-    // This block of code could be modified to pick between different functions for different target export (like PS1)
     construct_dl();
     
     // Save our model data to a file
@@ -171,6 +163,9 @@ static void parse_programargs(int argc, char* argv[])
                     break;
                 case 'b':
                     global_binaryout = !global_binaryout;
+                    break;
+                case 'i':
+                    global_initialload = !global_initialload;
                     break;
                 default:
                     sprintf(errbuf, "Error: Unknown argument '%s'\n", argv[i]);

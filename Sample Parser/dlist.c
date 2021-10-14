@@ -569,7 +569,7 @@ static linkedList* forsyth(vertCache* vcacheoriginal)
         terminate("Error: Unable to allocate memory for new vertex cache list\n");
         
     // Now iterate through the optimized list again, start generating triangles and adding them to our cache list
-    meshtex = ((s64Face*)(vcacheoriginal->faces.head))->texture; // Since this mesh is already split by texture, we can rely on the first face's texture applying to all faces
+    meshtex = ((s64Face*)(vcacheoriginal->faces.head)->data)->texture; // Since this mesh is already split by texture, we can rely on the first face's texture applying to all faces
     for (i=0; i<tricount*3; i+=3)
     {
         s64Face* face;
@@ -711,6 +711,42 @@ static void check_splitverts(linkedList* vcachelist)
 
 
 /*==============================
+    find_texture_fromvertindex
+    Returns the texture from a face that has the given vertex index in a list of vertex caches
+    @param The list of vertex caches
+    @param The vertex index
+    @returns The texture assigned to the FIRST face with the given vertex index, or NULL if none is found
+==============================*/
+
+static n64Texture* find_texture_fromvertindex(linkedList* vcachelist, int index)
+{
+    listNode* vcnode;
+    
+    // Iterate through the vertex caches
+    for (vcnode = vcachelist->head; vcnode != NULL; vcnode = vcnode->next)
+    {
+        int i;
+        listNode* facenode;
+        vertCache* vcache = (vertCache*)vcnode->data;
+        
+        // Iterate through the face list
+        for (facenode = vcache->faces.head; facenode != NULL; facenode = facenode->next)
+        {
+            s64Face* face = (s64Face*)facenode->data;
+            
+            // Check if the index is in this face
+            for (i=0; i<face->vertcount; i++)
+                if (face->verts[i]+vcache->offset == index)
+                    return face->texture;
+        }
+    }
+    
+    // No face found, return NULL
+    return NULL;
+}
+
+
+/*==============================
     construct_dl
     Constructs a display list and stores it
     in a temporary file
@@ -765,7 +801,9 @@ void construct_dl()
             // If that didn't help, then split the vertex block further with the help of Forsyth
             check_splitverts(&vcachelist);
             
-            // TODO: If that still didn't help, then duplicate problem vertices and try Forsyth again
+            // TODO: If that still didn't help (because we had an impossible to split model), then duplicate problem vertices and try Forsyth again
+            
+            // TODO: Sort by texture again to reduce display list commands
         }
         else
         {
@@ -788,13 +826,33 @@ void construct_dl()
             // Cycle through all the verts
             for (vertnode = vcache->verts.head; vertnode != NULL; vertnode = vertnode->next)
             {
+                int texturew = 0, textureh = 0;
                 s64Vert* vert = (s64Vert*)vertnode->data;
+                n64Texture* tex = find_texture_fromvertindex(&vcachelist, vertindex);
+                Vector3D normorcol;
+                
+                // Ensure the texture is valid
+                if (tex == NULL)
+                    terminate("Error: Inconsistent face/vertex texture information\n");
+                
+                // Get the texture size
+                if (tex->type == TYPE_TEXTURE)
+                {
+                    texturew = (tex->data).image.w;
+                    textureh = (tex->data).image.h;
+                }
+
+                // Pick vertex normals or vertex colors, depending on the texture flag
+                if (tex_hasgeoflag(tex, "G_LIGHTING"))
+                    normorcol = vector_scale(vert->normal, 127);
+                else
+                    normorcol = vector_scale(vert->color, 255);
                 
                 // Dump the vert data
                 fprintf(fp, "    {%d, %d, %d, 0, %d, %d, %d, %d, %d, 255}, /* %d */\n", 
                     (int)round(vert->pos.x), (int)round(vert->pos.y), (int)round(vert->pos.z),
-                    float_to_s10p5(vert->UV.x*0), float_to_s10p5(vert->UV.y*0),
-                    (int)round(0), (int)round(0), (int)round(0),
+                    float_to_s10p5(vert->UV.x*texturew), float_to_s10p5(vert->UV.y*textureh),
+                    (int)round(normorcol.x), (int)round(normorcol.y), (int)round(normorcol.z),
                         vertindex++
                 );
             }
@@ -815,6 +873,136 @@ void construct_dl()
             for (facenode = vcache->faces.head; facenode != NULL; facenode = facenode->next)
             {
                 s64Face* face = (s64Face*)facenode->data;
+                n64Texture* tex = face->texture;
+                
+                // If we want to skip the initial display list setup, then change the value of our last texture to skip the next if statement
+                if (lastTexture == NULL && !global_initialload)
+                    lastTexture = tex;
+            
+                // If a texture change was detected, load the new texture data
+                if (lastTexture != tex && tex->type != TYPE_OMIT)
+                {
+                    int i;
+                    bool pipesync = FALSE;
+                    bool changedgeo = FALSE;
+                    
+                    // Check for different cycle type
+                    if (lastTexture == NULL || strcmp(tex->cycle, lastTexture->cycle) != 0)
+                    {
+                        fprintf(fp, "    gsDPSetCycleType(%s),\n", tex->cycle);
+                        pipesync = TRUE;
+                    }
+                    
+                    // Check for different render mode
+                    if (lastTexture == NULL || strcmp(tex->rendermode1, lastTexture->rendermode1) != 0 || strcmp(tex->rendermode2, lastTexture->rendermode2) != 0)
+                    {
+                        fprintf(fp, "    gsDPSetRenderMode(%s, %s),\n", tex->rendermode1, tex->rendermode2);
+                        pipesync = TRUE;
+                    }
+                    
+                    // Check for different combine mode
+                    if (lastTexture == NULL || strcmp(tex->combinemode1, lastTexture->combinemode1) != 0 || strcmp(tex->combinemode2, lastTexture->combinemode2) != 0)
+                    {
+                        fprintf(fp, "    gsDPSetCombineMode(%s, %s),\n", tex->combinemode1, tex->combinemode2);
+                        pipesync = TRUE;
+                    }
+                    
+                    // Check for different texture filter
+                    if (lastTexture == NULL || strcmp(tex->texfilter, lastTexture->texfilter) != 0)
+                    {
+                        fprintf(fp, "    gsDPSetTextureFilter(%s),\n", tex->texfilter);
+                        pipesync = TRUE;
+                    }
+                    
+                    // Check for different geometry mode
+                    if (lastTexture != NULL)
+                    {
+                        int flagcountold = 0, flagcountnew = 0;
+                        for (i=0; i<MAXGEOFLAGS; i++)
+                        {
+                            int j;
+                            bool hasthisflag = FALSE;
+                            
+                            // Skip empty flags
+                            if (tex->geomode[i][0] == '\0')
+                                continue;
+                                
+                            flagcountnew++;
+                            flagcountold = 0;
+                                
+                            // Look through all the old texture's flags
+                            for (j=0; j<MAXGEOFLAGS; j++)
+                            {
+                                if (lastTexture->geomode[j][0] == '\0')
+                                    continue;
+                                flagcountold++;
+                                if (!strcmp(tex->geomode[i], lastTexture->geomode[j]))
+                                {
+                                    hasthisflag = TRUE;
+                                    break;
+                                }
+                            }
+                            
+                            // If a flagchange was detected, the display list must be updated
+                            if (!hasthisflag)
+                            {
+                                changedgeo = TRUE;
+                                break;
+                            }
+                        }
+                        
+                        // If the number of flags changed, then we need to update the display list
+                        if (flagcountold != flagcountnew)
+                            changedgeo = TRUE;
+                    }
+                    else
+                        changedgeo = TRUE;
+                        
+                    // If a geometry mode flag changed, then update the display list
+                    if (changedgeo)
+                    {
+                        bool appendline = FALSE;
+                    
+                        // TODO: Smartly omit display list commands based on what changed
+                        fprintf(fp, "    gsSPClearGeometryMode(0xFFFFFFFF),\n");
+                        fprintf(fp, "    gsSPSetGeometryMode(");
+                        for (i=0; i<MAXGEOFLAGS; i++)
+                        {
+                            if (tex->geomode[i][0] == '\0')
+                                continue;
+                            if (appendline)
+                            {
+                                fprintf(fp, " | ");
+                                appendline = FALSE;
+                            }
+                            fprintf(fp, "%s", tex->geomode[i]);
+                            appendline = TRUE;
+                        }
+                        fprintf(fp, "),\n");
+                    }
+                    
+                    // Load the texture if it wasn't marked as DONTLOAD
+                    if (!tex->dontload)
+                    {
+                        if (tex->type == TYPE_TEXTURE)
+                        {
+                            fprintf(fp, "    gsDPLoadTextureBlock(%s, %s, %s, %d, %d, 0, %s, %s, %d, %d, G_TX_NOLOD, G_TX_NOLOD),\n",
+                                tex->name, tex->data.image.coltype, tex->data.image.colsize, tex->data.image.w, tex->data.image.h, 
+                                tex->data.image.texmodes, tex->data.image.texmodet, nearest_pow2(tex->data.image.w), nearest_pow2(tex->data.image.h)
+                            );
+                            pipesync = TRUE;
+                        }
+                        else if (tex->type == TYPE_PRIMCOL)
+                            fprintf(fp, "    gsDPSetPrimColor(0, 0, %d, %d, %d, 255),\n", tex->data.color.r, tex->data.color.g, tex->data.color.b);
+                    }
+                    
+                    // Call a pipesync if needed
+                    if (pipesync)
+                        fprintf(fp, "    gsDPPipeSync(),\n");
+
+                    // Update the last texture
+                    lastTexture = tex;
+                }
                 
                 // Dump the face data
                 if (face->vertcount == 3)
@@ -823,6 +1011,10 @@ void construct_dl()
                     fprintf(fp, "    gsSP2Triangles(%d, %d, %d, 0, %d, %d, %d, 0),\n", face->verts[0], face->verts[1], face->verts[2], 
                                                                                        face->verts[0], face->verts[2], face->verts[3]);
             }
+            
+            // Newline if we have another vertex block to load
+            if (vcachenode->next != NULL)
+                fprintf(fp, "\n");
         }
         fprintf(fp, "    gsSPEndDisplayList(),\n};\n\n");
         

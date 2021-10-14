@@ -23,6 +23,7 @@
     extern bool global_quiet;
     extern bool global_fixroot;
     extern bool global_binaryout;
+    extern bool global_initialload;
     extern char* global_outputname;
     extern char* global_modelname;
     extern unsigned int global_cachesize;

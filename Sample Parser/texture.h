@@ -14,7 +14,7 @@
     #define TEXTURE    "TEXTURE"
     #define PRIMCOL    "PRIMCOL"
     #define OMIT       "OMIT"
-
+    
     // Other useful stuff
     #define G_CYC_       "G_CYC_"
     #define G_TF_        "G_TF_"
@@ -23,6 +23,7 @@
     #define G_IM_FMT_    "G_IM_FMT_"
     #define G_IM_SIZ_    "G_IM_SIZ_"
     #define G_TX_        "G_TX_"
+    #define DONTLOAD     "DONTLOAD"
 
 
     /*********************************
@@ -95,6 +96,7 @@
         char*   combinemode2;
         char    geomode[MAXGEOFLAGS][GEOFLAGSIZE];
         char*   texfilter;
+        bool    dontload;
         texType type;
         texData data;
     } n64Texture;
@@ -117,5 +119,6 @@
     extern n64Texture* parse_textures(FILE* fp);
     extern n64Texture* request_texture(char* name);
     extern void        tex_setflag(n64Texture* tex, char* flag);
+    extern bool        tex_hasgeoflag(n64Texture* tex, char* flag);
     
 #endif

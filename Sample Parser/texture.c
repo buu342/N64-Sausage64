@@ -315,7 +315,7 @@ void tex_setflag(n64Texture* tex, char* flag)
     static bool texmode2 = FALSE;
     
     // Make a copy of the string
-    copy = (char*)malloc(strlen(flag)+1);
+    copy = (char*)calloc(1, strlen(flag)+1);
     if (copy == NULL)
         terminate("Error: Unable to allocate memory for flag name copy\n");
     strcpy(copy, flag);
@@ -330,7 +330,11 @@ void tex_setflag(n64Texture* tex, char* flag)
     }
     
     // Set the texture flags
-    if (!strncmp(copy, G_CYC_, sizeof(G_CYC_)-1))
+    if (!strncmp(copy, DONTLOAD, sizeof(DONTLOAD)-1))
+    {
+        tex->dontload = TRUE;
+    }
+    else if (!strncmp(copy, G_CYC_, sizeof(G_CYC_)-1))
     {
         tex->cycle = copy;
     }
@@ -389,7 +393,7 @@ void tex_setflag(n64Texture* tex, char* flag)
         {
             for (i=0; i<MAXGEOFLAGS; i++)
             {
-                if (!strcmp("", tex->geomode[i]))
+                if (tex->geomode[i][0] == '\0')
                 {
                     strcpy(tex->geomode[i], copy);
                     break;
@@ -408,4 +412,21 @@ void tex_setflag(n64Texture* tex, char* flag)
             }        
         }
     }
+}
+
+
+/*==============================
+    tex_hasgeoflag
+    Checks if a texture has a geometry flag
+    @param The texture to change
+    @param The flag to set
+==============================*/
+
+bool tex_hasgeoflag(n64Texture* tex, char* flag)
+{
+    int i;
+    for (i=0; i<MAXGEOFLAGS; i++)
+        if (!strcmp(flag, tex->geomode[i]))
+            return TRUE;
+    return FALSE;
 }

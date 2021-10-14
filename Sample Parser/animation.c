@@ -48,7 +48,7 @@ s64Anim* add_animation(char* name)
 
 s64Keyframe* add_keyframe(s64Anim* anim, unsigned int keyframe)
 {
-    s64Keyframe* keyf = (s64Keyframe*)malloc(sizeof(s64Keyframe));
+    s64Keyframe* keyf = (s64Keyframe*)calloc(1, sizeof(s64Keyframe));
     if (keyf == NULL)
         terminate("Error: Unable to allocate memory for animation keyframe\n");
     keyf->keyframe = keyframe;
@@ -66,7 +66,7 @@ s64Keyframe* add_keyframe(s64Anim* anim, unsigned int keyframe)
 
 s64FrameData* add_framedata(s64Keyframe* frame)
 {
-    s64FrameData* fdata = (s64FrameData*)malloc(sizeof(s64FrameData));
+    s64FrameData* fdata = (s64FrameData*)calloc(1, sizeof(s64FrameData));
     if (fdata == NULL)
         terminate("Error: Unable to allocate memory for animation framedata\n");
     list_append(&(frame->framedata), fdata);

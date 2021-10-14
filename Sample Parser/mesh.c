@@ -47,7 +47,7 @@ s64Mesh* add_mesh(char* name)
 
 s64Vert* add_vertex(s64Mesh* mesh)
 {
-    s64Vert* vert = (s64Vert*)malloc(sizeof(s64Vert));
+    s64Vert* vert = (s64Vert*)calloc(1, sizeof(s64Vert));
     if (vert == NULL)
         terminate("Error: Unable to allocate memory for mesh vertex\n");
     list_append(&(mesh->verts), vert);
@@ -64,7 +64,7 @@ s64Vert* add_vertex(s64Mesh* mesh)
 
 s64Face* add_face(s64Mesh* mesh)
 {
-    s64Face* face = (s64Face*)malloc(sizeof(s64Face));
+    s64Face* face = (s64Face*)calloc(1, sizeof(s64Face));
     if (face == NULL)
         terminate("Error: Unable to allocate memory for mesh face\n");
     list_append(&(mesh->faces), face);

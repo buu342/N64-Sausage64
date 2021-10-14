@@ -1,14 +1,14 @@
-BackTex 0 32 64
-BootTex 0 64 32
-ChestTex 0 32 64
-KnifeSheatheTex 0 8 64
-PantsTex 0 32 64
-FaceTex 0 32 64
-Armor 1 138 138 138
-Boot 1 82 70 39
-Gambeson 1 60 71 119
-Hair 1 175 42 44
-Hilt 1 231 201 85
-Pants 1 66 66 66
-Scabbard 1 119 83 50
-Skin 1 250 210 184
+BackTex 1 32 64
+BootTex 1 64 32
+ChestTex 1 32 64
+KnifeSheatheTex 1 8 64
+PantsTex 1 32 64
+FaceTex 1 32 64
+Armor 2 138 138 138
+Boot 2 82 70 39
+Gambeson 2 60 71 119
+Hair 2 175 42 44
+Hilt 2 231 201 85
+Pants 2 66 66 66
+Scabbard 2 119 83 50
+Skin 2 250 210 184

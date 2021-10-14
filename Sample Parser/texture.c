@@ -307,5 +307,105 @@ n64Texture* request_texture(char* name)
 
 void tex_setflag(n64Texture* tex, char* flag)
 {
-    printf("%s -> %s\n", tex->name, flag);
+    // Static variables to keep track of stuff between sucessive calls to this function
+    char* copy;
+    static n64Texture* lasttex = NULL;
+    static bool render2 = FALSE;
+    static bool combine2 = FALSE;
+    static bool texmode2 = FALSE;
+    
+    // Make a copy of the string
+    copy = (char*)malloc(strlen(flag)+1);
+    if (copy == NULL)
+        terminate("Error: Unable to allocate memory for flag name copy\n");
+    strcpy(copy, flag);
+    
+    // If our texture changed, reset the last flags
+    if (lasttex != tex)
+    {
+        render2 = FALSE;
+        combine2 = FALSE;
+        texmode2 = FALSE;
+        lasttex = tex;
+    }
+    
+    // Set the texture flags
+    if (!strncmp(copy, G_CYC_, sizeof(G_CYC_)-1))
+    {
+        tex->cycle = copy;
+    }
+    else if (!strncmp(copy, G_TF_, sizeof(G_TF_)-1))
+    {
+        tex->texfilter = copy;
+    }
+    else if (!strncmp(copy, G_CC_, sizeof(G_CC_)-1))
+    {
+        if (!combine2)
+        {
+            tex->combinemode1 = copy;
+            combine2 = TRUE;
+        }
+        else
+            tex->combinemode2 = copy;
+    }
+    else if (!strncmp(copy, G_RM_, sizeof(G_RM_)-1))
+    {
+        if (!render2)
+        {
+            tex->rendermode1 = copy;
+            render2 = TRUE;
+        }
+        else
+            tex->rendermode2 = copy;
+    }
+    else if (!strncmp(copy, G_IM_FMT_, sizeof(G_IM_FMT_)-1))
+    {
+        if (tex->type != TYPE_TEXTURE)
+            terminate("Error: Attempted to set image format on something that isn't a texture!\n");
+        tex->data.image.coltype = copy;
+    }
+    else if (!strncmp(copy, G_IM_SIZ_, sizeof(G_IM_SIZ_)-1))
+    {
+        if (tex->type != TYPE_TEXTURE)
+            terminate("Error: Attempted to set image bit size on something that isn't a texture!\n");
+        tex->data.image.colsize = copy;
+    }
+    else if (!strncmp(copy, G_TX_, sizeof(G_TX_)-1))
+    {
+        if (tex->type != TYPE_TEXTURE)
+            terminate("Error: Attempted to set texture mode on something that isn't a texture!\n");
+        if (!texmode2)
+        {
+            tex->data.image.texmodes = copy;
+            texmode2 = TRUE;
+        }
+        else
+            tex->data.image.texmodet = copy;
+    }
+    else
+    {
+        int i;
+        if (copy[0] != '!') // Set texture flag
+        {
+            for (i=0; i<MAXGEOFLAGS; i++)
+            {
+                if (!strcmp("", tex->geomode[i]))
+                {
+                    strcpy(tex->geomode[i], copy);
+                    break;
+                }
+            }
+        }
+        else // Remove texture flag
+        {
+            for (i=0; i<MAXGEOFLAGS; i++)
+            {
+                if (!strcmp(copy+1, tex->geomode[i]))
+                {
+                    memset(tex->geomode[i], 0, GEOFLAGSIZE);
+                    break;
+                }
+            }        
+        }
+    }
 }

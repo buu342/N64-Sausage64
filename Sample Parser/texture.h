@@ -5,24 +5,15 @@
     /*********************************
                Flag Macros
     *********************************/
+    
+    // Max geometry flags
+    #define MAXGEOFLAGS 10
+    #define GEOFLAGSIZE 32
         
     // Texture type
     #define TEXTURE    "TEXTURE"
     #define PRIMCOL    "PRIMCOL"
     #define OMIT       "OMIT"
-
-    // Geo modes
-    #define G_SHADE                 "G_SHADE"
-    #define G_ZBUFFER               "G_ZBUFFER"
-    #define G_LIGHTING              "G_LIGHTING"
-    #define G_SHADING_              "G_SHADING_"
-    #define G_CULL_                 "G_CULL_"
-    #define G_FOG                   "G_FOG"
-    #define G_SHADING_SMOOTH        "G_SHADING_SMOOTH"
-    #define G_SHADING_FLAT          "G_SHADING_FLAT"
-    #define G_TEXTURE_GEN           "G_TEXTURE_GEN"
-    #define G_TEXTURE_GEN_LINEAR    "G_TEXTURE_GEN_LINEAR"
-    #define G_CLIPPING              "G_CLIPPING"
 
     // Other useful stuff
     #define G_CYC_       "G_CYC_"
@@ -102,7 +93,7 @@
         char*   rendermode2;
         char*   combinemode1;
         char*   combinemode2;
-        char    geomode[10][32];
+        char    geomode[MAXGEOFLAGS][GEOFLAGSIZE];
         char*   texfilter;
         texType type;
         texData data;

@@ -81,19 +81,16 @@ s64Face* add_face(s64Mesh* mesh)
 
 s64Mesh* find_mesh(char* name)
 {
-    listNode* curnode = list_meshes.head;
+    listNode* meshnode;
     
     // Iterate through the mesh list
-    while (curnode != NULL)
+    for (meshnode = list_meshes.head; meshnode != NULL; meshnode = meshnode->next)
     {
-        s64Mesh* cmesh = (s64Mesh*)curnode->data;
+        s64Mesh* mesh = (s64Mesh*)meshnode->data;
         
         // If the name matches, return the mesh struct pointer
-        if (!strcmp(cmesh->name, name))
-            return cmesh;
-            
-        // Otherwise, go to the next node
-        curnode = curnode->next;
+        if (!strcmp(mesh->name, name))
+            return mesh;
     }
     
     // No mesh found, return NULL

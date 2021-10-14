@@ -53,8 +53,8 @@ n64Texture* add_texture(char* name, short w, short h)
     // Initialize the default stuff
     tex->cycle = DEFAULT_CYCLE;
     tex->texfilter = DEFAULT_TEXFILTER;
-    tex->combinemode1 = DEFAULT_COMBINE1; 
-    tex->combinemode2 = DEFAULT_COMBINE2;
+    tex->combinemode1 = DEFAULT_COMBINE1_TEX; 
+    tex->combinemode2 = DEFAULT_COMBINE2_TEX;
     tex->rendermode1 = DEFAULT_RENDERMODE1;
     tex->rendermode2 = DEFAULT_RENDERMODE2;
     tex->data.image.coltype = DEFAULT_IMAGEFORMAT;
@@ -99,8 +99,8 @@ n64Texture* add_primcol(char* name, color r, color g, color b)
     // Initialize the default stuff
     tex->cycle = DEFAULT_CYCLE;
     tex->texfilter = DEFAULT_TEXFILTER;
-    tex->combinemode1 = DEFAULT_COMBINE1; 
-    tex->combinemode2 = DEFAULT_COMBINE2;
+    tex->combinemode1 = DEFAULT_COMBINE1_PRIM; 
+    tex->combinemode2 = DEFAULT_COMBINE2_PRIM;
     tex->rendermode1 = DEFAULT_RENDERMODE1;
     tex->rendermode2 = DEFAULT_RENDERMODE2;
     memcpy(tex->geomode, default_geoflags, 10*32);
@@ -154,8 +154,9 @@ n64Texture* parse_textures(FILE* fp)
     while (!feof(fp))
     {
         char strbuf[STRBUFF_SIZE];
-        char *name;
-        texType type;
+        char* name;
+        char* tok;
+        texType type = TYPE_UNKNOWN;
         short w, h;
         color r, g, b;
         
@@ -164,7 +165,30 @@ n64Texture* parse_textures(FILE* fp)
         
         // Get our starting data
         name = strtok(strbuf, " ");
-        type = (texType)atoi(strtok(NULL, " "));
+        tok = strtok(NULL, " ");
+        
+        // Get the texture type
+        if (!strcmp(tok, TEXTURE))
+            type = TYPE_TEXTURE;
+        else if (!strcmp(tok, PRIMCOL))
+            type = TYPE_PRIMCOL;
+        else if (!strcmp(tok, OMIT))
+            type = TYPE_OMIT;
+        
+        // If we don't know the texture type, stop
+        if (type == TYPE_UNKNOWN)
+        {
+            char *readname, *readtype;
+            readname = (char*)calloc(1, strlen(name)+1);
+            readtype = (char*)calloc(1, strlen(tok)+1);
+            if (readname == NULL || readtype == NULL)
+                terminate("Error: Unable to allocate memory for texture error message. Oh dear...\n");
+            strcpy(readname, name);
+            strcpy(readtype, tok);
+            memset(strbuf, 0, STRBUFF_SIZE);
+            sprintf(strbuf, "Error: Unknown texture type '%s' in texture '%s'\n", readtype, readname);
+            terminate(strbuf);
+        }
         
         // Create the texture from the type
         switch (type)
@@ -190,11 +214,13 @@ n64Texture* parse_textures(FILE* fp)
                 if (tex->name == NULL)
                     terminate("Error: Unable to allocate memory for none texture name\n");
                 tex->type = TYPE_OMIT;
+                list_append(&list_textures, tex);
                 break;
-            default:
-                sprintf(strbuf, "Error parsing texture file -> Unknown texture type '%d' in texture '%s'\n", type, name);
-                terminate(strbuf);
         }
+        
+        // Parse the rest of the arguments
+        for (tok = strtok(NULL, " \n\r"); tok != NULL; tok = strtok(NULL, " \n\r"))
+            tex_setflag(tex, tok);
     }
     
     // Close the file, as it's done being parsed
@@ -230,20 +256,28 @@ n64Texture* request_texture(char* name)
     {
         case TYPE_TEXTURE:
             printf("\tTexture Width: ");
-            scanf("%d", &w);
+            scanf("%d", &w); fflush(stdin);
             printf("\tTexture Height: ");
-            scanf("%d", &h);
+            scanf("%d", &h); fflush(stdin);
             tex = add_texture(name, w, h);
+            printf("\tTexture flags (separate by spaces): ");
+            fgets(strbuf, STRBUFF_SIZE, stdin);
+            for (tok = strtok(strbuf, " \n\r"); tok != NULL; tok = strtok(NULL, " \n\r"))
+                tex_setflag(tex, tok);
             if (!global_quiet) printf("Added texture '%s'\n", name);
             break;
         case TYPE_PRIMCOL:
             printf("\tPrimitve Red: ");
-            scanf("%d", &r);
+            scanf("%d", &r); fflush(stdin);
             printf("\tPrimitve Green: ");
-            scanf("%d", &g);
+            scanf("%d", &g); fflush(stdin);
             printf("\tPrimitve Blue: ");
-            scanf("%d", &b);
+            scanf("%d", &b); fflush(stdin);
             tex = add_primcol(name, r, g, b);
+            printf("\tTexture flags (separate by spaces): ");
+            fgets(strbuf, STRBUFF_SIZE, stdin);
+            for (tok = strtok(strbuf, " \n\r"); tok != NULL; tok = strtok(NULL, " \n\r"))
+                tex_setflag(tex, tok);
             if (!global_quiet) printf("Added primitive color '%s'\n", name);
             break;
         case TYPE_OMIT:
@@ -254,17 +288,12 @@ n64Texture* request_texture(char* name)
             if (tex->name == NULL)
                 terminate("Error: Unable to allocate memory for none texture name\n");
             tex->type = TYPE_OMIT;
+            list_append(&list_textures, tex);
             return tex;
         default:
             sprintf(strbuf, "Error: Unknown texture type '%d'\n", (int)type);
             terminate(strbuf);
     }
-    
-    // Finally, the texture flags
-    printf("\tTexture flags (separate by spaces): ");
-    scanf("%s", strbuf);
-    for (tok = strtok(strbuf, " "); tok != NULL; tok = strtok(NULL, " "), tok[strcspn(tok, "\r\n")] = 0)
-        tex_setflag(tex, tok);
     return tex;
 }
 
@@ -278,5 +307,5 @@ n64Texture* request_texture(char* name)
 
 void tex_setflag(n64Texture* tex, char* flag)
 {
-    
+    printf("%s -> %s\n", tex->name, flag);
 }

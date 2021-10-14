@@ -5,8 +5,6 @@ Constructs a display list string for outputting later.
 To optimize the triangle list, I utilize the Forsyth algorithm,
 heavily basing my code off the implementation by Martin Strosjo, 
 available here: http://www.martin.st/thesis/forsyth.cpp
-A lot of loops can be cleaned up in the future... There's too 
-many unecessary ones...
 ***************************************************************/
 
 #include <stdio.h>
@@ -60,81 +58,79 @@ static int* forsyth_valencescore = NULL;
     @param The vertex cache list to store into
 ==============================*/
 
-static void split_verts_by_texture(s64Mesh* mesh, linkedList* vcache)
+static void split_verts_by_texture(s64Mesh* mesh, linkedList* vcachelist)
 {
-    hashTable vc_vertstable;
-    listNode* facenode = mesh->faces.head;
+    int i, offset = 0;
+    bool* addedverts;
+    listNode* facenode;
     n64Texture* curtex = NULL;
-    vertCache* curvc = NULL;
-    int offset = 0;
-    memset(&vc_vertstable, 0, sizeof(vc_vertstable));
-
+    vertCache* curvcache = NULL;
+    
+    // Allocate memory for our list of added verts
+    addedverts = (bool*) calloc(1, sizeof(bool)*mesh->verts.size);
+    if (addedverts == NULL)
+        terminate("Error: Unable to allocate memory for added verts list\n");
+    
     // Go through all the faces so that we can see what textures they're using
-    while (facenode != NULL)
+    for (facenode = mesh->faces.head; facenode != NULL; facenode = facenode->next)
     {
-        int i;
         s64Face* face = (s64Face*)facenode->data;
         
         // If we found a new texture, create a new vertex cache
-        if (face->texture != curtex) // TODO: Potential problem, NULL texture because of "None" material name?
+        if (face->texture != curtex && face->texture->type != TYPE_OMIT)
         {
+            vertCache* vcache;
             curtex = face->texture;
-            
-            // Destroy the vertex hashtable if it isn't empty
-            if (vc_vertstable.size != 0)
-                htable_destroy(&vc_vertstable);
                 
-            // Calculate the new offset
-            if (curvc != NULL)
-                offset += curvc->verts.size;
+            // Calculate the new vertex list offset
+            if (curvcache != NULL)
+                offset += curvcache->verts.size;
             
-            // Create a new vertex cache struct and append it to our list
-            vertCache* vc = (vertCache*) calloc(1, sizeof(vertCache));
-            if (vc == NULL)
+            // Create a new vertex cache block and append it to our vertex cache list
+            vcache = (vertCache*) calloc(1, sizeof(vertCache));
+            if (vcache == NULL)
                 terminate("Error: Unable to allocate memory for vertex cache\n");
-            vc->offset = offset;
-            list_append(vcache, vc);
-            curvc = vc;
+            vcache->offset = offset;
+            list_append(vcachelist, vcache);
+            curvcache = vcache;
         }
         
-        // Add this vert to our list if it's not there yet
+        // Add this vert to the current vertex cache block's list of verts, if it's not there yet
         for (i=0; i<face->vertcount; i++)
         {
             int vindex = face->verts[i];
-            if (htable_getkey(&vc_vertstable, vindex) == NULL)
+            if (!addedverts[vindex])
             {
-                s64Vert* vert = (s64Vert*) (list_node_from_index(&mesh->verts, vindex)->data);
-                htable_append(&vc_vertstable, vindex, vert);
-                list_append(&curvc->verts, vert);
+                s64Vert* vert = (s64Vert*) list_node_from_index(&mesh->verts, vindex)->data;
+                addedverts[vindex] = TRUE;
+                list_append(&curvcache->verts, vert);
             }
         }
         
-        // Add this face to the vertex cache list, and then check the next face
-        list_append(&curvc->faces, face);
-        facenode = facenode->next;
+        // Add this face to the vertex cache block's list of faces, then check the next face
+        list_append(&curvcache->faces, face);
     }
-
-    // Clean up memory we've used up
-    if (vc_vertstable.size != 0)
-        htable_destroy(&vc_vertstable);
+    
+    // Clean up memory we've used
+    free(addedverts);
 }
 
 
 /*==============================
     offset_vertindices
-    Fixes the offset in a list of faces
+    Fixes the vertex index offset in a list of faces so they start at the given offset
     @param The list of faces
     @param The offset starting value
 ==============================*/
 
 static void offset_vertindices(linkedList* faces, int offset)
 {
-    listNode* facenode = faces->head;
-    hashTable vertstable;
     int vertcount = 0;
+    listNode* facenode;
+    hashTable vertstable;
     memset(&vertstable, 0, sizeof(vertstable));
     
-    while (facenode != NULL)
+    for (facenode = faces->head; facenode != NULL; facenode = facenode->next)
     {
         int i;
         s64Face* face = (s64Face*)facenode->data;
@@ -147,21 +143,17 @@ static void offset_vertindices(linkedList* faces, int offset)
             // If this vertex index isn't in our hashtable yet
             if (hkeyval == NULL)
             {
-                hkeyval = htable_append(&vertstable, face->verts[i], (int*)(offset+vertcount)); // It's not a pointer, I'm lying
+                hkeyval = htable_append(&vertstable, face->verts[i], (void*)(offset+vertcount)); // It's not a pointer, I'm lying
                 vertcount++;
             }
             
             // Fix the vert index from the hashtable value
-            face->verts[i] = (int) hkeyval->value;
+            face->verts[i] = (int)hkeyval->value;
         }
-
-        // Fix the next face
-        facenode = facenode->next;
     }
     
-    // Clean up memory we've used up
-    if (vertstable.size != 0)
-        htable_destroy(&vertstable);
+    // Clean up memory we've used
+    htable_destroy(&vertstable);
 }
 
 
@@ -175,20 +167,20 @@ static void offset_vertindices(linkedList* faces, int offset)
 static void combine_caches(linkedList* vcachelist)
 {
     int offset = 0;
-    listNode* firstnode = vcachelist->head;
-    listNode* secondnode = vcachelist->head;
+    listNode* firstnode, *secondnode;
+    linkedList removedlist = EMPTY_LINKEDLIST;
     
     // Iterate through all the nodes to check which can be combines
-    while (firstnode != NULL)
+    for (firstnode = vcachelist->head; firstnode != NULL; firstnode = firstnode->next)
     {
         vertCache* vc1 = (vertCache*)firstnode->data;
         
         // Now look through all the other elements (double for loop style)
-        while (secondnode != NULL)
+        for (secondnode = vcachelist->head; secondnode != NULL; secondnode = secondnode->next)
         {
             vertCache* vc2 = (vertCache*)secondnode->data;
             
-            // If we're not looking at the same object
+            // If we're not looking at the same vert cache block
             if (vc1 != vc2)
             {
                 // If these two together would fit in the chace, then combine them
@@ -198,25 +190,23 @@ static void combine_caches(linkedList* vcachelist)
                     offset_vertindices(&vc2->faces, vc1->verts.size);
                     list_combine(&vc1->verts, &vc2->verts);
                     list_combine(&vc1->faces, &vc2->faces); 
-                    list_remove(vcachelist, vc2);
+                    list_append(&removedlist, list_remove(vcachelist, vc2));
                 }
             }
-            secondnode = secondnode->next;
         }
-        firstnode = firstnode->next;
-        secondnode = vcachelist->head;
     }
     
-    // Recalculate all the offsets (needs to be done anyway since split_verts_by_texture() doesn't)
-    firstnode = vcachelist->head;
-    while (firstnode != NULL)
+    // Recalculate all the offsets (needs to be done anyway since split_verts_by_texture() doesn't fix the indices)
+    for (firstnode = vcachelist->head; firstnode != NULL; firstnode = firstnode->next)
     {
         vertCache* vcfix = (vertCache*)firstnode->data;
         vcfix->offset = offset;
         offset += vcfix->verts.size;
         offset_vertindices(&vcfix->faces, 0);
-        firstnode = firstnode->next;
     }
+    
+    // Garbage collect unused vertex cache blocks (since they were merged)
+    list_destroy_deep(&removedlist);
 }
 
 
@@ -234,7 +224,7 @@ static inline void forsyth_init()
     {
         forsyth_posscore = (int*)malloc(sizeof(int)*global_cachesize);
         if (forsyth_posscore == NULL)
-            terminate("Unable to allocate memory for forsyth cache pos score\n");
+            terminate("Unable to allocate memory for Forsyth cache pos score\n");
     }
     
     // Allocate memory for the valence score array
@@ -242,7 +232,7 @@ static inline void forsyth_init()
     {
         forsyth_valencescore = (int*)malloc(sizeof(int)*global_cachesize);
         if (forsyth_valencescore == NULL)
-            terminate("Unable to allocate memory for forsyth valence score\n");
+            terminate("Unable to allocate memory for Forsyth valence score\n");
     }
     
     // Precalculate the position score array
@@ -272,9 +262,9 @@ static inline void forsyth_init()
 
 /*==============================
     forsyth_calcvertscore
-    Calculates the heuristic for a vertex
+    Calculates the heuristic for a  vertex
     @param The amount of triangles shared by this vertex
-    @param the cache position of this vertex
+    @param The cache position of this vertex
     @returns The calculated score
 ==============================*/
 
@@ -299,40 +289,41 @@ static int forsyth_calcvertscore(int verttris, int cachepos)
 
 /*==============================
     forsyth
-    Applies the forsyth algorithm for organizing vertices
-    to prevent cache misses.
+    Applies the forsyth algorithm for organizing vertices to prevent cache 
+    misses.
     https://tomforsyth1000.github.io/papers/fast_vert_cache_opt.html
+    After it generates the optimal list, this function also then generates a
+    linked list with a set of new cache blocks to replace the old (too big) one
     @param The vertex cache to optimize
     @returns A list of vertex caches, split to fit the cache limit
 ==============================*/
 
-static linkedList* forsyth(vertCache* vcache)
+static linkedList* forsyth(vertCache* vcacheoriginal)
 {
     int i, j;
     int *indices, *activetricount;
     int curtri = 0, tricount = 0, sum = 0, outpos = 0, scanpos = 0, besttri = -1, bestscore = -1;
-    int vertcount = vcache->verts.size;
-    listNode* curnode = vcache->faces.head;
+    int vertcount = vcacheoriginal->verts.size;
     int* offsets, *lastscore, *cachetag, *triscore, *triindices, *outtris, *outindices, *tempcache;
     bool* triadded;
     int largestvertindex = 0, lowestvertindex = 0, vertindexcount = 0, lastcachesplit = 0;
     hashTable vertstable;
-    linkedList newvertorder = {0, NULL, NULL};
+    linkedList newvertorder = EMPTY_LINKEDLIST;
     vertCache* curvcache = NULL;
     n64Texture* meshtex;
+    listNode* curnode;
     linkedList* newvcachelist;
     
     // State we're using Forsyth
     printf("Applying Forsyth to cache block\n");
     
-    // Calculate the number of triangles
-    while (curnode != NULL)
+    // Calculate the number of triangles (can't just do faces->size due to quads)
+    for (curnode = vcacheoriginal->faces.head; curnode != NULL; curnode = curnode->next)
     {
         s64Face* face = (s64Face*) curnode->data;
         tricount++;
         if (face->vertcount == 4)
             tricount++;
-        curnode = curnode->next;
     }
     
     // Allocate memory for the vertex indices list
@@ -342,13 +333,12 @@ static linkedList* forsyth(vertCache* vcache)
         terminate("Error: Unable to allocate memory for vertex indices list\n");
     
     // Allocate memory for the vertex triangle count list
-    activetricount = (int *)calloc(1, sizeof(int) * vertcount);
+    activetricount = (int *)calloc(1, sizeof(int)*vertcount);
     if (activetricount == NULL)
         terminate("Error: Unable to allocate memory for vertex triangle count\n");
     
     // Generate a list of vertex triangle indices
-    curnode = vcache->faces.head;
-    while (curnode != NULL)
+    for (curnode = vcacheoriginal->faces.head; curnode != NULL; curnode = curnode->next)
     {
         s64Face* face = (s64Face*) curnode->data;
         for (i=0; i<3; i++)
@@ -361,7 +351,6 @@ static linkedList* forsyth(vertCache* vcache)
             indices[curtri*3+2] = face->verts[3];
             curtri++;
         }
-        curnode = curnode->next;
     }
     
     
@@ -544,7 +533,6 @@ static linkedList* forsyth(vertCache* vcache)
     }
     
     /* ---------- Forsyth ends here ---------- */
-    
 
     // Now that we have an optimized vert list, what we want to do is the following:
     // * Create a list of vertices with the new vertex order
@@ -555,20 +543,19 @@ static linkedList* forsyth(vertCache* vcache)
     //   the vert with index 28, the offset here is -4 of what the block's offset should be.
     // * Once that's done, we add the vertices to each cache block while taking into account the offset to ensure
     //   we don't add duplicated vertices (because they're in a different cache block).
-    
         
-    // Now that we have an optimized list of verts, lets create a linked list with the verts in the new order
+    // Now that we have an optimized list of verts, lets create a linked list with the verts in the new order (and fix the indices, while we're at it)
     j = 0;
     memset(&vertstable, 0, sizeof(vertstable));
     for (i=0; i<tricount*3; i++)
     {
         dictNode* hkeyval = htable_getkey(&vertstable, outindices[i]);
     
-        // If this vertex index isn't in our hashtable yet, add it
+        // If this vertex index isn't in our hashtable yet, add it, and to our new vertex list
         if (hkeyval == NULL)
         {
-            hkeyval = htable_append(&vertstable, outindices[i], (int*)(j++)); // It's not a pointer, I'm lying
-            list_append(&newvertorder, list_node_from_index(&vcache->verts, outindices[i]));
+            hkeyval = htable_append(&vertstable, outindices[i], (void*)(j++)); // It's not a pointer, I'm lying
+            list_append(&newvertorder, (s64Vert*)list_node_from_index(&vcacheoriginal->verts, outindices[i])->data);
         }
         
         // Fix the vert index from the hashtable value
@@ -580,12 +567,13 @@ static linkedList* forsyth(vertCache* vcache)
     newvcachelist = (linkedList*) calloc(1, sizeof(linkedList));
     if (newvcachelist == NULL)
         terminate("Error: Unable to allocate memory for new vertex cache list\n");
-    
+        
     // Now iterate through the optimized list again, start generating triangles and adding them to our cache list
-    meshtex = ((s64Face*)(vcache->faces.head))->texture; // Since this mesh is already split by texture, we can rely on the first face's texture applying to all faces
+    meshtex = ((s64Face*)(vcacheoriginal->faces.head))->texture; // Since this mesh is already split by texture, we can rely on the first face's texture applying to all faces
     for (i=0; i<tricount*3; i+=3)
     {
         s64Face* face;
+        int oldlargest = largestvertindex, oldlowest = lowestvertindex;
     
         // If we don't have a current vertex cache, create a new one and add it to our list
         if (curvcache == NULL)
@@ -595,38 +583,28 @@ static linkedList* forsyth(vertCache* vcache)
                 terminate("Error: Unable to allocate memory for corrected vertex cache\n");
             list_append(newvcachelist, curvcache);
         }
-
-        // Update the largest and lowest vertex tracker
+        
+        // Update the largest and lowest vertex index tracker
         for (j=i; j<i+3; j++)
         {
             if (largestvertindex < outindices[j])
-            {
                 largestvertindex = outindices[j];
-                vertindexcount++;
-                if (vertindexcount+(-curvcache->offset) >= global_cachesize)
-                    break;
-            }
             else if (lowestvertindex > outindices[j])
-            {
                 lowestvertindex = outindices[j];
-                curvcache->offset = lowestvertindex-lastcachesplit; // Should give a negative number
-                if (vertindexcount+(-curvcache->offset) >= global_cachesize)
-                    break;
-            }
         }
-            
-        // If adding this vertex exceeds our cache size, restart this loop so we create a new cache
-        if (vertindexcount+(-curvcache->offset) >= global_cachesize)
+        
+        // If adding a vertex from this face exceeds our cache size, restart this loop so we create a new cache and try this face again
+        if ((largestvertindex-lowestvertindex) >= global_cachesize)
         {
-            lastcachesplit += global_cachesize;
-            vertindexcount = 0;
-            lowestvertindex = largestvertindex;
+            if (lastcachesplit == oldlargest+1) // We have an infinite loop!
+                terminate("Error: Unable to split cache block with requested size. Try separating some faces?\n");
+            lastcachesplit = oldlargest+1;
+            lowestvertindex = 0x7FFFFFFF;
             curvcache = NULL;
             i -= 3;
-            // TODO: probably have an infinite loop check here that terminates the program if this mesh can't be split further
             continue;
         }
-     
+        
         // If we didn't run into trouble, we can add a triangle to this vertex cache!
         face = (s64Face*) calloc(1, sizeof(s64Face));
         face->vertcount = 3;
@@ -635,18 +613,23 @@ static linkedList* forsyth(vertCache* vcache)
         face->verts[2] = outindices[i+2];
         face->texture = meshtex;
         list_append(&curvcache->faces, face);
+        
+        // Update the offset and reuse values
+        curvcache->offset = lastcachesplit;
+        curvcache->reuse = curvcache->offset-lowestvertindex;
     }
     
-    // Now that we have good cache blocks with the faces added in, last thing we need to do is add the correct vertices and update all the indices one last time
-    curnode = newvcachelist->head;
-    lastcachesplit = 0;
-    while (curnode != NULL)
+    // Now that we have good cache blocks with the faces added in, last thing we need to do is add the correct vertex indices and offsets, one last time
+    for (curnode = newvcachelist->head; curnode != NULL; curnode = curnode->next)
     {
-        vertCache* curvc = (vertCache*)curnode->data;
-        listNode* facenode = curvc->faces.head;
+        listNode* facenode;
+        vertCache* vcache = (vertCache*)curnode->data;
+        
+        // Fix the offset by its reuse value
+        vcache->offset -= vcache->reuse;
         
         // Iterate through the faces
-        while (facenode != NULL)
+        for (facenode = vcache->faces.head; facenode != NULL; facenode = facenode->next)
         {
             s64Face* face = (s64Face*)facenode->data;
             
@@ -654,30 +637,28 @@ static linkedList* forsyth(vertCache* vcache)
             for (i=0; i<face->vertcount; i++)
             {
                 dictNode* hkeyval = htable_getkey(&vertstable, face->verts[i]);
-                
+
                 // If we haven't added this vert to this cache block, do so
                 if (hkeyval == NULL)
                 {
                     s64Vert* vert = (s64Vert*) (list_node_from_index(&newvertorder, face->verts[i])->data);
                     htable_append(&vertstable, face->verts[i], vert);
                     
-                    // Add to the vert list if this vert was not in the previous cache block (IE it has a positive offset)
-                    if (face->verts[i] - lastcachesplit >= 0)
-                        list_append(&curvc->verts, vert);
+                    // Add to the vert list if this vert was not in the previous cache block
+                    if (face->verts[i]-vcache->offset >= vcache->reuse)
+                        list_append(&vcache->verts, vert);
                 }
-                    
-                // Correct the vertex index to start from zero
-                face->verts[i] = face->verts[i] + (-curvc->offset) - lastcachesplit;
-            }
-            facenode = facenode->next;
-        }
 
-        // Go to the next cache block
-        htable_destroy(&vertstable);
-        lastcachesplit += global_cachesize;
-        curnode = curnode->next;
-    }
+                // Correct the vertex index to start from zero
+                face->verts[i] -= vcache->offset;
+            }
+        }
         
+        // Fix the offset from the original cache's values so that they're what we actually expect
+        vcache->offset += vcacheoriginal->offset;
+        htable_destroy(&vertstable);
+    }
+       
     // Free all the memory used by the algorithm
     list_destroy(&newvertorder);
     free(indices);
@@ -697,283 +678,169 @@ static linkedList* forsyth(vertCache* vcache)
 /*==============================
     check_splitverts
     Go through a vertex cache list and check if they need to be split further
-    @param The list of vertex caches
+    @param The list of vertex cache blocks
 ==============================*/
 
 static void check_splitverts(linkedList* vcachelist)
 {
-    int newoffset = 0;
-    int nindex = 0;
-    listNode* curnode = vcachelist->head;
-    while (curnode != NULL)
+    int cachelistindex = 0;
+    listNode* curnode;
+    
+    // Iterate through all the cache blocks
+    for (curnode = vcachelist->head; curnode != NULL; curnode = curnode->next)
     {
         vertCache* vc = (vertCache*) curnode->data;
+        
+        // If this cache block is too big
         if (vc->verts.size > global_cachesize)
         {
-            // Use forsyth to generate a new list of cache blocks
+            // Use Forsyth to generate an optimal vert loading order + generate a list of new split cache blocks
             linkedList* newvclist = forsyth(vc);
-            listNode* newvcnode = newvclist->head;
-            
-            // We need to correct all the offsets from our old value
-            newoffset = vc->offset;
-            while (newvcnode != NULL)
-            {
-                vertCache* newvc = (vertCache*)newvcnode->data;
-                newvc->reuse = -newvc->offset;
-                newvc->offset += newoffset;
-                newoffset += newvc->verts.size;
-                newvcnode = newvcnode->next;
-            }
-            
-            // Remove the old vertex cache from the list and append our new list
-            list_swapindex_withlist(vcachelist, nindex, newvclist);
-            
-            // Clean up allocated memory
+
+            // Remove the old vertex cache block from the list and append our new list in its place
+            free(list_swapindex_withlist(vcachelist, cachelistindex, newvclist));
             free(newvclist);
-        }
-        nindex++;
-        curnode = curnode->next;
-    }
-}
-
-
-/*==============================
-    find_facefromvertindex
-    Returns the first face in a list of faces that has a vert with the given index
-    @param The list of faces
-    @param The vertex index
-    @returns The FIRST face with the given vertex index, or NULL if none is found
-==============================*/
-
-static s64Face* find_facefromvertindex(linkedList* faces, int index)
-{
-    listNode* curnode = faces->head;
-    
-    // Iterate through the face list
-    while (curnode != NULL)
-    {
-        int i;
-        s64Face* face = (s64Face*)curnode->data;
-        
-        // Check if the index is in this face
-        for (i=0; i<face->vertcount; i++)
-            if (face->verts[i] == index)
-                return face;
             
-        // If it isn't, check the next face
-        curnode = curnode->next;
+            // Fix the next node as the pointers have changed
+            curnode = newvclist->tail;
+            cachelistindex += newvclist->size;
+        }
+        cachelistindex++;
     }
-    
-    // No face found, return NULL
-    return NULL;
-}
-
-
-/*==============================
-    newstring
-    Allocates memory for a string
-    @param The string to duplicate
-    @returns The duplicated string
-==============================*/
-
-static char* newstring(char* string)
-{
-    char* str = (char*) malloc(strlen(string)+1);
-    if (str == NULL)
-        terminate("Error: Unable to allocate memory for output string");
-    strcpy(str, string);
-    return  str;
 }
 
 
 /*==============================
     construct_dl
-    Constructs a display list into a series of strings to output later.
-    This method a bit ugly, in the future I'd change this to output to a file
-    instead, and then have the write_output_X() functions combine them.
+    Constructs a display list and stores it
+    in a temporary file
 ==============================*/
 
 void construct_dl()
 {
-    int vcblockvertcount;
+    FILE* fp;
+    listNode* meshnode;
     char strbuff[STRBUF_SIZE];
-    listNode* curmesh = list_meshes.head;
     n64Texture* lastTexture = NULL;
     
-    // Precalculate forsyth tables as we might need them
+    // Precalculate Forsyth tables as we might need them
     forsyth_init();
     
+    // Open a temp file to write our display list to
+    sprintf(strbuff, "temp_%s", global_outputname);
+    fp = fopen(strbuff, "w+");
+    if (fp == NULL)
+        terminate("Error: Unable to open temporary file for writing\n");
+        
     // Begin display list construction
     if (!global_quiet) printf("*Constructing display lists\n");
     
     // Vertex data header
-    list_append(&list_output, "\n// Custom combine mode to allow mixing primitive and vertex colors\n"
-                              "#define G_CC_PRIMLITE SHADE,0,PRIMITIVE,0,0,0,0,PRIMITIVE\n\n\n"
-                              "/*********************************\n"
-                              "              Models\n"
-                              "*********************************/\n\n"
+    fprintf(fp, "\n// Custom combine mode to allow mixing primitive and vertex colors\n"
+                "#define G_CC_PRIMLITE SHADE,0,PRIMITIVE,0,0,0,0,PRIMITIVE\n\n\n"
+                "/*********************************\n"
+                "              Models\n"
+                "*********************************/\n\n"
     );
-
-    // Iterate through each mesh
-    while (curmesh != NULL)
+    
+    // Iterate through all the meshes
+    for (meshnode = list_meshes.head; meshnode != NULL; meshnode = meshnode->next)
     {
-        s64Mesh* cmesh = (s64Mesh*)curmesh->data;
-        linkedList vcache = {0, NULL, NULL};
+        s64Mesh* mesh = (s64Mesh*)meshnode->data;
+        listNode* vcachenode;
+        linkedList vcachelist = EMPTY_LINKEDLIST;
         int vertindex = 0;
-        listNode* vcnode;
         
         // If the model will not fit in our vertex cache, we must use split it
-        if (cmesh->verts.size > global_cachesize)
+        if (mesh->verts.size > global_cachesize)
         {
-            if (!global_quiet) printf("Optimizing '%s' for vertex cache size\n", cmesh->name);
+            if (!global_quiet) printf("Optimizing '%s' for vertex cache size\n", mesh->name);
             
             // First, split everything by texture and see if that improves our situation
-            split_verts_by_texture(cmesh, &vcache);
+            split_verts_by_texture(mesh, &vcachelist);
             
             // Try to combine any cache blocks that could fit together
-            combine_caches(&vcache);
+            combine_caches(&vcachelist);
             
             // If that didn't help, then split the vertex block further with the help of Forsyth
-            check_splitverts(&vcache);
+            check_splitverts(&vcachelist);
             
             // TODO: If that still didn't help, then duplicate problem vertices and try Forsyth again
         }
         else
         {
             // Otherwise, just feed this block the vertex and face list directly from the mesh
-            vertCache* vc = (vertCache*) malloc(sizeof(vertCache));
-            if (vc == NULL)
+            vertCache* vcache = (vertCache*) calloc(1, sizeof(vertCache));
+            if (vcache == NULL)
                 terminate("Error: Unable to allocate memory for vertex cache\n");
-            vc->offset = 0;
-            vc->verts = cmesh->verts;
-            vc->faces = cmesh->faces;
-            list_append(&vcache, vc);
+            vcache->verts = mesh->verts;
+            vcache->faces = mesh->faces;
+            list_append(&vcachelist, vcache);
         }
         
-        // Start the vertex struct
-        sprintf(strbuff, "static Vtx vtx_%s[] = {\n", cmesh->name);
-        list_append(&list_output, newstring(strbuff));
-        
-        // Cycle through each vertex cache block and dump all the vert data
-        vcnode = vcache.head;
-        while (vcnode != NULL)
+        // Cycle through the vertex cache list and dump the vertices
+        fprintf(fp, "static Vtx vtx_%s[] = {\n", mesh->name);
+        for (vcachenode = vcachelist.head; vcachenode != NULL; vcachenode = vcachenode->next)
         {
-            vcblockvertcount = 0;
-            vertCache* vc = (vertCache*)vcnode->data;
-            listNode* curvert = vc->verts.head;
+            vertCache* vcache = (vertCache*)vcachenode->data;
+            listNode* vertnode;
             
-            // Cycle through all the vertices so that they can be dumped
-            while (curvert != NULL)
+            // Cycle through all the verts
+            for (vertnode = vcache->verts.head; vertnode != NULL; vertnode = vertnode->next)
             {
-                s64Face* f;
-                s64Vert* vert = (s64Vert*)curvert->data;
-                int texturew = 0, textureh = 0;
-                n64Texture* tex = NULL;
-                Vector3D normorcol;
+                s64Vert* vert = (s64Vert*)vertnode->data;
                 
-                // Get the texture size
-                f = find_facefromvertindex(&vc->faces, vertindex - vc->offset);
-                if (f != NULL)
-                    tex = f->texture;
-                if (tex != NULL && tex->type == TYPE_TEXTURE)
-                {
-                    texturew = (tex->data).image.w;
-                    textureh = (tex->data).image.h;
-                }
-
-                // Pick vertex colors or vertex normals
-                if (global_vertexcolors)
-                    normorcol = vector_scale(vert->color, 255);
-                else
-                    normorcol = vector_scale(vert->normal, 127);
-
-                // Store the vertex string
-                sprintf(strbuff, "    {%d, %d, %d, 0, %d, %d, %d, %d, %d, 255}, /* %d */\n", 
+                // Dump the vert data
+                fprintf(fp, "    {%d, %d, %d, 0, %d, %d, %d, %d, %d, 255}, /* %d */\n", 
                     (int)round(vert->pos.x), (int)round(vert->pos.y), (int)round(vert->pos.z),
-                    float_to_s10p5(vert->UV.x*texturew), float_to_s10p5(vert->UV.y*textureh),
-                    (int)round(normorcol.x), (int)round(normorcol.y), (int)round(normorcol.z),
+                    float_to_s10p5(vert->UV.x*0), float_to_s10p5(vert->UV.y*0),
+                    (int)round(0), (int)round(0), (int)round(0),
                         vertindex++
                 );
-                list_append(&list_output, newstring(strbuff));
-                
-                // Go to the next vertex
-                curvert = curvert->next;
             }
-            
-            // Go to the next vertex cache block
-            vcnode = vcnode->next;
         }
-        list_append(&list_output, "};\n\n");
-                
-        // Next, the display list itself
-        sprintf(strbuff, "static Gfx gfx_%s[] = {\n", cmesh->name);
-        list_append(&list_output, newstring(strbuff));
-        vcnode = vcache.head;
+        fprintf(fp, "};\n\n");
         
-        while (vcnode != NULL)
+        // Then cycle through the vertex cache list again, but now dump the display list
+        fprintf(fp, "static Gfx gfx_%s[] = {\n", mesh->name);
+        for (vcachenode = vcachelist.head; vcachenode != NULL; vcachenode = vcachenode->next)
         {
-            vertCache* vc = (vertCache*)vcnode->data;
-            listNode* curface = vc->faces.head;
+            listNode* facenode;
+            vertCache* vcache = (vertCache*)vcachenode->data;
             
-            // Load vertices to the vertex cache
-            sprintf(strbuff, "    gsSPVertex(vtx_%s+%d, %d, 0),\n", cmesh->name, vc->offset, vc->verts.size + vc->reuse);
-            list_append(&list_output, newstring(strbuff));
+            // Load a new vertex block
+            fprintf(fp, "    gsSPVertex(vtx_%s+%d, %d, 0),\n", mesh->name, vcache->offset, vcache->verts.size + vcache->reuse);
             
-            // Cycle through all the faces in this block
-            while (curface != NULL)
+            // Cycle through all the faces
+            for (facenode = vcache->faces.head; facenode != NULL; facenode = facenode->next)
             {
-                s64Face* face = (s64Face*)curface->data;
-                n64Texture* tex = face->texture;
+                s64Face* face = (s64Face*)facenode->data;
                 
-                // If we have a new texture, perform a texture load
-                // TODO, optimize the mesh order to reduce texture loads
-                if (tex != lastTexture && tex != NULL)
-                {
-                    switch (tex->type)
-                    {
-                        case TYPE_TEXTURE:
-                            if (lastTexture == NULL || lastTexture->type != TYPE_TEXTURE)
-                                list_append(&list_output, "    gsDPSetCombineMode(G_CC_MODULATEIDECALA, G_CC_MODULATEIDECALA),\n");
-                            sprintf(strbuff, "    gsDPLoadTextureBlock(%s, G_IM_FMT_RGBA, G_IM_SIZ_16b, %d, %d, 0, G_TX_CLAMP, G_TX_CLAMP, %d, %d, G_TX_NOLOD, G_TX_NOLOD),\n    gsDPPipeSync(),\n",
-                                tex->name, tex->data.image.w, tex->data.image.h, nearest_pow2(tex->data.image.w), nearest_pow2(tex->data.image.h)
-                            );
-                            break;
-                        case TYPE_PRIMCOL:
-                            if (lastTexture == NULL || lastTexture->type != TYPE_PRIMCOL)
-                                list_append(&list_output, "    gsDPSetCombineMode(G_CC_PRIMLITE, G_CC_PRIMLITE),\n    gsDPPipeSync(),\n");
-                            sprintf(strbuff, "    gsDPSetPrimColor(0, 0, %d, %d, %d, 255),\n", tex->data.color.r, tex->data.color.g, tex->data.color.b);
-                            break;
-                    }
-                    list_append(&list_output, newstring(strbuff));
-                    lastTexture = tex;
-                }
-                
-                // Draw the triangle
+                // Dump the face data
                 if (face->vertcount == 3)
-                    sprintf(strbuff, "    gsSP1Triangle(%d, %d, %d, 0),\n", face->verts[0], face->verts[1], face->verts[2]);
+                    fprintf(fp, "    gsSP1Triangle(%d, %d, %d, 0),\n", face->verts[0], face->verts[1], face->verts[2]);
                 else
-                    sprintf(strbuff, "    gsSP2Triangles(%d, %d, %d, 0, %d, %d, %d, 0),\n", face->verts[0], face->verts[1], face->verts[2], 
-                                                                                            face->verts[0], face->verts[2], face->verts[3]);
-                list_append(&list_output, newstring(strbuff));
-                
-                // Go to the next face
-                curface = curface->next;
+                    fprintf(fp, "    gsSP2Triangles(%d, %d, %d, 0, %d, %d, %d, 0),\n", face->verts[0], face->verts[1], face->verts[2], 
+                                                                                       face->verts[0], face->verts[2], face->verts[3]);
             }
-            
-            // We can destroy the vertex and face data in the vertex cache struct since we're done with it
-            list_destroy_deep(&vc->verts);
-            list_destroy_deep(&vc->faces);
-            
-            // Go to the next vertex cache block
-            vcnode = vcnode->next;
         }
-        list_append(&list_output, "    gsSPEndDisplayList(),\n};\n\n");
-         
-        // Free the memory used by our vertex cache list
-        list_destroy_deep(&vcache);
+        fprintf(fp, "    gsSPEndDisplayList(),\n};\n\n");
         
-        // Go to the next mesh
-        curmesh = curmesh->next;
+        // Free the memory we used for dumping this mesh
+        for (vcachenode = vcachelist.head; vcachenode != NULL; vcachenode = vcachenode->next)
+        {
+            vertCache* vcache = (vertCache*)vcachenode->data;
+            list_destroy(&vcache->verts);
+            list_destroy(&vcache->faces);    
+        }
+        list_destroy_deep(&vcachelist);
     }
-    if (!global_quiet) printf("*Finish making display lists\n");
+    
+    // Close the temporary file and cleanup
+    fclose(fp);
+    free(forsyth_posscore);
+    free(forsyth_valencescore);
+    
+    // State we finished
+    if (!global_quiet) printf("*Finish building display lists\n");
 }

@@ -773,7 +773,7 @@ void construct_dl()
     
     // Vertex data header
     fprintf(fp, "\n// Custom combine mode to allow mixing primitive and vertex colors\n"
-                "#define G_CC_PRIMLITE SHADE,0,PRIMITIVE,0,0,0,0,PRIMITIVE\n\n\n"
+                "#ifndef G_CC_PRIMLITE\n    #define G_CC_PRIMLITE SHADE,0,PRIMITIVE,0,0,0,0,PRIMITIVE\n#endif\n\n\n"
                 "/*********************************\n"
                 "              Models\n"
                 "*********************************/\n\n"

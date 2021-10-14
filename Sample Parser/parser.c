@@ -4,7 +4,8 @@
 Very basic Sausage64 file parser. The parser does little to no 
 error checking, expects things to be properly formatted, and has
 not properly implemented how comments are handled (it expects 
-comments to always only take up a single line).
+comments to always only take up a single line). For files
+generated exactly from Blender, that's not a big deal.
 ***************************************************************/
 
 #include <stdio.h>
@@ -241,41 +242,38 @@ void parse_sausage(FILE* fp)
     // Fix mesh and animation roots
     if (global_fixroot)
     {
-        listNode* datanode = list_meshes.head;
+        listNode* datanode;
         
         // Iterate through the meshes
-        while (datanode != NULL)
+        for (datanode = list_meshes.head; datanode != NULL; datanode = datanode->next)
         {
+            listNode* vertnode;
             s64Mesh* mesh = (s64Mesh*)datanode->data;
-            listNode* vertnode = mesh->verts.head;
             
             // Iterate through the vertices
-            while (vertnode != NULL)
+            for (vertnode = mesh->verts.head; vertnode != NULL; vertnode = vertnode->next)
             {
                 s64Vert* vert = (s64Vert*)vertnode->data;
                 vert->pos.x -= mesh->root.x;
                 vert->pos.y -= mesh->root.y;
                 vert->pos.z -= mesh->root.z;
-                vertnode = vertnode->next;
             }
-            datanode = datanode->next;
         }
         
         // Iterate through the animations
-        datanode = list_animations.head;
-        while (datanode != NULL)
+        for (datanode = list_animations.head; datanode != NULL; datanode = datanode->next)
         {
+            listNode* animnode;
             s64Anim* anim = (s64Anim*)datanode->data;
-            listNode* animnode = anim->keyframes.head;
             
             // Iterate through the animations
-            while (animnode != NULL)
+            for (animnode = anim->keyframes.head; animnode != NULL; animnode = animnode->next)
             {
+                listNode* keyfnode;
                 s64Keyframe* keyf = (s64Keyframe*)animnode->data;
-                listNode* keyfnode = keyf->framedata.head;
                 
                 // Iterate through the keyframes
-                while (keyfnode != NULL)
+                for (keyfnode = keyf->framedata.head; keyfnode != NULL; keyfnode = keyfnode->next)
                 {
                     s64FrameData* fdata = (s64FrameData*)keyfnode->data;
 
@@ -283,11 +281,8 @@ void parse_sausage(FILE* fp)
                     fdata->translation.x += fdata->mesh->root.x;
                     fdata->translation.y += fdata->mesh->root.y;
                     fdata->translation.z += fdata->mesh->root.z;
-                    keyfnode = keyfnode->next;
                 }
-                animnode = animnode->next;
             }
-            datanode = datanode->next;
         }
         if (!global_quiet) printf("*Fixed model and animation roots\n");
     }

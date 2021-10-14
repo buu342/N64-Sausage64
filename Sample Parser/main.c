@@ -2,7 +2,6 @@
                              main.c
                              
 Program entrypoint
-TODO: Output temp dl to file instead of a stirng list in memory
 TODO: More texture info (like mirror, etc...)
 TODO: Properly test with varied stuff
 TODO: Release
@@ -22,14 +21,6 @@ TODO: Sort output meshes by texture loading order
 
 
 /*********************************
-              Macros
-*********************************/
-
-#define PROGRAM_NAME    "Arabiki64"
-#define PROGRAM_VERSION "1.0"
-
-
-/*********************************
         Function Prototypes
 *********************************/
 
@@ -41,19 +32,17 @@ static void parse_programargs(int argc, char* argv[]);
 *********************************/
 
 // Model data lists
-linkedList list_meshes = {0, NULL, NULL};
-linkedList list_animations = {0, NULL, NULL};
-linkedList list_textures = {0, NULL, NULL};
+linkedList list_meshes = EMPTY_LINKEDLIST;
+linkedList list_animations = EMPTY_LINKEDLIST;
+linkedList list_textures = EMPTY_LINKEDLIST;
 
 // Output data
-linkedList list_output = {0, NULL, NULL};
+linkedList list_output = EMPTY_LINKEDLIST;
 
 // Program settings
 bool global_quiet = FALSE;
 bool global_fixroot = TRUE;
-bool global_usetextures = TRUE;
 bool global_binaryout = FALSE;
-bool global_vertexcolors = FALSE;
 char* global_outputname = "outdlist.h";
 char* global_modelname = "MyModel";
 unsigned int global_cachesize = 32;
@@ -84,20 +73,19 @@ int main(int argc, char* argv[])
             "\t-f <File>\tThe file to load\n"
             //"\t-b \t\t(optional) Binary Display List\n" // TODO
             "\t-c <Int>\t(optional) Vertex cache size (default '32')\n"
-            "\t-i \t\t(optional) Ignore textures\n"
             "\t-n <Name>\t(optional) Model name (default 'MyModel')\n"
             "\t-o <File>\t(optional) Output filename (default 'outdlist.h')\n"
             "\t-q \t\t(optional) Quiet mode\n"
             "\t-r \t\t(optional) Don't add root to coordinates/translations\n"
             "\t-t <File>\t(optional) A list of textures and their data\n"
-            "\t-v \t\t(optional) Use vertex colors instead of normals\n"
         );
      
     // Parse the command line arguments
     parse_programargs(argc, argv);
     
     // Parse the textures file if it's given
-    if (fp_t != NULL && global_usetextures)
+    list_append(&list_textures, &texture_none);
+    if (fp_t != NULL)
         parse_textures(fp_t);
         
     // Parse the model file
@@ -183,12 +171,6 @@ static void parse_programargs(int argc, char* argv[])
                     break;
                 case 'b':
                     global_binaryout = !global_binaryout;
-                    break;
-                case 'i':
-                    global_usetextures = !global_usetextures;
-                    break;
-                case 'v':
-                    global_vertexcolors = !global_vertexcolors;
                     break;
                 default:
                     sprintf(errbuf, "Error: Unknown argument '%s'\n", argv[i]);

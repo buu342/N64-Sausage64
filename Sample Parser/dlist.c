@@ -817,7 +817,7 @@ void construct_dl()
         }
         
         // Cycle through the vertex cache list and dump the vertices
-        fprintf(fp, "static Vtx vtx_%s[] = {\n", mesh->name);
+        fprintf(fp, "static Vtx vtx_%s_%s[] = {\n", global_modelname, mesh->name);
         for (vcachenode = vcachelist.head; vcachenode != NULL; vcachenode = vcachenode->next)
         {
             vertCache* vcache = (vertCache*)vcachenode->data;
@@ -860,7 +860,7 @@ void construct_dl()
         fprintf(fp, "};\n\n");
         
         // Then cycle through the vertex cache list again, but now dump the display list
-        fprintf(fp, "static Gfx gfx_%s[] = {\n", mesh->name);
+        fprintf(fp, "static Gfx gfx_%s_%s[] = {\n", global_modelname, mesh->name);
         for (vcachenode = vcachelist.head; vcachenode != NULL; vcachenode = vcachenode->next)
         {
             listNode* facenode;

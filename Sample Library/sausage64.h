@@ -1,32 +1,33 @@
 typedef struct {
-    float pos[3];
-    float rot[3];
-    float scale[3];
+    f32 pos[3];
+    f32 rot[3];
+    f32 scale[3];
 } FrameData;
 
 typedef struct {
-    int framenumber;
-    int meshcount;
+    u16 framenumber;
     FrameData* framedata;
 } KeyFrame;
 
 typedef struct {
-    char* name;
-    int framecount;
+    const char* name;
+    u16 framecount;
     KeyFrame* keyframes;
 } Animation;
 
 typedef struct {
-    int animcount;
-    Animation* anim;
-} AnimList;
-
-typedef struct {
-    char* name;
+    const char* name;
     Gfx* dl;
+    Mtx matrix;
 } Mesh;
 
 typedef struct {
-    int meshcount;
-    Mesh* mesh;
-} MeshList;
+    u8 meshcount;
+    u8 animcount;
+    u16 activeframe;
+    u32 animtick;
+    void (*predraw)(u8);
+    void (*postdraw)(u8);
+    Mesh* meshes;
+    Animation* anims;
+} s64Model;

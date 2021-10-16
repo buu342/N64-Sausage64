@@ -867,7 +867,7 @@ void construct_dl()
             vertCache* vcache = (vertCache*)vcachenode->data;
             
             // Load a new vertex block
-            fprintf(fp, "    gsSPVertex(vtx_%s+%d, %d, 0),\n", mesh->name, vcache->offset, vcache->verts.size + vcache->reuse);
+            fprintf(fp, "    gsSPVertex(vtx_%s_%s+%d, %d, 0),\n", global_modelname, mesh->name, vcache->offset, vcache->verts.size + vcache->reuse);
             
             // Cycle through all the faces
             for (facenode = vcache->faces.head; facenode != NULL; facenode = facenode->next)

@@ -13,7 +13,7 @@ This repository contains five folders:
 * `Sample Model` - An example character model with animations, with the source files available alongside the .s64 file exported by the plugin. The Blender file is for 2.7 but can be opened on newer versions, at the expense of the materials looking different. 
 * `Sample Parser` - An example Sausage64 to N64 display list converter, written in C. More info about the program in the folder's README. 
 * `Sample Library` - An example library for the N64, designed for the output from `Sample Parser`. More info about the library in the folder's README. 
-* `Sample ROM` - An example N64 ROM displaying the character and the animations in action. The .s64 file and the textures were converted to display lists and other parsable data with a custom tool (which is currently not in this repository). More information available in the folder's README. 
+* `Sample ROM` - An example N64 ROM displaying the character and the animations in action. The .s64 file and the textures were converted to display lists and other parsable data with the `Sample Parser` program. More information available in the folder's README. 
 
 ### What do you mean by Sausage Links?
 Sausage link characters are made out of different unconnected segments. 

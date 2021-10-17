@@ -18,5 +18,7 @@
     char* command_togglelight();
     char* command_freezelight();
     char* command_togglelerp();
+    char* command_toggleloop();
+    char* command_toggleaxis();
     
 #endif

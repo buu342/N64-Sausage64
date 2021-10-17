@@ -58,7 +58,7 @@ void write_output_text()
     
     // Iterate through all the meshes and print their names
     count = 0;
-    fprintf(fp, "// Mesh count: %d\n", list_meshes.size);
+    fprintf(fp, "// Mesh data\n#define MESHCOUNT_%s %d\n\n", global_modelname, list_meshes.size);
     for (curnode = list_meshes.head; curnode != NULL; curnode = curnode->next)
     {
         s64Mesh* mesh = (s64Mesh*)curnode->data;
@@ -71,7 +71,7 @@ void write_output_text()
     
     // Iterate through all the animations and print their names
     count = 0;
-    fprintf(fp, "// Animation count: %d\n", list_animations.size);
+    fprintf(fp, "// Animation data\n#define ANIMATIONCOUNT_%s %d\n\n", global_modelname, list_animations.size);
     for (curnode = list_animations.head; curnode != NULL; curnode = curnode->next)
     {
         s64Anim* anim = (s64Anim*)curnode->data;
@@ -151,7 +151,7 @@ void write_output_text()
         fprintf(fp, "    {\"%s\", %d, anim_%s_%s_keyframes},\n", anim->name, anim->keyframes.size, global_modelname, anim->name);
     }
     fputs("};\n\n", fp);
-    fprintf(fp, "static s64Model mdl_%s = {%d, %d, 0, 0, NULL, NULL, meshes_%s, anims_%s};", global_modelname, list_meshes.size, list_animations.size, global_modelname, global_modelname);
+    fprintf(fp, "static s64ModelData mdl_%s = {%d, %d, meshes_%s, anims_%s};", global_modelname, list_meshes.size, list_animations.size, global_modelname, global_modelname);
     
     // Finish
     if (!global_quiet) printf("*Wrote output to '%s'", global_outputname);

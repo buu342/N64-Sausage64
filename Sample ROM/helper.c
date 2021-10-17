@@ -50,18 +50,3 @@ void fb_clear(u8 r, u8 g, u8 b)
     gDPFillRectangle(glistp++, 0, 0, SCREEN_WD-1, SCREEN_HT-1);
     gDPPipeSync(glistp++);
 }
-
-
-/*==============================
-    lerp
-    Returns the linear interpolation of 
-    two values given a fraction
-    @param The first value
-    @param The target value
-    @param The fraction
-==============================*/
-
-float lerp(float a, float b, float f)
-{
-    return a + f * (b - a);
-}

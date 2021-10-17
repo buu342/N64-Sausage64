@@ -2,7 +2,7 @@
 #                    Code files and ROM name                   #
 ################################################################
 
-CODECFILES  = main.c graphic.c helper.c stage00.c
+CODECFILES  = main.c graphic.c helper.c stage00.c sausage64.c
 CODEHFILES  =
 
 DEBUGFILES = debug.c usb.c

@@ -7,10 +7,10 @@ Handles the first level of the game.
 #include <nusys.h>
 #include "config.h"
 #include "helper.h"
+#include "sausage64.h"
 #include "axisMdl.h"
 #include "catherineTex.h"
 #include "catherineMdl.h"
-#include "catherineAnim.h"
 #include "debug.h"
 
 
@@ -25,9 +25,8 @@ Handles the first level of the game.
         Function Prototypes
 *********************************/
 
-void handle_mesh(int part);
-void draw_catherine();
 void draw_menu();
+void catherine_predraw(u16 part);
 
 
 /*********************************
@@ -37,22 +36,6 @@ void draw_menu();
 // Matricies and vectors
 static Mtx projection, viewing, modeling;
 static u16 normal;
-
-// Animations
-static u8 useanims;
-static u32 animtick;
-static Animation* curanim;
-static KeyFrame* currentframe;
-static KeyFrame* nextframe;
-
-// Facial animations
-static u32 fanimtick;
-static u8 findex;
-static FaceAnim* curfanim;
-
-// Time between animation keyframes
-static OSTime frametime;
-
 // Lights
 static Light light_amb;
 static Light light_dir;
@@ -66,10 +49,20 @@ static s8   cury = 0;
 static float campos[3] = {0, -100, -300};
 static float camang[3] = {0, 0, -90};
 
+// Catherine
+Mtx catherineMtx[MESHCOUNT_Catherine];
+s64ModelHelper catherine;
+
+// Face animation
+static u16 faceindex;
+static u32 facetick;
+static OSTime facetime;
+static FaceAnim* faceanim;
+
 // USB
 static char uselight = TRUE;
+static char drawaxis = TRUE;
 static char freezelight = FALSE;
-static char useinterpolate = TRUE;
 static char usb_buffer[USB_BUFFER_SIZE];
 
 
@@ -80,20 +73,16 @@ static char usb_buffer[USB_BUFFER_SIZE];
 
 void stage00_init(void)
 {
-    // Initialize the animations
-    useanims = TRUE;
-    animtick = 0;
-    curanim = &anim_Walk;
-    currentframe = &curanim->keyframes[0];
-    nextframe = &curanim->keyframes[1];
+    // Initialize Catherine
+    sausage64_initmodel(&catherine, &mdl_Catherine, catherineMtx);
+    sausage64_set_anim(&catherine, ANIMATION_Catherine_Walk); 
+    sausage64_set_predrawfunc(&catherine, catherine_predraw);
     
-    // Initialize the face animations
-    findex = 0;
-    fanimtick = 60;
-    curfanim = &catherine_faces[0];
-    
-    // Initialize the next frame time
-    frametime = osGetTime() + OS_USEC_TO_CYCLES(22222);
+    // Initialize the face animation
+    facetick = 60;
+    faceindex = 0;
+    facetime = osGetTime() + OS_USEC_TO_CYCLES(22222);
+    faceanim = &catherine_faces[0];
 }
 
 
@@ -107,55 +96,36 @@ void stage00_update(void)
     int i;
     
     // Poll for USB commands
-    debug_pollcommands();
+    debug_pollcommands();  
+    
+    // Advance Catherine's animation
+    sausage64_advance_anim(&catherine);
     
     
-    /* -------- Animation Keyframes -------- */
+    /* -------- Face Animation -------- */
     
     // If the frame time has elapsed
-    if (frametime < osGetTime())
+    if (facetime < osGetTime())
     {
-        // Increment the animation tick
-        animtick++;
-        fanimtick--;
-        frametime = osGetTime() + OS_USEC_TO_CYCLES(22222);
-        
-        // If we hit the next keyframe in our animation
-        if (animtick == nextframe->framenumber)
-        {
-            int currnumber;
-            int nextnumber;
-            
-            // Go to the next keyframe
-            currentframe = nextframe;
-            currnumber = (currentframe - &curanim->keyframes[0]);
-            nextnumber = (currnumber+1)%(curanim->framecount);
-            nextframe = &curanim->keyframes[nextnumber];
-            
-            // If we hit the end of the animation, cycle back to the start
-            if (nextnumber == 0)
-            {
-                currentframe = &curanim->keyframes[0];
-                nextframe = &curanim->keyframes[1];
-                animtick = 0;
-            }
-        }
+        // Advance the face animation tick
+        facetick--;
+        facetime = osGetTime() + OS_USEC_TO_CYCLES(22222);
         
         // Face animation blinking
-        if (curfanim->hasblink)
+        if (faceanim->hasblink)
         {
-            switch (fanimtick)
+            switch (facetick)
             {
                 case 3:
                 case 1:
-                    findex = 1;
+                    faceindex = 1;
                     break;
                 case 2:
-                    findex = 2;
+                    faceindex = 2;
                     break;
                 case 0:
-                    findex = 0;
-                    fanimtick = 60 + guRandom()%80;
+                    faceindex = 0;
+                    facetick = 60 + guRandom()%80;
                     break;
             }
         }
@@ -197,14 +167,14 @@ void stage00_update(void)
         campos[0] += contdata->stick_x/10;
         campos[1] += contdata->stick_y/10;
     }
-
-
+    
+        
     /* -------- Menu -------- */
     
     // If the menu is open
     if (menuopen)
     {
-        int menuyscale[4] = {TOTALANIMS+1, TOTALFACES, 2, 1};
+        int menuyscale[4] = {ANIMATIONCOUNT_Catherine, TOTALFACES, 2, 3};
     
         // Moving the cursor left/right
         if (contdata[0].trigger & R_JPAD)
@@ -233,21 +203,12 @@ void stage00_update(void)
             switch (curx)
             {
                 case 0:
-                    if (cury != 0)
-                    {
-                        useanims = TRUE;
-                        animtick = 0;
-                        curanim = catherine_anims[cury-1].anim;
-                        currentframe = &curanim->keyframes[0];
-                        nextframe = &curanim->keyframes[1];
-                    }
-                    else
-                        useanims = FALSE;
+                    sausage64_set_anim(&catherine, cury);
                     break;
                 case 1:
-                    fanimtick = 60;
-                    findex = 0;
-                    curfanim = &catherine_faces[cury];
+                    facetick = 60;
+                    faceindex = 0;
+                    faceanim = &catherine_faces[cury];
                     break;
                 case 2:
                     if (cury == 0)
@@ -256,10 +217,27 @@ void stage00_update(void)
                         freezelight = !freezelight;
                     break;
                 case 3:
-                    useinterpolate = !useinterpolate;
+                    if (cury == 0)
+                        catherine.interpolate = !catherine.interpolate;
+                    else if (cury == 1)
+                        catherine.loop = !catherine.loop;
+                    else 
+                        drawaxis = !drawaxis;
                     break;
             }
         }
+    }
+}
+
+
+void catherine_predraw(u16 part)
+{
+    // Handle face drawing
+    switch (part)
+    {
+        case MESH_Catherine_Head:
+            gDPLoadTextureBlock(glistp++, faceanim->faces[faceindex], G_IM_FMT_RGBA, G_IM_SIZ_16b, 32, 64, 0, G_TX_CLAMP, G_TX_CLAMP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+            break;
     }
 }
 
@@ -322,8 +300,31 @@ void stage00_draw(void)
     gSPLight(glistp++, &light_amb, 2);
     gDPPipeSync(glistp++);
     
+    // Initialize the model matrix
+    guMtxIdent(&modeling);
+    gSPMatrix(glistp++, &modeling, G_MTX_MODELVIEW | G_MTX_LOAD | G_MTX_NOPUSH);
+
+    // Initialize the RCP to draw stuff nicely
+    gDPSetCycleType(glistp++, G_CYC_1CYCLE);
+    gDPSetDepthSource(glistp++, G_ZS_PIXEL);
+    gSPClearGeometryMode(glistp++,0xFFFFFFFF);
+    gSPSetGeometryMode(glistp++, G_SHADE | G_ZBUFFER | G_CULL_BACK | G_SHADING_SMOOTH | G_LIGHTING);
+    gSPTexture(glistp++, 0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON);
+    gDPSetRenderMode(glistp++, G_RM_AA_ZB_OPA_SURF, G_RM_AA_ZB_OPA_SURF);
+    gDPSetCombineMode(glistp++, G_CC_PRIMITIVE, G_CC_PRIMITIVE);
+    gDPSetTexturePersp(glistp++, G_TP_PERSP);
+    gDPSetTextureFilter(glistp++, G_TF_BILERP);
+    gDPSetTextureConvert(glistp++, G_TC_FILT);
+    gDPSetTextureLOD(glistp++, G_TL_TILE);
+    gDPSetTextureDetail(glistp++, G_TD_CLAMP);
+    gDPSetTextureLUT(glistp++, G_TT_NONE);
+    
+    // Draw an axis on the floor for directional reference
+    if (drawaxis)
+        gSPDisplayList(glistp++, gfx_axis);
+    
     // Draw catherine
-    draw_catherine();
+    sausage64_drawmodel(&glistp, &catherine);
     
     // Syncronize the RCP and CPU and specify that our display list has ended
     gDPFullSync(glistp++);
@@ -346,146 +347,6 @@ void stage00_draw(void)
 
 
 /*==============================
-    handle_mesh
-    Handles the positioning and 
-    drawing of a mesh
-    @param The MESH_ macro to draw
-==============================*/
-
-void handle_mesh(int part)
-{
-    // If animations are enabled
-    if (useanims)
-    {
-        FrameData* cframe = &currentframe->framedata[part];
-        FrameData* nframe = &nextframe->framedata[part];
-        float l = ((float)(animtick-(currentframe->framenumber)))/((float)((nextframe->framenumber)-(currentframe->framenumber)));
-        
-        // Create the root matricies
-        guTranslate(&mparts[part].mtx_iroot, -roots[part].pos[0], -roots[part].pos[1], -roots[part].pos[2]);
-        guTranslate(&mparts[part].mtx_root, roots[part].pos[0], roots[part].pos[1], roots[part].pos[2]);
-        
-        // Create the rotation and translation matricies
-        if (useinterpolate)
-        {
-            guRotateRPY(&mparts[part].mtx_rotation, 
-                lerp(cframe->rot[0], nframe->rot[0], l), 
-                lerp(cframe->rot[1], nframe->rot[1], l),
-                lerp(cframe->rot[2], nframe->rot[2], l));
-            guTranslate(&mparts[part].mtx_translation, 
-                lerp(cframe->pos[0], nframe->pos[0], l), 
-                lerp(cframe->pos[1], nframe->pos[1], l), 
-                lerp(cframe->pos[2], nframe->pos[2], l));
-        }
-        else
-        {
-            guRotateRPY(&mparts[part].mtx_rotation, cframe->rot[0], cframe->rot[1], cframe->rot[2]);
-            guTranslate(&mparts[part].mtx_translation, cframe->pos[0], cframe->pos[1], cframe->pos[2]);    
-        }
-        
-        // Apply the matricies
-        gSPMatrix(glistp++, OS_K0_TO_PHYSICAL(&mparts[part].mtx_root), G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_PUSH);
-        gSPMatrix(glistp++, OS_K0_TO_PHYSICAL(&mparts[part].mtx_translation), G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_PUSH);
-        gSPMatrix(glistp++, OS_K0_TO_PHYSICAL(&mparts[part].mtx_rotation), G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_PUSH);
-        gSPMatrix(glistp++, OS_K0_TO_PHYSICAL(&mparts[part].mtx_iroot), G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_PUSH);
-    }
-    
-    // Draw the body part
-    gSPDisplayList(glistp++, mparts[part].dl);
-    
-    // If animations are enabled
-    if (useanims)
-    {
-        // Pop all the previous transformations
-        gSPPopMatrix(glistp++, G_MTX_MODELVIEW);
-        gSPPopMatrix(glistp++, G_MTX_MODELVIEW);
-        gSPPopMatrix(glistp++, G_MTX_MODELVIEW);
-        gSPPopMatrix(glistp++, G_MTX_MODELVIEW);
-    }
-}
-
-
-/*==============================
-    draw_catherine
-    Draws Catherine
-==============================*/
-
-void draw_catherine()
-{
-    // Initialize the model matrix
-    guMtxIdent(&modeling);
-    gSPMatrix(glistp++, &modeling, G_MTX_MODELVIEW | G_MTX_LOAD | G_MTX_NOPUSH);
-
-    // Initialize the RCP to draw stuff nicely
-    gDPSetCycleType(glistp++, G_CYC_1CYCLE);
-    gDPSetDepthSource(glistp++, G_ZS_PIXEL);
-    gSPClearGeometryMode(glistp++,0xFFFFFFFF);
-    gSPSetGeometryMode(glistp++, G_SHADE | G_ZBUFFER | G_CULL_BACK | G_SHADING_SMOOTH | G_LIGHTING);
-    gSPTexture(glistp++, 0x8000, 0x8000, 0, G_TX_RENDERTILE, G_ON);
-    gDPSetRenderMode(glistp++, G_RM_AA_ZB_OPA_SURF, G_RM_AA_ZB_OPA_SURF);
-    gDPSetCombineMode(glistp++, G_CC_PRIMITIVE, G_CC_PRIMITIVE);
-    gDPSetTexturePersp(glistp++, G_TP_PERSP);
-    gDPSetTextureFilter(glistp++, G_TF_BILERP);
-    gDPSetTextureConvert(glistp++, G_TC_FILT);
-    gDPSetTextureLOD(glistp++, G_TL_TILE);
-    gDPSetTextureDetail(glistp++, G_TD_CLAMP);
-    gDPSetTextureLUT(glistp++, G_TT_NONE);
-    
-    // Draw an axis on the floor for directional reference
-    gSPDisplayList(glistp++, gfx_axis);
-    
-    // Draw her hair
-    gDPSetCombineMode(glistp++, G_CC_PRIMLITE, G_CC_PRIMLITE);
-    gDPSetPrimColor(glistp++, 0, 0, 175, 42, 44, 255);
-    gDPPipeSync(glistp++);
-    handle_mesh(MESH_Ponytail);
-    handle_mesh(MESH_Bang);
-    
-    // Draw her arms
-    gDPSetPrimColor(glistp++, 0, 0, 60, 71, 119, 255);
-    gDPPipeSync(glistp++);
-    handle_mesh(MESH_LeftArm);
-    handle_mesh(MESH_RightArm);
-    
-    // Draw her body
-    gDPSetPrimColor(glistp++, 0, 0, 119, 83, 50, 255);
-    handle_mesh(MESH_Chest);
-    handle_mesh(MESH_Pelvis);
-    
-    // Draw her boots
-    handle_mesh(MESH_LeftFemur);
-    handle_mesh(MESH_RightFemur);
-    handle_mesh(MESH_LeftFoot);
-    handle_mesh(MESH_RightFoot);
-    
-    // Draw her arms
-    gDPSetPrimColor(glistp++, 0, 0, 250, 210, 184, 255);
-    gDPSetCombineMode(glistp++, G_CC_PRIMLITE, G_CC_PRIMLITE);
-    gDPPipeSync(glistp++);
-    handle_mesh(MESH_LeftForearm);
-    handle_mesh(MESH_RightForearm);
-    handle_mesh(MESH_LeftHand);
-    handle_mesh(MESH_RightHand);
-    
-    // Draw her pants
-    gDPSetPrimColor(glistp++, 0, 0, 66, 66, 66, 255);
-    gDPPipeSync(glistp++);
-    handle_mesh(MESH_LeftLeg);
-    handle_mesh(MESH_RightLeg);
-    
-    // Draw her equipment
-    handle_mesh(MESH_Sword);
-    handle_mesh(MESH_Pad);
-    
-    // Finally, draw the head with our custom faces
-    gDPSetCombineMode(glistp++, G_CC_MODULATEIDECALA, G_CC_MODULATEIDECALA);
-    gDPLoadTextureBlock(glistp++, curfanim->faces[findex], G_IM_FMT_RGBA, G_IM_SIZ_16b, 32, 64, 0, G_TX_CLAMP, G_TX_CLAMP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
-    gDPPipeSync(glistp++);
-    handle_mesh(MESH_Head);
-}
-
-
-/*==============================
     draw_menu
     Draws the menu
 ==============================*/
@@ -497,12 +358,10 @@ void draw_menu()
     // List the animations
     nuDebConTextPos(NU_DEB_CON_WINDOW0, 3, 3);
     nuDebConCPuts(NU_DEB_CON_WINDOW0, "Anims");
-    nuDebConTextPos(NU_DEB_CON_WINDOW0, 4, 5);
-    nuDebConCPuts(NU_DEB_CON_WINDOW0, "None");
-    for (i=0; i<TOTALANIMS; i++)
+    for (i=0; i<ANIMATIONCOUNT_Catherine; i++) // Can also use mdl_Catherine.animcount (but macro is faster on the CPU)
     {
-        nuDebConTextPos(NU_DEB_CON_WINDOW0, 4, 6+i);
-        nuDebConCPuts(NU_DEB_CON_WINDOW0, catherine_anims[i].name);
+        nuDebConTextPos(NU_DEB_CON_WINDOW0, 4, 5+i);
+        nuDebConCPuts(NU_DEB_CON_WINDOW0, mdl_Catherine.anims[i].name);
     }
     
     // List the faces
@@ -527,6 +386,10 @@ void draw_menu()
     nuDebConCPuts(NU_DEB_CON_WINDOW0, "Other");
     nuDebConTextPos(NU_DEB_CON_WINDOW0, 33, 5);
     nuDebConCPuts(NU_DEB_CON_WINDOW0, "Lerp");
+    nuDebConTextPos(NU_DEB_CON_WINDOW0, 33, 6);
+    nuDebConCPuts(NU_DEB_CON_WINDOW0, "Loop");
+    nuDebConTextPos(NU_DEB_CON_WINDOW0, 33, 7);
+    nuDebConCPuts(NU_DEB_CON_WINDOW0, "Axis");
     
     // Draw a nice little bar separating everything
     nuDebConTextPos(NU_DEB_CON_WINDOW0, 3, 4);
@@ -558,15 +421,12 @@ char* command_listanims()
 {
     int i;
     memset(usb_buffer, 0, USB_BUFFER_SIZE);
-    
-    // Add the none animation to the string
-    sprintf(usb_buffer, "None\n");
-    
-    // Go through all the animations names and append them to the string
-    for (i=0; i<TOTALANIMS; i++)
-        sprintf(usb_buffer, "%s%s\n", usb_buffer, catherine_anims[i].name);
 
-    // Return the string of animation names
+    // Go through all the animations names and append them to the string
+    for (i=0; i<ANIMATIONCOUNT_Catherine; i++)
+        sprintf(usb_buffer, "%s%s\n", usb_buffer, mdl_Catherine.anims[i].name);
+
+        // Return the string of animation names
     return usb_buffer;
 }
 
@@ -586,27 +446,16 @@ char* command_setanim()
         return "Name larger than USB buffer";
     debug_parsecommand(usb_buffer);
     
-    // If the none animation is requested, then disable animations
-    if (!strcmp("None", usb_buffer))
-    {
-        useanims = FALSE;
-        return "Animations disabled.";
-    }
-    
     // Compare the animation names
-    for (i=0; i<TOTALANIMS; i++)
+    for (i=0; i<ANIMATIONCOUNT_Catherine; i++)
     {
-        if (!strcmp(catherine_anims[i].name, usb_buffer))
+        if (!strcmp(mdl_Catherine.anims[i].name, usb_buffer))
         {
-            useanims = TRUE;
-            animtick = 0;
-            curanim = catherine_anims[i].anim;
-            currentframe = &curanim->keyframes[0];
-            nextframe = &curanim->keyframes[1];
+            sausage64_set_anim(&catherine, i);
             return "Animation set.";
         }
     }
-    
+
     // No animation found
     return "Unkown animation name";
 }
@@ -649,9 +498,9 @@ char* command_setface()
     {
         if (!strcmp(catherine_faces[i].name, usb_buffer))
         {
-            fanimtick = 60;
-            findex = 0;
-            curfanim = &catherine_faces[i];
+            facetick = 60;
+            faceindex = 0;
+            faceanim = &catherine_faces[i];
             return "Face set!";
         }
     }
@@ -690,6 +539,30 @@ char* command_freezelight()
 
 char* command_togglelerp()
 {
-    useinterpolate = !useinterpolate;
+    catherine.interpolate = !catherine.interpolate;
     return "Interpolation Toggled";
+}
+
+
+/*==============================
+    command_toggleloop
+    USB Command for toggling animation looping
+==============================*/
+
+char* command_toggleloop()
+{
+    catherine.loop = !catherine.loop;
+    return "Loop Toggled";
+}
+
+
+/*==============================
+    command_toggleaxis
+    USB Command for toggling the floor axis
+==============================*/
+
+char* command_toggleaxis()
+{
+    drawaxis = !drawaxis;
+    return "Axis Toggled";
 }

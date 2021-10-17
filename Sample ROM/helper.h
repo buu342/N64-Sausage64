@@ -7,6 +7,5 @@
 
     void rcp_init();
     void fb_clear(u8 r, u8 g, u8 b);
-    float lerp(float a, float b, float f);
 
 #endif

@@ -52,6 +52,8 @@ void mainproc(void)
     debug_addcommand("ToggleLight", "Toggle lighting", command_togglelight);
     debug_addcommand("FreezeLight", "Freeze the light position", command_freezelight);
     debug_addcommand("ToggleLerp", "Toggle animation interpolation", command_togglelerp);
+    debug_addcommand("ToggleLoop", "Toggle animation looping", command_toggleloop);
+    debug_addcommand("ToggleAxis", "Toggle floor axis", command_toggleaxis);
     debug_printcommands();
         
     // Initialize stage 0

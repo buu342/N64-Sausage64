@@ -1,3 +1,11 @@
+/***************************************************************
+                          sausage64.c
+                               
+A very library that handles Sausage64 models exported by 
+Arabiki64.
+https://github.com/buu342/Blender-Sausage64
+***************************************************************/
+
 #include <ultra64.h>
 #include "sausage64.h"
 
@@ -15,7 +23,7 @@ void sausage64_initmodel(s64ModelHelper* mdl, s64ModelData* mdldata, Mtx* matric
     mdl->interpolate = TRUE;
     mdl->loop = TRUE;
     mdl->curframeindex = 0;
-    mdl->curanim = &mdldata->anims[0];
+    mdl->curanim = (mdldata->animcount > 0) ? &mdldata->anims[0] : NULL;
     mdl->animtick = 0;
     mdl->matrix = matrices;
     mdl->predraw = NULL;
@@ -24,24 +32,48 @@ void sausage64_initmodel(s64ModelHelper* mdl, s64ModelData* mdldata, Mtx* matric
     mdl->nexttick = osGetTime()+OS_NSEC_TO_CYCLES(33333333);
 }
 
+
+/*==============================
+    sausage64_set_predrawfunc
+    Set a function that gets called before any mesh is rendered
+    @param The model helper pointer
+    @param The pre draw function
+==============================*/
+
 inline void sausage64_set_predrawfunc(s64ModelHelper* mdl, void (*predraw)(u16))
 {
     mdl->predraw = predraw;
 }
+
+
+/*==============================
+    sausage64_set_postdrawfunc
+    Set a function that gets called after any mesh is rendered
+    @param The model helper pointer
+    @param The post draw function
+==============================*/
 
 inline void sausage64_set_postdrawfunc(s64ModelHelper* mdl, void (*postdraw)(u16))
 {
     mdl->postdraw = postdraw;
 }
 
-void sausage64_update_anim(s64ModelHelper* mdl)
+
+/*==============================
+    sausage64_update_anim
+    Updates the animation frame index based on the animation 
+    tick
+    @param The model helper pointer
+==============================*/
+
+static void sausage64_update_anim(s64ModelHelper* mdl)
 {
-    const Animation* anim = mdl->curanim;
+    const s64Animation* anim = mdl->curanim;
     const u32 animlen = anim->keyframes[anim->framecount-1].framenumber;
     const u32 curframeindex = mdl->curframeindex;
     const u32 nextframeindex = (curframeindex+1)%anim->framecount;
     
-    // Update the frame index
+    // Update the frame index if we've passed this keyframe's number
     if (mdl->animtick >= anim->keyframes[nextframeindex].framenumber)
     {
         // Go to the next keyframe
@@ -55,8 +87,17 @@ void sausage64_update_anim(s64ModelHelper* mdl)
     }
 }
 
+
+/*==============================
+    sausage64_advance_anim
+    Advances the animation tick. Assumes model is animated
+    at 30FPS, and that this model has animations.
+    @param The model helper pointer
+==============================*/
+
 void sausage64_advance_anim(s64ModelHelper* mdl)
 {
+    // If enough time has passed (1/30 of a second), then advance the animation tick
     if (mdl->nexttick < osGetTime())
     {
         mdl->animtick++;
@@ -65,9 +106,18 @@ void sausage64_advance_anim(s64ModelHelper* mdl)
     }
 }
 
+
+/*==============================
+    sausage64_set_anim
+    Sets an animation on the model. Does not perform 
+    error checking if an invalid animation is given.
+    @param The model helper pointer
+    @param The animation index to set
+==============================*/
+
 void sausage64_set_anim(s64ModelHelper* mdl, u16 anim)
 {
-    Animation* animdata = &mdl->mdldata->anims[anim];
+    s64Animation* animdata = &mdl->mdldata->anims[anim];
     mdl->curanim = animdata;
     mdl->curframeindex = 0;
     mdl->animtick = 0;
@@ -87,7 +137,7 @@ void sausage64_set_anim(s64ModelHelper* mdl, u16 anim)
 
 static inline f32 s64lerp(f32 a, f32 b, f32 f)
 {
-    return a + f * (b - a);
+    return a + f*(b - a);
 }
 
 
@@ -95,11 +145,15 @@ static inline f32 s64lerp(f32 a, f32 b, f32 f)
     sausage64_drawpart
     Renders a part of a Sausage64 model
     @param A pointer to a display list pointer
-    @param The model helper data
-    @param The part of the model to render
+    @param The current framedata
+    @param The next framedata
+    @param Whether to interpolate or not
+    @param The interpolation amount
+    @param The matrix to store the mesh's transformation
+    @param The mesh's display list
 ==============================*/
 
-static inline void sausage64_drawpart(Gfx** glistp, const u8 interpolate, const FrameData* cfdata, const FrameData* nfdata, const f32 l, Mtx* matrix, Gfx* dl)
+static inline void sausage64_drawpart(Gfx** glistp, const s64FrameData* cfdata, const s64FrameData* nfdata, const u8 interpolate, const f32 l, Mtx* matrix, Gfx* dl)
 {
     Mtx helper;
 
@@ -155,30 +209,54 @@ static inline void sausage64_drawpart(Gfx** glistp, const u8 interpolate, const 
 void sausage64_drawmodel(Gfx** glistp, s64ModelHelper* mdl)
 {
     u16 i;
-    const u16 mcount = mdl->mdldata->meshcount;
-    const Animation* anim = mdl->curanim;
-    const KeyFrame* ckframe = &anim->keyframes[mdl->curframeindex]; // pass as an arg
-    const KeyFrame* nkframe = &anim->keyframes[(mdl->curframeindex+1)%anim->framecount]; // pass as an arg
-    f32 l = 0;
+    const s64ModelData* mdata = mdl->mdldata;
+    const u16 mcount = mdata->meshcount;
+    const s64Animation* anim = mdl->curanim;
     
-    // Prevent division by zero
-    if (nkframe->framenumber - ckframe->framenumber != 0)
-        l = ((f32)(mdl->animtick - ckframe->framenumber))/((f32)(nkframe->framenumber - ckframe->framenumber));
-    
-    for (i=0; i<mcount; i++)
+    // If we have a valid animation
+    if (anim != NULL)
     {
-        const FrameData* cfdata = &ckframe->framedata[i];
-        const FrameData* nfdata = &nkframe->framedata[i];
+        const s64KeyFrame* ckframe = &anim->keyframes[mdl->curframeindex];
+        const s64KeyFrame* nkframe = &anim->keyframes[(mdl->curframeindex+1)%anim->framecount];
+        f32 l = 0;
         
-        // Call the pre draw function
-        if (mdl->predraw != NULL)
-            mdl->predraw(i);
+        // Prevent division by zero when calculating the lerp amount
+        if (nkframe->framenumber - ckframe->framenumber != 0)
+            l = ((f32)(mdl->animtick - ckframe->framenumber))/((f32)(nkframe->framenumber - ckframe->framenumber));
             
-        // Draw this part of the model
-        sausage64_drawpart(glistp, mdl->interpolate, cfdata, nfdata, l, &mdl->matrix[i],  mdl->mdldata->meshes[i].dl);
-        
-        // Call the post draw function
-        if (mdl->postdraw != NULL)
-            mdl->postdraw(i);
+        // Iterate through each mesh
+        for (i=0; i<mcount; i++)
+        {
+            const s64FrameData* cfdata = &ckframe->framedata[i];
+            const s64FrameData* nfdata = &nkframe->framedata[i];
+            
+            // Call the pre draw function
+            if (mdl->predraw != NULL)
+                mdl->predraw(i);
+                
+            // Draw this part of the model with animations
+            sausage64_drawpart(glistp, cfdata, nfdata, mdl->interpolate, l, &mdl->matrix[i],  mdata->meshes[i].dl);
+            
+            // Call the post draw function
+            if (mdl->postdraw != NULL)
+                mdl->postdraw(i);
+        }
+    }
+    else
+    {
+        // Iterate through each mesh
+        for (i=0; i<mcount; i++)
+        {
+            // Call the pre draw function
+            if (mdl->predraw != NULL)
+                mdl->predraw(i);
+                
+            // Draw this part of the model without animations
+            gSPDisplayList((*glistp)++, mdata->meshes[i].dl);
+            
+            // Call the post draw function
+            if (mdl->postdraw != NULL)
+                mdl->postdraw(i);
+        }
     }
 }

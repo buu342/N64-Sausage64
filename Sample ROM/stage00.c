@@ -74,7 +74,7 @@ static char usb_buffer[USB_BUFFER_SIZE];
 void stage00_init(void)
 {
     // Initialize Catherine
-    sausage64_initmodel(&catherine, &mdl_Catherine, catherineMtx);
+    sausage64_initmodel(&catherine, MODEL_Catherine, catherineMtx);
     sausage64_set_anim(&catherine, ANIMATION_Catherine_Walk); 
     sausage64_set_predrawfunc(&catherine, catherine_predraw);
     
@@ -358,10 +358,10 @@ void draw_menu()
     // List the animations
     nuDebConTextPos(NU_DEB_CON_WINDOW0, 3, 3);
     nuDebConCPuts(NU_DEB_CON_WINDOW0, "Anims");
-    for (i=0; i<ANIMATIONCOUNT_Catherine; i++) // Can also use mdl_Catherine.animcount (but macro is faster on the CPU)
+    for (i=0; i<ANIMATIONCOUNT_Catherine; i++) // Can also use MODEL_Catherine->animcount (but macro is faster on the CPU)
     {
         nuDebConTextPos(NU_DEB_CON_WINDOW0, 4, 5+i);
-        nuDebConCPuts(NU_DEB_CON_WINDOW0, mdl_Catherine.anims[i].name);
+        nuDebConCPuts(NU_DEB_CON_WINDOW0, MODEL_Catherine->anims[i].name);
     }
     
     // List the faces
@@ -424,7 +424,7 @@ char* command_listanims()
 
     // Go through all the animations names and append them to the string
     for (i=0; i<ANIMATIONCOUNT_Catherine; i++)
-        sprintf(usb_buffer, "%s%s\n", usb_buffer, mdl_Catherine.anims[i].name);
+        sprintf(usb_buffer, "%s%s\n", usb_buffer, MODEL_Catherine->anims[i].name);
 
         // Return the string of animation names
     return usb_buffer;
@@ -449,7 +449,7 @@ char* command_setanim()
     // Compare the animation names
     for (i=0; i<ANIMATIONCOUNT_Catherine; i++)
     {
-        if (!strcmp(mdl_Catherine.anims[i].name, usb_buffer))
+        if (!strcmp(MODEL_Catherine->anims[i].name, usb_buffer))
         {
             sausage64_set_anim(&catherine, i);
             return "Animation set.";

@@ -155,7 +155,7 @@ void write_output_text()
     fprintf(fp, "static s64ModelData mdl_%s = {%d, %d, meshes_%s, anims_%s};", global_modelname, list_meshes.size, list_animations.size, global_modelname, global_modelname);
     
     // Finish
-    if (!global_quiet) printf("*Wrote output to '%s'", global_outputname);
+    if (!global_quiet) printf("*Wrote output to '%s'\n", global_outputname);
     fclose(fp);
 }
 

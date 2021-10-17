@@ -4,7 +4,7 @@ This library contains a single .c and .h file which you can drag and drop into y
 
 The library is, currently, very basic. It can be expanded in the future in order to add more features, such as animation speed and blending. 
 
-With this implementation of the library, matrix transformations are done on the CPU in order to reduce the memory footprint. This does mean that the CPU will be doing a bit more work, but that will probably not be too much of a problem given that most games are fillrate limited. Rotations are also performed with Euler angles, which is not very efficient but allows for keeping of angle rollover. This will be changed to quaternions in a future date.
+With this implementation of the library, matrix transformations are done on the CPU in order to reduce the memory footprint. This does mean that the CPU will be doing a bit more work, but that will probably not be too much of a problem given that most games are fillrate limited. Rotations are also performed with Euler angles, which is not very efficient but allows for keeping of angle rollover. This will be changed to quaternions in a future date. Animations are also expected to playback at 30 frames per second.
 
 A tutorial on how to use the library is available [in the wiki](../../../wiki/4%29-Sample-library-tutorial). You also have an example implementation available in the [Sample ROM](../Sample%20ROM) folder.
 

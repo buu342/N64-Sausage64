@@ -1,7 +1,7 @@
 /***************************************************************
                          catherineMdl.h
                                
-Catherine's model an animation data, generated with Arabiki64
+Catherine's model and animation data, generated with Arabiki64
 like so:
 arabiki64.exe -f sample/CatherineExported.S64 -t sample/CatherineTextures.txt -n Catherine -o catherineMDL.h
 ***************************************************************/

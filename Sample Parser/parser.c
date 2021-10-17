@@ -68,6 +68,7 @@ static inline void lexer_restorestate()
 
 void parse_sausage(FILE* fp)
 {
+    listNode* curnode;
     s64Mesh* curmesh;
     s64Vert* curvert;
     s64Face* curface;
@@ -239,6 +240,44 @@ void parse_sausage(FILE* fp)
     if (!global_quiet) printf("*Finished parsing s64 model\nMesh count: %d\nAnimation count: %d\nTexture count: %d\n", list_meshes.size, list_animations.size, list_textures.size);
     fclose(fp);
     
+    // TODO: Sort the meshes to reduce texture loading
+    
+    // Sort the framedata by the order the meshes are in (Note: horrible time complexity as this is a bodge solution)
+    for (curnode = list_animations.head; curnode != NULL; curnode = curnode->next)
+    {
+        listNode* curkeyfnode;
+        s64Anim* anim = (s64Anim*)curnode->data;
+        
+        // Iterate through each keyframe
+        for (curkeyfnode = anim->keyframes.head; curkeyfnode != NULL; curkeyfnode = curkeyfnode->next)
+        {
+            listNode* curmeshnode;
+            linkedList correctorder = EMPTY_LINKEDLIST;
+            s64Keyframe* keyf = (s64Keyframe*)curkeyfnode->data;
+            
+            // Go through each mesh
+            for (curmeshnode = list_meshes.head; curmeshnode != NULL; curmeshnode = curmeshnode->next)
+            {
+                listNode* curfdatanode;
+                s64Mesh* mesh = (s64Mesh*)curmeshnode->data;
+                
+                // Compare with each frame data
+                for (curfdatanode = keyf->framedata.head; curfdatanode != NULL; curfdatanode = curfdatanode->next)
+                {
+                    s64FrameData* fdata = (s64FrameData*)curfdatanode->data;
+                    if (fdata->mesh == mesh)
+                    {
+                        listNode* elem = list_remove(&keyf->framedata, fdata);
+                        list_append(&correctorder, elem->data);
+                        free(elem);
+                        break;
+                    }
+                }
+            }
+            keyf->framedata = correctorder;
+        }
+    }
+
     // Fix mesh and animation roots
     if (global_fixroot)
     {

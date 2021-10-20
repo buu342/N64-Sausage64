@@ -54,7 +54,7 @@ Default Render Mode: G_RM_AA_ZB_OPA_SURF G_RM_AA_ZB_OPA_SURF2
 Default Texture Type: G_IM_FMT_RGBA
 Default Texture Size: G_IM_SIZ_16b
 Default Texture Modes: G_TX_MIRROR G_TX_MIRROR
-Default Geometry Mode: G_SHADE | G_ZBUFFER | G_CULL_BACK | G_SHADING_SMOOTH
+Default Geometry Mode: G_SHADE | G_ZBUFFER | G_CULL_BACK | G_SHADING_SMOOTH | G_LIGHTING
 ```
 
 `G_CC_PRIMLITE` is a custom combine mode that allows for mixing of primitive colors with lighting. Arabiki64 will generate a macro for this in your display list file.

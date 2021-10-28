@@ -191,11 +191,10 @@ static inline void sausage64_drawpart(Gfx** glistp, const s64FrameData* cfdata, 
         guMtxCatL(&helper, matrix, matrix);
     }
     
-    // Apply the matricies
-    gSPMatrix((*glistp)++, OS_K0_TO_PHYSICAL(matrix), G_MTX_MODELVIEW | G_MTX_LOAD | G_MTX_NOPUSH);
-
     // Draw the body part
+    gSPMatrix((*glistp)++, OS_K0_TO_PHYSICAL(matrix), G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_PUSH);
     gSPDisplayList((*glistp)++, dl);
+    gSPPopMatrix((*glistp)++, G_MTX_MODELVIEW);
 }
 
 

@@ -397,7 +397,7 @@ def setupData(self, object, skeletonList, meshList, settingsList):
                     s.animation_data.action = actionbefore
                 
             # Fix the frame number
-            bpy.context.scene.frame_set(framebefore)
+            bpy.context.scene.frame_set(int(framebefore))
             if (isNewBlender()):
                 bpy.context.view_layer.update()
             else:

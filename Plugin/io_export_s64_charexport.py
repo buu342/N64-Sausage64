@@ -346,7 +346,7 @@ def setupData(self, object, skeletonList, meshList, settingsList):
             for k in anim.frames:
 
                 # Modify the current Blender keyframe so we can get the pose data
-                bpy.context.scene.frame_set(k)
+                bpy.context.scene.frame_set(int(k))
 
                 # Go through all skeletons and add the bone's data
                 for s in skeletonList:
@@ -397,7 +397,7 @@ def setupData(self, object, skeletonList, meshList, settingsList):
                     s.animation_data.action = actionbefore
                 
             # Fix the frame number
-            bpy.context.scene.frame_set(framebefore)
+            bpy.context.scene.frame_set(int(framebefore))
             if (isNewBlender()):
                 bpy.context.view_layer.update()
             else:

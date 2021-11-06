@@ -346,7 +346,7 @@ def setupData(self, object, skeletonList, meshList, settingsList):
             for k in anim.frames:
 
                 # Modify the current Blender keyframe so we can get the pose data
-                bpy.context.scene.frame_set(k)
+                bpy.context.scene.frame_set(int(k))
 
                 # Go through all skeletons and add the bone's data
                 for s in skeletonList:

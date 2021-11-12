@@ -723,6 +723,60 @@ static void check_splitverts(linkedList* vcachelist)
 
 
 /*==============================
+    optimize_triangles
+    Optimizes models by merging two sets of 1tri to one 2tri2
+    @param The list of vertex cache blocks
+==============================*/
+
+static void optimize_triangles(linkedList* vcachelist)
+{
+    listNode* vcachenode;
+    for (vcachenode = vcachelist->head; vcachenode != NULL; vcachenode = vcachenode->next)
+    {
+        vertCache* vcache = (vertCache*)vcachenode->data;
+        listNode* prevfacenode = NULL;
+        listNode* facenode;
+        
+        // Cycle through all the faces
+        for (facenode = vcache->faces.head; facenode != NULL; facenode = facenode->next)
+        {
+            s64Face* prevface;
+            s64Face* face = (s64Face*)facenode->data;
+            
+            // If this is not a single face, skip it
+            if (face->vertcount != 3)
+                continue;
+            
+            // If we had no previous node, then select this face and go to the next node
+            if (prevfacenode == NULL)
+            {
+                prevfacenode = facenode;
+                continue;
+            }
+            
+            // We can now safely derference this pointer
+            prevface = (s64Face*)prevfacenode->data;
+            
+            // If these two faces share a texture
+            if (prevface->texture == face->texture)
+            {
+                // Update this face with the previous node's data
+                face->vertcount = 6;
+                face->verts[3] = prevface->verts[0];
+                face->verts[4] = prevface->verts[1];
+                face->verts[5] = prevface->verts[2];
+                
+                // Remove the previous node from this vertex cache block
+                list_remove(&vcache->faces, prevface);
+                free(prevfacenode);
+            }
+            prevfacenode = NULL;
+        }
+    }
+}
+
+
+/*==============================
     find_texture_fromvertindex
     Returns the texture from a face that has the given vertex index in a list of vertex caches
     @param The list of vertex caches
@@ -827,6 +881,9 @@ void construct_dl()
             list_append(&vcachelist, vcache);
         }
         
+        // Optimize the model further by merging single triangles into pairs
+        optimize_triangles(&vcachelist);
+        
         // Cycle through the vertex cache list and dump the vertices
         fprintf(fp, "static Vtx vtx_%s", global_modelname);
         if (ismultimesh)
@@ -879,8 +936,6 @@ void construct_dl()
             }
         }
         fprintf(fp, "};\n\n");
-        
-        // If a texture swap didn't happen, then combine two single faces into a single 2triangles call.
         
         // Then cycle through the vertex cache list again, but now dump the display list
         fprintf(fp, "static Gfx gfx_%s", global_modelname);
@@ -1036,9 +1091,12 @@ void construct_dl()
                 // Dump the face data
                 if (face->vertcount == 3)
                     fprintf(fp, "    gsSP1Triangle(%d, %d, %d, 0),\n", face->verts[0], face->verts[1], face->verts[2]);
-                else
+                else if (face->vertcount == 4)
                     fprintf(fp, "    gsSP2Triangles(%d, %d, %d, 0, %d, %d, %d, 0),\n", face->verts[0], face->verts[1], face->verts[2], 
                                                                                        face->verts[0], face->verts[2], face->verts[3]);
+                else if (face->vertcount == 6)
+                    fprintf(fp, "    gsSP2Triangles(%d, %d, %d, 0, %d, %d, %d, 0),\n", face->verts[0], face->verts[1], face->verts[2], 
+                                                                                       face->verts[3], face->verts[4], face->verts[5]);
             }
             
             // Newline if we have another vertex block to load

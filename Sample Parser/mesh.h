@@ -24,7 +24,7 @@
     // Face struct
     typedef struct {
         int vertcount;
-        unsigned int verts[4];
+        unsigned int verts[6];
         n64Texture* texture;
     } s64Face;
     

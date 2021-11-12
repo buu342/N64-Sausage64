@@ -58,7 +58,7 @@ void write_output_text()
     if (makestructs)
     {
         fprintf(fp, "// Model convenience macro\n");
-        fprintf(fp, "#define MODEL_%s (&mdl_%s)\n\n", global_modelname, global_modelname
+        fprintf(fp, "#define MODEL_%s (&mdl_%s)\n\n", global_modelname, global_modelname);
     }
     
     // Create some helper macros

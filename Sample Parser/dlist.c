@@ -143,12 +143,18 @@ static void offset_vertindices(linkedList* faces, int offset)
             // If this vertex index isn't in our hashtable yet
             if (hkeyval == NULL)
             {
+                #pragma GCC diagnostic push
+                #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
                 hkeyval = htable_append(&vertstable, face->verts[i], (void*)(offset+vertcount)); // It's not a pointer, I'm lying
+                #pragma GCC diagnostic pop
                 vertcount++;
             }
             
             // Fix the vert index from the hashtable value
+            #pragma GCC diagnostic push
+            #pragma GCC diagnostic ignored "-Wpointer-to-int-cast"
             face->verts[i] = (int)hkeyval->value;
+            #pragma GCC diagnostic pop
         }
     }
     
@@ -170,7 +176,7 @@ static void combine_caches(linkedList* vcachelist)
     listNode* firstnode, *secondnode;
     linkedList removedlist = EMPTY_LINKEDLIST;
     
-    // Iterate through all the nodes to check which can be combines
+    // Iterate through all the nodes to check which can be combined
     for (firstnode = vcachelist->head; firstnode != NULL; firstnode = firstnode->next)
     {
         vertCache* vc1 = (vertCache*)firstnode->data;
@@ -554,12 +560,18 @@ static linkedList* forsyth(vertCache* vcacheoriginal)
         // If this vertex index isn't in our hashtable yet, add it, and to our new vertex list
         if (hkeyval == NULL)
         {
+            #pragma GCC diagnostic push
+            #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
             hkeyval = htable_append(&vertstable, outindices[i], (void*)(j++)); // It's not a pointer, I'm lying
+            #pragma GCC diagnostic pop
             list_append(&newvertorder, (s64Vert*)list_node_from_index(&vcacheoriginal->verts, outindices[i])->data);
         }
         
         // Fix the vert index from the hashtable value
+        #pragma GCC diagnostic push
+        #pragma GCC diagnostic ignored "-Wpointer-to-int-cast"
         outindices[i] = (int) hkeyval->value;
+        #pragma GCC diagnostic pop
     }
     htable_destroy(&vertstable);
     
@@ -802,8 +814,6 @@ void construct_dl()
             check_splitverts(&vcachelist);
             
             // TODO: If that still didn't help (because we had an impossible to split model), then duplicate problem vertices and try Forsyth again
-            
-            // TODO: Sort by texture again to reduce display list commands
         }
         else
         {

@@ -129,7 +129,7 @@ void write_output_text()
             s64Keyframe* keyf = (s64Keyframe*)keyfnode->data;
             fprintf(fp, "    {%d, anim_%s_%s_framedata%d},\n", keyf->keyframe, global_modelname, anim->name, keyf->keyframe);
         }
-        fprintf(fp, "};", global_modelname, anim->name);
+        fprintf(fp, "};");
     }
     
     // Finally, print the Sausage64 structs

@@ -77,7 +77,7 @@ static void split_verts_by_texture(s64Mesh* mesh, linkedList* vcachelist)
         s64Face* face = (s64Face*)facenode->data;
         
         // If we found a new texture, create a new vertex cache
-        if (face->texture != curtex && face->texture->type != TYPE_OMIT)
+        if (curtex == NULL || (face->texture != curtex && face->texture->type != TYPE_OMIT))
         {
             vertCache* vcache;
             curtex = face->texture;
@@ -843,24 +843,31 @@ void construct_dl()
                 int texturew = 0, textureh = 0;
                 s64Vert* vert = (s64Vert*)vertnode->data;
                 n64Texture* tex = find_texture_fromvertindex(&vcachelist, vertindex);
-                Vector3D normorcol;
+                Vector3D normorcol = {0, 0, 0};
                 
                 // Ensure the texture is valid
                 if (tex == NULL)
                     terminate("Error: Inconsistent face/vertex texture information\n");
                 
-                // Get the texture size
-                if (tex->type == TYPE_TEXTURE)
+                // Retrieve texture/normal/color data for this vertex
+                switch (tex->type)
                 {
-                    texturew = (tex->data).image.w;
-                    textureh = (tex->data).image.h;
+                    case TYPE_TEXTURE:
+                        // Get the texture size
+                        texturew = (tex->data).image.w;
+                        textureh = (tex->data).image.h;
+                        
+                        // Intentional fallthrough
+                    case TYPE_PRIMCOL:
+                        // Pick vertex normals or vertex colors, depending on the texture flag
+                        if (tex_hasgeoflag(tex, "G_LIGHTING"))
+                            normorcol = vector_scale(vert->normal, 127);
+                        else
+                            normorcol = vector_scale(vert->color, 255);
+                        break;
+                    case TYPE_OMIT:
+                        break;
                 }
-
-                // Pick vertex normals or vertex colors, depending on the texture flag
-                if (tex_hasgeoflag(tex, "G_LIGHTING"))
-                    normorcol = vector_scale(vert->normal, 127);
-                else
-                    normorcol = vector_scale(vert->color, 255);
                 
                 // Dump the vert data
                 fprintf(fp, "    {%d, %d, %d, 0, %d, %d, %d, %d, %d, 255}, /* %d */\n", 

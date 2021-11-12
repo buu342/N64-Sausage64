@@ -217,6 +217,7 @@ n64Texture* parse_textures(FILE* fp)
                 tex->name = (char*)calloc(1, strlen(name)+1);
                 if (tex->name == NULL)
                     terminate("Error: Unable to allocate memory for none texture name\n");
+                strcpy(tex->name, name);
                 tex->type = TYPE_OMIT;
                 list_append(&list_textures, tex);
                 break;
@@ -291,8 +292,10 @@ n64Texture* request_texture(char* name)
             tex->name = (char*)calloc(1, strlen(name)+1);
             if (tex->name == NULL)
                 terminate("Error: Unable to allocate memory for none texture name\n");
+            strcpy(tex->name, name);
             tex->type = TYPE_OMIT;
             list_append(&list_textures, tex);
+            if (!global_quiet) printf("Omitting texture '%s'\n", name);
             return tex;
         default:
             sprintf(strbuf, "Error: Unknown texture type '%d'\n", (int)type);

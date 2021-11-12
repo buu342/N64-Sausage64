@@ -770,6 +770,7 @@ void construct_dl()
     listNode* meshnode;
     char strbuff[STRBUF_SIZE];
     n64Texture* lastTexture = NULL;
+    char ismultimesh = (list_meshes.size > 1);
     
     // Precalculate Forsyth tables as we might need them
     forsyth_init();
@@ -827,7 +828,10 @@ void construct_dl()
         }
         
         // Cycle through the vertex cache list and dump the vertices
-        fprintf(fp, "static Vtx vtx_%s_%s[] = {\n", global_modelname, mesh->name);
+        fprintf(fp, "static Vtx vtx_%s", global_modelname);
+        if (ismultimesh)
+            fprintf(fp, "_%s[] = {\n", mesh->name);
+        fprintf(fp, "[] = {\n");
         for (vcachenode = vcachelist.head; vcachenode != NULL; vcachenode = vcachenode->next)
         {
             vertCache* vcache = (vertCache*)vcachenode->data;
@@ -869,15 +873,23 @@ void construct_dl()
         }
         fprintf(fp, "};\n\n");
         
+        // If a texture swap didn't happen, then combine two single faces into a single 2triangles call.
+        
         // Then cycle through the vertex cache list again, but now dump the display list
-        fprintf(fp, "static Gfx gfx_%s_%s[] = {\n", global_modelname, mesh->name);
+        fprintf(fp, "static Gfx gfx_%s", global_modelname);
+        if (ismultimesh)
+            fprintf(fp, "_%s[] = {\n", mesh->name);
+        fprintf(fp, "[] = {\n");
         for (vcachenode = vcachelist.head; vcachenode != NULL; vcachenode = vcachenode->next)
         {
             listNode* facenode;
             vertCache* vcache = (vertCache*)vcachenode->data;
             
             // Load a new vertex block
-            fprintf(fp, "    gsSPVertex(vtx_%s_%s+%d, %d, 0),\n", global_modelname, mesh->name, vcache->offset, vcache->verts.size + vcache->reuse);
+            fprintf(fp, "    gsSPVertex(vtx_%s", global_modelname);
+            if (ismultimesh)
+                fprintf(fp, "_%s", mesh->name);
+            fprintf(fp, "+%d, %d, 0),\n", vcache->offset, vcache->verts.size + vcache->reuse);
             
             // Cycle through all the faces
             for (facenode = vcache->faces.head; facenode != NULL; facenode = facenode->next)

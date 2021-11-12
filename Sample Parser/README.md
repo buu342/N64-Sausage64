@@ -31,4 +31,4 @@ gcc -O3 -o arabiki64 main.c datastructs.c mesh.c texture.c animation.c parser.c 
 ```
 
 ### Using the Program
-For more information on how to use Arabiki64, check out [the wiki](../../../wiki/4%29-Arabiki64%3A-Example-S64-to-Display-List-Converter)
+For more information on how to use Arabiki64, check out [the wiki](../../../wiki/4%29-Arabiki64%3A-Example-S64-to-Display-List-Converter).

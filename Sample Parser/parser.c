@@ -87,7 +87,7 @@ void parse_sausage(FILE* fp)
         char* strdata;
         
         // Read a string from the text file
-        if (fgets(strbuf, STRBUFF_SIZE, fp) == NULL)
+        if (fgets(strbuf, STRBUFF_SIZE, fp) == NULL && !feof(fp))
             terminate("Error: Problem reading s64 file\n");
         
         // Split the string by spaces

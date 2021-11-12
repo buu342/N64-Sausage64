@@ -697,6 +697,7 @@ static void check_splitverts(linkedList* vcachelist)
 {
     int cachelistindex = 0;
     listNode* curnode;
+    listNode* nextnode;
     
     // Iterate through all the cache blocks
     for (curnode = vcachelist->head; curnode != NULL; curnode = curnode->next)
@@ -711,11 +712,12 @@ static void check_splitverts(linkedList* vcachelist)
 
             // Remove the old vertex cache block from the list and append our new list in its place
             free(list_swapindex_withlist(vcachelist, cachelistindex, newvclist));
-            free(newvclist);
             
             // Fix the next node as the pointers have changed
             curnode = newvclist->tail;
             cachelistindex += newvclist->size;
+            free(newvclist);
+            continue;
         }
         cachelistindex++;
     }
@@ -862,7 +864,7 @@ void construct_dl()
             // First, split everything by texture and see if that improves our situation
             split_verts_by_texture(mesh, &vcachelist);
             
-            // Try to combine any cache blocks that could fit together
+            // Try to combine any cache blocks that could fit together after having been split by texture
             combine_caches(&vcachelist);
             
             // If that didn't help, then split the vertex block further with the help of Forsyth

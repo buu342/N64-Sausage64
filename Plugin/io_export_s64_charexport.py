@@ -292,12 +292,12 @@ def setupData(self, object, skeletonList, meshList, settingsList):
                 for g in v:
                 
                     # If the vertex has weights, add all verts in this face to the list of vertices and faces in this mesh
-                    if (g[1] > 0.5): 
-                        try:
+                    if (g[1] > 0.5):
+                        if (vgroup_names[g[0]] in finalList):
                             addFace(finalList, f, vgroup_names[g[0]], vertex_normals, vertex_colors, vertex_uvs, materials_list)
-                        except KeyError:
-                            self.report({'ERROR'}, 'Vertex group "'+vgroup_names[g[0]]+'" does not match any bone names.')
-                            return 'CANCELLED'
+                        else:
+                            self.report({'WARNING'}, 'Vertex group "'+vgroup_names[g[0]]+'" does not match any bone names. Assuming None.')
+                            addFace(finalList, f, "None", vertex_normals, vertex_colors, vertex_uvs, materials_list)
                             
                         # Move onto the next face
                         break

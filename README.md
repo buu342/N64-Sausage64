@@ -34,3 +34,6 @@ This method of character design was highly popular in the N64 and PS1 era, where
 
 ### S64 file format, Usage Instructions, FAQ, and More
 For more information, please check the [wiki](../../wiki).
+
+### Suggestions and bugs
+Please submit suggestions or bugs to the [issues](issues) page.

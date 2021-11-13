@@ -13,12 +13,11 @@ bl_info = {
 }
 
 # TODO:
-## Support multiple UV's per vertex by embedding that information to each face instead
-## Correct vertex indices for when different objects share the same bone
-## Correct vertex indices for when different vertices in an object share different bones
+## Support multiple Colors/UV's per vertex by duplicating vertices
 ## bpy.context.scene.render.fps
 
 import bpy
+import copy
 import math
 import bmesh
 import operator
@@ -165,10 +164,10 @@ def writeFile(self, object, finalList, animList):
     self.report({'INFO'}, 'File exported sucessfully!')
     return {'FINISHED'}
 
-def addFace(finalList, f, name, vertex_normals, vertex_colors, vertex_uvs, materials_list):
+def addFace(finalList, f, name, vertex_normals, vertex_colors, vertex_uvs, materials_list, prevcount):
     face = S64Face()
     for vi in f.verts:
-        face.verts.append(vi.index)
+        face.verts.append(vi.index+prevcount)
         vert = S64Vertex()
         vert.coor = vi.co[:]
         vert.norm = vertex_normals[vi.index][:]
@@ -177,7 +176,7 @@ def addFace(finalList, f, name, vertex_normals, vertex_colors, vertex_uvs, mater
         except KeyError:
             vert.colr = (1.0, 1.0, 1.0)
         vert.uv = vertex_uvs[vi.index][:]
-        finalList[name].verts[vi.index] = vert
+        finalList[name].verts[vi.index+prevcount] = vert
     try:
         face.mat = materials_list[f.material_index].name
     except IndexError:
@@ -214,7 +213,7 @@ def setupData(self, object, skeletonList, meshList, settingsList):
     
     # Now go through all the meshes and find out which bone they belong to
     for m in meshList:
-    
+        
         # If auto smooth is enabled, calculate the split normals
         if (m.data.has_custom_normals):
             m.data.calc_normals_split()
@@ -279,6 +278,7 @@ def setupData(self, object, skeletonList, meshList, settingsList):
         vgroup_names = {vgroup.index: vgroup.name for vgroup in m.vertex_groups}
         
         # Append all faces to their respective vertex group data in finalList
+        finalListCopy = copy.deepcopy(finalList) # Deep copy needed in case we're adding verts to an already existing collection
         if (layer_deform is not None):
             for f in bm.faces:
             
@@ -292,18 +292,18 @@ def setupData(self, object, skeletonList, meshList, settingsList):
                 for g in v:
                 
                     # If the vertex has weights, add all verts in this face to the list of vertices and faces in this mesh
-                    if (g[1] > 0.5):
+                    if (g[1] > 0.5): 
                         if (vgroup_names[g[0]] in finalList):
-                            addFace(finalList, f, vgroup_names[g[0]], vertex_normals, vertex_colors, vertex_uvs, materials_list)
+                            addFace(finalList, f, vgroup_names[g[0]], vertex_normals, vertex_colors, vertex_uvs, materials_list, len(finalListCopy[vgroup_names[g[0]]].verts))
                         else:
                             self.report({'WARNING'}, 'Vertex group "'+vgroup_names[g[0]]+'" does not match any bone names. Assuming None.')
-                            addFace(finalList, f, "None", vertex_normals, vertex_colors, vertex_uvs, materials_list)
+                            addFace(finalList, f, "None", vertex_normals, vertex_colors, vertex_uvs, materials_list, len(finalListCopy["None"].verts))
                             
                         # Move onto the next face
                         break
         else:
             for f in bm.faces:
-                addFace(finalList, f, "None", vertex_normals, vertex_colors, vertex_uvs, materials_list) # These faces/vertices have no weights
+                addFace(finalList, f, "None", vertex_normals, vertex_colors, vertex_uvs, materials_list, len(finalListCopy["None"].verts)) # These faces/vertices have no weights
 
     # Remove any list element that's empty
     for i in list(finalList.keys()):

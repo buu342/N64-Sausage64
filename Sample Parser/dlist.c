@@ -889,7 +889,7 @@ void construct_dl()
         // Cycle through the vertex cache list and dump the vertices
         fprintf(fp, "static Vtx vtx_%s", global_modelname);
         if (ismultimesh)
-            fprintf(fp, "_%s[] = {\n", mesh->name);
+            fprintf(fp, "_%s", mesh->name);
         fprintf(fp, "[] = {\n");
         for (vcachenode = vcachelist.head; vcachenode != NULL; vcachenode = vcachenode->next)
         {
@@ -942,7 +942,7 @@ void construct_dl()
         // Then cycle through the vertex cache list again, but now dump the display list
         fprintf(fp, "static Gfx gfx_%s", global_modelname);
         if (ismultimesh)
-            fprintf(fp, "_%s[] = {\n", mesh->name);
+            fprintf(fp, "_%s", mesh->name);
         fprintf(fp, "[] = {\n");
         for (vcachenode = vcachelist.head; vcachenode != NULL; vcachenode = vcachenode->next)
         {

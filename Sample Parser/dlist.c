@@ -310,7 +310,7 @@ static linkedList* forsyth(vertCache* vcacheoriginal)
     int *indices, *activetricount;
     int curtri = 0, tricount = 0, sum = 0, outpos = 0, scanpos = 0, besttri = -1, bestscore = -1;
     int vertcount = vcacheoriginal->verts.size;
-    int* offsets, *lastscore, *cachetag, *triscore, *triindices, *outtris, *outindices, *tempcache;
+    int* offsets, *lastscore, *cachetag, *triscore, *triindices, *outtris, *outindices, *outindices_copy, *tempcache;
     bool* triadded;
     int largestvertindex = 0, lowestvertindex = 0, vertindexcount = 0, lastcachesplit = 0;
     hashTable vertstable;
@@ -319,9 +319,6 @@ static linkedList* forsyth(vertCache* vcacheoriginal)
     n64Texture* meshtex;
     listNode* curnode;
     linkedList* newvcachelist;
-    
-    // State we're using Forsyth
-    printf("Applying Forsyth to cache block\n");
     
     // Calculate the number of triangles (can't just do faces->size due to quads)
     for (curnode = vcacheoriginal->faces.head; curnode != NULL; curnode = curnode->next)
@@ -335,6 +332,7 @@ static linkedList* forsyth(vertCache* vcacheoriginal)
     // Allocate memory for the vertex indices list
     indices = (int*) calloc(1, sizeof(int)*tricount*3);
     outindices = (int*) calloc(1, sizeof(int)*tricount*3); // To be removed later
+    outindices_copy = (int*) calloc(1, sizeof(int)*tricount*3); // In case Forsyth fails, we need the original indicies to fix them
     if (indices == NULL)
         terminate("Error: Unable to allocate memory for vertex indices list\n");
     
@@ -358,7 +356,7 @@ static linkedList* forsyth(vertCache* vcacheoriginal)
             curtri++;
         }
     }
-    
+
     
     /* ---------- Forsyth starts here ---------- */
     
@@ -553,11 +551,12 @@ static linkedList* forsyth(vertCache* vcacheoriginal)
     // Now that we have an optimized list of verts, lets create a linked list with the verts in the new order (and fix the indices, while we're at it)
     j = 0;
     memset(&vertstable, 0, sizeof(vertstable));
+    memcpy(outindices_copy, outindices, sizeof(int)*tricount*3);
     for (i=0; i<tricount*3; i++)
     {
         dictNode* hkeyval = htable_getkey(&vertstable, outindices[i]);
     
-        // If this vertex index isn't in our hashtable yet, add it, and to our new vertex list
+        // If this vertex index isn't in our hashtable yet, add it, and append it to our new vertex list
         if (hkeyval == NULL)
         {
             #pragma GCC diagnostic push
@@ -608,8 +607,114 @@ static linkedList* forsyth(vertCache* vcacheoriginal)
         // If adding a vertex from this face exceeds our cache size, restart this loop so we create a new cache and try this face again
         if ((largestvertindex-lowestvertindex) >= global_cachesize)
         {
-            if (lastcachesplit == oldlargest+1) // We have an infinite loop!
-                terminate("Error: Unable to split cache block with requested size. Try separating some faces?\n");
+            // Check for infinite loops
+            if (lastcachesplit == oldlargest+1)
+            {
+                static s64Face* firstproblemface = NULL;
+                char islastvert = FALSE;
+                char duplicated = FALSE;
+            
+                // Find all problematic vertices
+                while (i<tricount*3)
+                {
+                    char hasindex = FALSE;
+                    int originalvertindex;
+                    int ocverts[3];
+                    listNode* fnode;
+                    
+                    // Get the original array index
+                    for (j=i; j<i+3; j++)
+                    {
+                        if (outindices[j] == lowestvertindex)
+                        {
+                            originalvertindex = outindices_copy[j];
+                            ocverts[0] = outindices_copy[i];
+                            ocverts[1] = outindices_copy[i+1];
+                            ocverts[2] = outindices_copy[i+2];
+                            hasindex = TRUE;
+                            
+                            // Duplicate the vertex and add it to the end of the original vertex cache block
+                            if (!duplicated)
+                            {
+                                if (!global_quiet) printf("Duplicating problematic vertex\n");
+                                s64Vert* originalvert = (s64Vert*)list_node_from_index(&vcacheoriginal->verts, originalvertindex)->data; // Get the original vertex from our uncorrected outindicies copy
+                                s64Vert* dupvert = (s64Vert*) malloc(sizeof(s64Vert));
+                                memcpy(dupvert, originalvert, sizeof(s64Vert));
+                                list_append(&vcacheoriginal->verts, dupvert);
+                                duplicated = TRUE;
+                            }
+                            break;
+                        }
+                    }
+                    
+                    // If the index wasn't found in this triangle, then go to the next one
+                    if (!hasindex)
+                    {
+                        i += 3;
+                        continue;
+                    }
+                    
+                    // Now find all faces that use the same set of vertex indices
+                    for (fnode = vcacheoriginal->faces.head; fnode != NULL; fnode = fnode->next)
+                    {
+                        s64Face* face = (s64Face*) fnode->data;
+                        
+                        // If we have a match, then correct the index
+                        if ((face->verts[0] == ocverts[0] && face->verts[1] == ocverts[1] && face->verts[2] == ocverts[2]) || 
+                            (face->vertcount == 4 && face->verts[0] == ocverts[0] && face->verts[2] == ocverts[1] && face->verts[3] == ocverts[2]))
+                        {
+                            int k;
+                            
+                            // If we were not gonna infinite loop, correct the vertex indices
+                            if (firstproblemface != face)
+                            {
+                                firstproblemface = NULL;
+                                for (k=0; k<face->vertcount; k++)
+                                    if (face->verts[k] == originalvertindex)
+                                        face->verts[k] = vcacheoriginal->verts.size-1;
+                            }
+                            else // Otherwise duplicate the entire face
+                            {
+                                if (!global_quiet) printf("Splitting problematic face and vertices\n");
+                                for (k=0; k<face->vertcount; k++)
+                                {
+                                    if (face->verts[k] != originalvertindex)
+                                    {
+                                        s64Vert* originalvert = (s64Vert*)list_node_from_index(&vcacheoriginal->verts, face->verts[k])->data; // Get the original vertex from our uncorrected outindicies copy
+                                        s64Vert* dupvert = (s64Vert*) malloc(sizeof(s64Vert));
+                                        memcpy(dupvert, originalvert, sizeof(s64Vert));
+                                        list_append(&vcacheoriginal->verts, dupvert);
+                                        face->verts[k] = vcacheoriginal->verts.size-1;
+                                    }
+                                }
+                            }
+                            
+                            if (firstproblemface == NULL)
+                                firstproblemface = face;
+                        }
+                    }
+                    
+                    // Keep searching through all the other faces to ensure we have any other that use the same problem vertex
+                    i+=3;
+                }
+                
+                // Return NULL to try Forsyth again
+                list_destroy(&newvertorder);
+                list_destroy(newvcachelist);
+                free(indices);
+                free(outindices);
+                free(outindices_copy);
+                free(activetricount);
+                free(offsets);
+                free(outtris);
+                free(tempcache);
+                free(lastscore);
+                free(cachetag);
+                free(triscore);
+                free(triindices);
+                free(triadded);
+                return NULL;
+            }
             lastcachesplit = oldlargest+1;
             lowestvertindex = 0x7FFFFFFF;
             curvcache = NULL;
@@ -674,6 +779,8 @@ static linkedList* forsyth(vertCache* vcacheoriginal)
     // Free all the memory used by the algorithm
     list_destroy(&newvertorder);
     free(indices);
+    free(outindices);
+    free(outindices_copy);
     free(activetricount);
     free(offsets);
     free(outtris);
@@ -708,7 +815,13 @@ static void check_splitverts(linkedList* vcachelist)
         if (vc->verts.size > global_cachesize)
         {
             // Use Forsyth to generate an optimal vert loading order + generate a list of new split cache blocks
-            linkedList* newvclist = forsyth(vc);
+            linkedList* newvclist;
+            if (!global_quiet) printf("Applying Forsyth to cache block\n");
+            do
+            {
+                newvclist = forsyth(vc);
+            }
+            while (newvclist == NULL);
 
             // Remove the old vertex cache block from the list and append our new list in its place
             free(list_swapindex_withlist(vcachelist, cachelistindex, newvclist));
@@ -906,7 +1019,11 @@ void construct_dl()
                 
                 // Ensure the texture is valid
                 if (tex == NULL)
+                {
                     terminate("Error: Inconsistent face/vertex texture information\n");
+                    //fprintf(fp, "    NULL, /* %d */\n", vertindex++);
+                    //continue;
+                }
                 
                 // Retrieve texture/normal/color data for this vertex
                 switch (tex->type)

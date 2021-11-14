@@ -27,6 +27,7 @@ Handles the first level of the game.
 
 void draw_menu();
 void catherine_predraw(u16 part);
+void catherine_animcallback(u16 anim);
 
 
 /*********************************
@@ -52,6 +53,7 @@ static float camang[3] = {0, 0, -90};
 // Catherine
 Mtx catherineMtx[MESHCOUNT_Catherine];
 s64ModelHelper catherine;
+float catherine_animspeed;
 
 // Face animation
 static u16 faceindex;
@@ -77,6 +79,15 @@ void stage00_init(void)
     sausage64_initmodel(&catherine, MODEL_Catherine, catherineMtx);
     sausage64_set_anim(&catherine, ANIMATION_Catherine_Walk); 
     sausage64_set_predrawfunc(&catherine, catherine_predraw);
+    sausage64_set_animcallback(&catherine, catherine_animcallback);
+    
+    // Set catherine's animation speed based on region
+    #if TV_TYPE == PAL
+        catherine_animspeed = 0.66;
+    #else
+        catherine_animspeed = 0.5;
+    #endif
+    
     
     // Initialize the face animation
     facetick = 60;
@@ -99,7 +110,7 @@ void stage00_update(void)
     debug_pollcommands();  
     
     // Advance Catherine's animation
-    sausage64_advance_anim(&catherine);
+    sausage64_advance_anim(&catherine, catherine_animspeed);
     
     
     /* -------- Face Animation -------- */
@@ -174,7 +185,7 @@ void stage00_update(void)
     // If the menu is open
     if (menuopen)
     {
-        int menuyscale[4] = {ANIMATIONCOUNT_Catherine, TOTALFACES, 2, 3};
+        int menuyscale[4] = {ANIMATIONCOUNT_Catherine, TOTALFACES, 2, 5};
     
         // Moving the cursor left/right
         if (contdata[0].trigger & R_JPAD)
@@ -221,8 +232,12 @@ void stage00_update(void)
                         catherine.interpolate = !catherine.interpolate;
                     else if (cury == 1)
                         catherine.loop = !catherine.loop;
-                    else 
+                    else if (cury == 2)
                         drawaxis = !drawaxis;
+                    else if (cury == 3)
+                        catherine_animspeed += 0.1;
+                    else if (cury == 4)
+                        catherine_animspeed -= 0.1;
                     break;
             }
         }
@@ -237,6 +252,18 @@ void catherine_predraw(u16 part)
     {
         case MESH_Catherine_Head:
             gDPLoadTextureBlock(glistp++, faceanim->faces[faceindex], G_IM_FMT_RGBA, G_IM_SIZ_16b, 32, 64, 0, G_TX_CLAMP, G_TX_CLAMP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+            break;
+    }
+}
+
+void catherine_animcallback(u16 anim)
+{
+    // Go to idle animation when we finished attacking
+    switch(anim)
+    {
+        case ANIMATION_Catherine_Attack1:
+        case ANIMATION_Catherine_ThrowKnife:
+            sausage64_set_anim(&catherine, ANIMATION_Catherine_Idle);
             break;
     }
 }
@@ -390,6 +417,10 @@ void draw_menu()
     nuDebConCPuts(NU_DEB_CON_WINDOW0, "Loop");
     nuDebConTextPos(NU_DEB_CON_WINDOW0, 33, 7);
     nuDebConCPuts(NU_DEB_CON_WINDOW0, "Axis");
+    nuDebConTextPos(NU_DEB_CON_WINDOW0, 33, 8);
+    nuDebConCPuts(NU_DEB_CON_WINDOW0, "Faster");
+    nuDebConTextPos(NU_DEB_CON_WINDOW0, 33, 9);
+    nuDebConCPuts(NU_DEB_CON_WINDOW0, "Slower");
     
     // Draw a nice little bar separating everything
     nuDebConTextPos(NU_DEB_CON_WINDOW0, 3, 4);

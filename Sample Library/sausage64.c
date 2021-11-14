@@ -22,14 +22,24 @@ void sausage64_initmodel(s64ModelHelper* mdl, s64ModelData* mdldata, Mtx* matric
 {
     mdl->interpolate = TRUE;
     mdl->loop = TRUE;
-    mdl->curframeindex = 0;
-    mdl->curanim = (mdldata->animcount > 0) ? &mdldata->anims[0] : NULL;
+    mdl->curkeyframe = 0;
+    if (mdldata->animcount > 0)
+    {
+        s64Animation* animdata = &mdldata->anims[0];
+        mdl->curanim = animdata;
+        mdl->curanimlen = animdata->keyframes[animdata->keyframecount-1].framenumber;
+    }
+    else
+    {
+        mdl->curanim = NULL;
+        mdl->curanimlen = 0;
+    }
     mdl->animtick = 0;
     mdl->matrix = matrices;
     mdl->predraw = NULL;
     mdl->postdraw = NULL;
+    mdl->animcallback = NULL;
     mdl->mdldata = mdldata;
-    mdl->nexttick = osGetTime()+OS_NSEC_TO_CYCLES(33333333);
 }
 
 
@@ -60,8 +70,21 @@ inline void sausage64_set_postdrawfunc(s64ModelHelper* mdl, void (*postdraw)(u16
 
 
 /*==============================
+    sausage64_set_animcallback
+    Set a function that gets called when an animation finishes
+    @param The model helper pointer
+    @param The animation end callback function
+==============================*/
+
+inline void sausage64_set_animcallback(s64ModelHelper* mdl, void (*animcallback)(u16))
+{
+    mdl->animcallback = animcallback;
+}
+
+
+/*==============================
     sausage64_update_anim
-    Updates the animation frame index based on the animation 
+    Updates the animation keyframe based on the animation 
     tick
     @param The model helper pointer
 ==============================*/
@@ -69,41 +92,126 @@ inline void sausage64_set_postdrawfunc(s64ModelHelper* mdl, void (*postdraw)(u16
 static void sausage64_update_anim(s64ModelHelper* mdl)
 {
     const s64Animation* anim = mdl->curanim;
-    const u32 animlen = anim->keyframes[anim->framecount-1].framenumber;
-    const u32 curframeindex = mdl->curframeindex;
-    const u32 nextframeindex = (curframeindex+1)%anim->framecount;
+    const float curtick = mdl->animtick;
+    const u32 curkeyframe = mdl->curkeyframe;
+    const u32 curframenum = anim->keyframes[curkeyframe].framenumber;
+    const u32 nframes = anim->keyframecount;
+    const u32 animlen = mdl->curanimlen;
+    u32 nextkeyframe = (curkeyframe+1)%nframes;
     
-    // Update the frame index if we've passed this keyframe's number
-    if (mdl->animtick >= anim->keyframes[nextframeindex].framenumber)
+    // Check if we changed animation frame
+    if (curtick >= anim->keyframes[nextkeyframe].framenumber || curtick < curframenum)
     {
-        // Go to the next keyframe
-        if (mdl->loop || mdl->animtick < animlen)
+        if (curtick > curframenum) // Animation advanced to next frame
         {
-            mdl->curframeindex = nextframeindex;
-            mdl->animtick %= animlen;
+            u32 i=0;
+            
+            // Cycle through all frames, starting at the one after the current frame
+            do
+            {
+                // Update the keyframe if we've passed this keyframe's number
+                if (curtick >= anim->keyframes[nextkeyframe].framenumber)
+                {
+                    // Go to the next keyframe, and stop
+                    mdl->curkeyframe = nextkeyframe;
+                    return;
+                }
+                
+                // If that was a failure, go to the next frame
+                nextkeyframe = (nextkeyframe+1)%nframes;
+                i++;
+            }
+            while (i<nframes);
         }
-        else
-            mdl->animtick = animlen-1;
+        else if (curkeyframe > 0 && curtick < anim->keyframes[1].framenumber) // Animation rolled over to the first frame (special case for speedup reasons)
+        {
+            mdl->curkeyframe = 0;
+        }
+        else // Animation is potentially going backwards
+        {
+            u32 i=0;
+            s32 prevkeyframe = curkeyframe-1;
+            if (prevkeyframe < 0)
+                prevkeyframe = nframes-1;
+            
+            // Cycle through all frames (backwards), starting at the one before the current frame
+            do
+            {
+                // Update the keyframe if we've passed this keyframe's number
+                if (curtick >= anim->keyframes[prevkeyframe].framenumber)
+                {
+                    // Go to the next keyframe, and stop
+                    mdl->curkeyframe = prevkeyframe;
+                    return;
+                }
+                
+                // If that was a failure, go to the previous frame
+                prevkeyframe--;
+                if (prevkeyframe < 0)
+                    prevkeyframe = nframes-1;
+                i++;
+            }
+            while (i<nframes);    
+        }
     }
 }
 
 
 /*==============================
     sausage64_advance_anim
-    Advances the animation tick. Assumes model is animated
-    at 30FPS, and that this model has animations.
+    Advances the animation tick by the given amount
     @param The model helper pointer
+    @param The amount to increase the animation tick by
 ==============================*/
 
-void sausage64_advance_anim(s64ModelHelper* mdl)
+void sausage64_advance_anim(s64ModelHelper* mdl, float tickamount)
 {
-    // If enough time has passed (1/30 of a second), then advance the animation tick
-    if (mdl->nexttick < osGetTime())
+    char loop = TRUE;
+    float division;
+    mdl->animtick += tickamount;
+    
+    // If the animation ended, call the callback function and roll the tick value over
+    if (mdl->animtick >= mdl->curanimlen)
     {
-        mdl->animtick++;
-        mdl->nexttick = osGetTime()+OS_NSEC_TO_CYCLES(33333333);
-        sausage64_update_anim(mdl);
+        // Execute the animation end callback function
+        if (mdl->animcallback != NULL)
+            mdl->animcallback(mdl->curanim - &mdl->mdldata->anims[0]);
+            
+        // If looping is disabled, then stop
+        if (!mdl->loop)
+        {
+            mdl->animtick = mdl->curanimlen;
+            mdl->curkeyframe = mdl->curanim->keyframecount-1;
+            return;
+        }
+        
+        // Calculate the correct tick         
+        division = mdl->animtick/((float)mdl->curanimlen);
+        mdl->animtick = (division - ((int)division))*((float)mdl->curanimlen);
     }
+    else if (mdl->animtick <= 0)
+    {
+        // Execute the animation end callback function
+        if (mdl->animcallback != NULL)
+            mdl->animcallback(mdl->curanim - &mdl->mdldata->anims[0]);
+            
+        // If looping is disabled, then stop
+        if (!mdl->loop)
+        {
+            mdl->animtick = 0;
+            mdl->curkeyframe = 0;
+            return;
+        }
+        
+        // Calculate the correct tick       
+        division = mdl->animtick/((float)mdl->curanimlen);
+        mdl->animtick = (1+(division - ((int)division)))*((float)mdl->curanimlen);
+        mdl->curkeyframe = mdl->curanim->keyframecount-1;
+    }
+    
+    // Update the animation
+    if (mdl->curanim->keyframecount > 0 && loop)
+        sausage64_update_anim(mdl);
 }
 
 
@@ -112,17 +220,18 @@ void sausage64_advance_anim(s64ModelHelper* mdl)
     Sets an animation on the model. Does not perform 
     error checking if an invalid animation is given.
     @param The model helper pointer
-    @param The animation index to set
+    @param The ANIMATION_* macro to set
 ==============================*/
 
 void sausage64_set_anim(s64ModelHelper* mdl, u16 anim)
 {
     s64Animation* animdata = &mdl->mdldata->anims[anim];
     mdl->curanim = animdata;
-    mdl->curframeindex = 0;
+    mdl->curanimlen = animdata->keyframes[animdata->keyframecount-1].framenumber;
+    mdl->curkeyframe = 0;
     mdl->animtick = 0;
-    mdl->nexttick = osGetTime()+OS_NSEC_TO_CYCLES(33333333);
-    sausage64_update_anim(mdl);
+    if (animdata->keyframecount > 0)
+        sausage64_update_anim(mdl);
 }
 
 
@@ -191,11 +300,10 @@ static inline void sausage64_drawpart(Gfx** glistp, const s64FrameData* cfdata, 
         guMtxCatL(&helper, matrix, matrix);
     }
     
-    // Apply the matricies
-    gSPMatrix((*glistp)++, OS_K0_TO_PHYSICAL(matrix), G_MTX_MODELVIEW | G_MTX_LOAD | G_MTX_NOPUSH);
-
     // Draw the body part
+    gSPMatrix((*glistp)++, OS_K0_TO_PHYSICAL(matrix), G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_PUSH);
     gSPDisplayList((*glistp)++, dl);
+    gSPPopMatrix((*glistp)++, G_MTX_MODELVIEW);
 }
 
 
@@ -216,8 +324,8 @@ void sausage64_drawmodel(Gfx** glistp, s64ModelHelper* mdl)
     // If we have a valid animation
     if (anim != NULL)
     {
-        const s64KeyFrame* ckframe = &anim->keyframes[mdl->curframeindex];
-        const s64KeyFrame* nkframe = &anim->keyframes[(mdl->curframeindex+1)%anim->framecount];
+        const s64KeyFrame* ckframe = &anim->keyframes[mdl->curkeyframe];
+        const s64KeyFrame* nkframe = &anim->keyframes[(mdl->curkeyframe+1)%anim->keyframecount];
         f32 l = 0;
         
         // Prevent division by zero when calculating the lerp amount

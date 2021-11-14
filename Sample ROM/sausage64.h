@@ -18,7 +18,7 @@
 
     typedef struct {
         const char* name;
-        u32 framecount;
+        u32 keyframecount;
         s64KeyFrame* keyframes;
     } s64Animation;
 
@@ -37,13 +37,14 @@
     typedef struct {
         u8 interpolate;
         u8 loop;
-        u32 curframeindex;
-        OSTime nexttick;
         s64Animation* curanim;
-        u32 animtick;
+        u32 curanimlen;
+        float animtick;
+        u32 curkeyframe;
         Mtx* matrix;
         void (*predraw)(u16);
         void (*postdraw)(u16);
+        void (*animcallback)(u16);
         s64ModelData* mdldata;
     } s64ModelHelper;
     
@@ -64,13 +65,34 @@
     
     
     /*==============================
+        sausage64_set_anim
+        Sets an animation on the model. Does not perform 
+        error checking if an invalid animation is given.
+        @param The model helper pointer
+        @param The ANIMATION_* macro to set
+    ==============================*/
+    
+    extern void sausage64_set_anim(s64ModelHelper* mdl, u16 anim);
+    
+    
+    /*==============================
+        sausage64_set_animcallback
+        Set a function that gets called when an animation finishes
+        @param The model helper pointer
+        @param The animation end callback function
+    ==============================*/
+    
+    extern void sausage64_set_animcallback(s64ModelHelper* mdl, void (*animcallback)(u16));
+    
+    
+    /*==============================
         sausage64_set_predrawfunc
         Set a function that gets called before any mesh is rendered
         @param The model helper pointer
         @param The pre draw function
     ==============================*/
     
-    extern void sausage64_set_anim(s64ModelHelper* mdl, u16 anim);
+    extern void sausage64_set_predrawfunc(s64ModelHelper* mdl, void (*predraw)(u16));
     
     
     /*==============================
@@ -80,27 +102,17 @@
         @param The post draw function
     ==============================*/
     
-    extern void sausage64_set_predrawfunc(s64ModelHelper* mdl, void (*predraw)(u16));
-    
-    
-    /*==============================
-        sausage64_update_anim
-        Updates the animation frame index based on the animation 
-        tick
-        @param The model helper pointer
-    ==============================*/
-    
     extern void sausage64_set_postdrawfunc(s64ModelHelper* mdl, void (*postdraw)(u16));
     
     
     /*==============================
         sausage64_advance_anim
-        Advances the animation tick. Assumes model is animated
-        at 30FPS, and that this model has animations.
+        Advances the animation tick by the given amount
         @param The model helper pointer
+        @param The amount to increase the animation tick by
     ==============================*/
     
-    extern void sausage64_advance_anim(s64ModelHelper* mdl);
+    extern void sausage64_advance_anim(s64ModelHelper* mdl, float tickamount);
     
     
     /*==============================

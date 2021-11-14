@@ -337,6 +337,10 @@ https://github.com/buu342/N64-UNFLoader
         usbMesg msg;
         va_list args;
         
+        // Ensure debug mode is initialized
+        if (!debug_initialized)
+            return;
+        
         // use the internal libultra printf function to format the string
         va_start(args, message);
         #ifndef LIBDRAGON
@@ -373,6 +377,10 @@ https://github.com/buu342/N64-UNFLoader
     void debug_dumpbinary(void* file, int size)
     {
         usbMesg msg;
+        
+        // Ensure debug mode is initialized
+        if (!debug_initialized)
+            return;
         
         // Send the binary file to the usb thread
         msg.msgtype = MSG_WRITE;
@@ -451,6 +459,10 @@ https://github.com/buu342/N64-UNFLoader
     void _debug_assert(const char* expression, const char* file, int line)
     {
         volatile char crash;
+        
+        // Ensure debug mode is initialized
+        if (!debug_initialized)
+            return;
         
         // Set the assert data
         assert_expr = expression;

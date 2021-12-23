@@ -9,6 +9,83 @@ https://github.com/buu342/Blender-Sausage64
 #include <ultra64.h>
 #include "sausage64.h"
 
+#define DTOR (3.1415926/180.0)
+
+typedef struct {
+    f32 x;
+    f32 y;
+    f32 z;
+    f32 w;
+} s64Quat;
+
+static void quaternion_fromeuler(s64Quat* q, float yaw, float pitch, float roll)
+{
+    const float c1 = cosf(yaw/2);
+    const float s1 = sinf(yaw/2);
+    const float c2 = cosf(pitch/2);
+    const float s2 = sinf(pitch/2);
+    const float c3 = cosf(roll/2);
+    const float s3 = sinf(roll/2);
+    const float c1c2 = c1*c2;
+    const float s1s2 = s1*s2;
+    q->w = c1c2*c3 - s1s2*s3;
+    q->x = c1c2*s3 + s1s2*c3;
+    q->y = s1*c2*c3 + c1*s2*s3;
+    q->z = c1*s2*c3 - s1*c2*s3;
+}
+
+static inline float quaternion_dot(s64Quat q1, s64Quat q2) {
+    return q1.x*q2.x + q1.y*q2.y + q1.z*q2.z + q1.w*q2.w;
+}
+
+static inline float quaternion_normalize(s64Quat q) {
+    return sqrtf(quaternion_dot(q, q));
+}
+
+static void quaternion_to_mtx(s64Quat* q, float dest[][4])
+{
+    float w, x, y, z, xx, yy, zz, xy, yz, xz, wx, wy, wz, norm, s;
+
+    guMtxIdentF(dest);
+    norm = quaternion_normalize(*q);
+    s    = norm > 0 ? 2 / norm : 0;
+
+    x = q->x;
+    y = q->y;
+    z = q->z;
+    w = q->w;
+
+    xx = s * x * x;
+    xy = s * x * y;
+    xz = s * x * z;
+    yy = s * y * y;
+    yz = s * y * z;
+    zz = s * z * z;
+    wx = s * w * x;
+    wy = s * w * y;
+    wz = s * w * z;
+
+    dest[0][0] = 1 - yy - zz;
+    dest[1][1] = 1 - xx - zz;
+    dest[2][2] = 1 - xx - yy;
+
+    dest[0][1] = xy + wz;
+    dest[1][2] = yz + wx;
+    dest[2][0] = xz + wy;
+
+    dest[1][0] = xy - wz;
+    dest[2][1] = yz - wx;
+    dest[0][2] = xz - wy;
+
+    dest[0][3] = 0;
+    dest[1][3] = 0;
+    dest[2][3] = 0;
+    dest[3][0] = 0;
+    dest[3][1] = 0;
+    dest[3][2] = 0;
+    dest[3][3] = 1;
+}
+
 
 /*==============================
     sausage64_initmodel
@@ -249,6 +326,54 @@ static inline f32 s64lerp(f32 a, f32 b, f32 f)
     return a + f*(b - a);
 }
 
+#include "debug.h"
+static inline s64Quat s64slerp(s64Quat a, s64Quat b, f32 f)
+{
+    s64Quat result, q1, q2;
+    float cosTheta, sinTheta, angle, s;
+    
+    if (a.x == b.x && a.y == b.y && a.z == b.z && a.w == b.w)
+        return a;
+    
+    cosTheta = quaternion_dot(a, b);
+    sinTheta = sqrtf(1 - cosTheta*cosTheta);
+    
+    // lerp to avoid division by zero
+    if (sinTheta < 0.001 || sinTheta > -0.001)
+    {
+        result.x = s64lerp(a.x, b.x, f);
+        result.y = s64lerp(a.y, b.y, f);
+        result.z = s64lerp(a.z, b.z, f);
+        result.w = s64lerp(a.w, b.w, f);
+        return result;
+    }
+
+    // Spherical lerp
+    angle = acos(cosTheta);
+    s = sinf((1 - f)*angle);
+    q1.x = a.x*s;
+    q1.y = a.y*s;
+    q1.z = a.z*s;
+    q1.w = a.w*s;
+    
+    s = sinf(f*angle);
+    q2.x = b.x*s;
+    q2.y = b.y*s;
+    q2.z = b.z*s;
+    q2.w = b.w*s;
+    
+    q1.x += q1.x + q2.x;
+    q1.y += q1.y + q2.y;
+    q1.z += q1.z + q2.z;
+    q1.w += q1.w + q2.w;
+
+    s = 1/sinTheta;
+    result.x = q1.x*s;
+    result.y = q1.y*s;
+    result.z = q1.z*s;
+    result.w = q1.w*s;
+    return result;
+}
 
 /*==============================
     sausage64_drawpart
@@ -265,6 +390,7 @@ static inline f32 s64lerp(f32 a, f32 b, f32 f)
 static inline void sausage64_drawpart(Gfx** glistp, const s64FrameData* cfdata, const s64FrameData* nfdata, const u8 interpolate, const f32 l, Mtx* matrix, Gfx* dl)
 {
     Mtx helper;
+    float fhelper[4][4];
 
     // Initialize the matricies
     guMtxIdent(matrix);
@@ -273,6 +399,17 @@ static inline void sausage64_drawpart(Gfx** glistp, const s64FrameData* cfdata, 
     // Calculate the transformations on the CPU
     if (interpolate)
     {
+        s64Quat q1, q2;
+        const float r1 = cfdata->rot[0]*DTOR;
+        const float p1 = cfdata->rot[1]*DTOR;
+        const float h1 = cfdata->rot[2]*DTOR;
+        const float r2 = nfdata->rot[0]*DTOR;
+        const float p2 = nfdata->rot[1]*DTOR;
+        const float h2 = nfdata->rot[2]*DTOR;
+        quaternion_fromeuler(&q1, p1, h1, r1);
+        quaternion_fromeuler(&q2, p2, h2, r2);
+        q1 = s64slerp(q1, q2, l);
+        
         guTranslate(matrix, 
             s64lerp(cfdata->pos[0], nfdata->pos[0], l), 
             s64lerp(cfdata->pos[1], nfdata->pos[1], l), 
@@ -284,11 +421,8 @@ static inline void sausage64_drawpart(Gfx** glistp, const s64FrameData* cfdata, 
             s64lerp(cfdata->scale[2], nfdata->scale[2], l)
         );
         guMtxCatL(&helper, matrix, matrix);
-        guRotateRPY(&helper,
-            s64lerp(cfdata->rot[0], nfdata->rot[0], l), 
-            s64lerp(cfdata->rot[1], nfdata->rot[1], l),
-            s64lerp(cfdata->rot[2], nfdata->rot[2], l)
-        );
+        quaternion_to_mtx(&q1, fhelper);
+        guMtxF2L(fhelper, &helper);
         guMtxCatL(&helper, matrix, matrix);
     }
     else

@@ -33,7 +33,7 @@ This method of character design was highly popular in the N64 and PS1 era, where
 6. If you are on Blender 2.8 onwards, you're all set! If you are on an earlier version of Blender, you will get a warning that the script is for a newer version of Blender. You can safely ignore this warning. Don't forget to press the `Save User Preferences` button. 
 
 ### S64 file format, Usage Instructions, FAQ, and More
-For more information, please check the [wiki](../../wiki).
+For more information, please check the [wiki](../../wiki). Please note that the Wiki is only updated every release, therefore the information might not match what is in the current repository.
 
 ### Suggestions and bugs
 Please submit suggestions or bugs to the [issues](issues) page.

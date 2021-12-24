@@ -91,7 +91,6 @@ static inline float s64quat_normalize(s64Quat q) {
     Returns the spherical linear 
     interpolation of two quaternions
     given a fraction.
-    Code partially from https://github.com/recp/cglm
     @param The first quaternion
     @param The target quaternion
     @param The fraction
@@ -100,45 +99,28 @@ static inline float s64quat_normalize(s64Quat q) {
 
 static inline s64Quat s64slerp(s64Quat a, s64Quat b, f32 f)
 {
-    s64Quat result, q1, q2;
-    float cosTheta, sinTheta, angle, s;
-    cosTheta = s64clamp(s64quat_dot(a, b), -1, 1);
-    sinTheta = sqrtf(1 - cosTheta*cosTheta);
+    s64Quat result;
+    const float dot = s64quat_dot(a, b);
+    float scale = (dot >= 0) ? 1.0 : -1.0;
     
-    // Lerp to avoid division by zero
-    if (sinTheta < 0.001 || sinTheta > -0.001)
-    {
-        result.x = s64lerp(a.x, b.x, f);
-        result.y = s64lerp(a.y, b.y, f);
-        result.z = s64lerp(a.z, b.z, f);
-        result.w = s64lerp(a.w, b.w, f);
-        return result;
-    }
+    // Scale the quaternion
+    result.w = b.w*scale;
+    result.x = b.x*scale;
+    result.y = b.y*scale;
+    result.z = b.z*scale;
+    
+    // Perform linear interpolation
+    result.w = s64lerp(a.w, result.w, f);
+    result.x = s64lerp(a.x, result.x, f);
+    result.y = s64lerp(a.y, result.y, f);
+    result.z = s64lerp(a.z, result.z, f);
 
-    // Spherical lerp implementation starts here
-    angle = acos(cosTheta);
-    s = sinf((1 - f)*angle);
-    q1.x = a.x*s;
-    q1.y = a.y*s;
-    q1.z = a.z*s;
-    q1.w = a.w*s;
-    
-    s = sinf(f*angle);
-    q2.x = b.x*s;
-    q2.y = b.y*s;
-    q2.z = b.z*s;
-    q2.w = b.w*s;
-    
-    q1.x += q1.x + q2.x;
-    q1.y += q1.y + q2.y;
-    q1.z += q1.z + q2.z;
-    q1.w += q1.w + q2.w;
-
-    s = 1/sinTheta;
-    result.x = q1.x*s;
-    result.y = q1.y*s;
-    result.z = q1.z*s;
-    result.w = q1.w*s;
+    // Normalize the quaternion
+    scale = sqrtf(result.x*result.x + result.y*result.y + result.z*result.z + result.w*result.w);
+    result.x /= scale;
+    result.y /= scale;
+    result.z /= scale;
+    result.w /= scale;
     return result;
 }
 

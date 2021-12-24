@@ -1,7 +1,7 @@
 /***************************************************************
                           sausage64.c
                                
-A very library that handles Sausage64 models exported by 
+A very simple library that handles Sausage64 models exported by 
 Arabiki64.
 https://github.com/buu342/Blender-Sausage64
 ***************************************************************/
@@ -9,8 +9,12 @@ https://github.com/buu342/Blender-Sausage64
 #include <ultra64.h>
 #include "sausage64.h"
 
-#define DTOR (3.1415926/180.0)
 
+/*********************************
+             Structs
+*********************************/
+
+// Quaternion helper struct
 typedef struct {
     f32 w;
     f32 x;
@@ -18,8 +22,191 @@ typedef struct {
     f32 z;
 } s64Quat;
 
-static void quaternion_fromeuler(s64Quat* q, float yaw, float pitch, float roll)
+
+/*********************************
+      Helper Math Functions
+*********************************/
+
+/*==============================
+    s64clamp
+    Clamps a value between two others
+    Code from https://stackoverflow.com/questions/427477/fastest-way-to-clamp-a-real-fixed-floating-point-value/16659263#16659263
+    @param The value to clamp
+    @param The minimum value
+    @param The maximum value
+    @param The fraction
+    @return The clamped value
+==============================*/
+
+static inline f32 s64clamp(f32 value, f32 min, f32 max)
 {
+    const f32 result = value < min ? min : value;
+    return result > max ? max : result;
+}
+
+
+/*==============================
+    s64lerp
+    Returns the linear interpolation of 
+    two values given a fraction
+    @param The first value
+    @param The target value
+    @param The fraction
+    @return The interpolated result
+==============================*/
+
+static inline f32 s64lerp(f32 a, f32 b, f32 f)
+{
+    return a + f*(b - a);
+}
+
+
+/*==============================
+    s64quat_dot
+    Calculates the dot product of
+    two quaternions
+    @param The first quaternion
+    @param The target quaternion
+    @return The dot product
+==============================*/
+
+static inline float s64quat_dot(s64Quat q1, s64Quat q2) {
+    return q1.x*q2.x + q1.y*q2.y + q1.z*q2.z + q1.w*q2.w;
+}
+
+
+/*==============================
+    s64quat_normalize
+    Normalizes a quaternion
+    @param The quaternion to normalize
+==============================*/
+
+static inline float s64quat_normalize(s64Quat q) {
+    return sqrtf(s64quat_dot(q, q));
+}
+
+
+/*==============================
+    s64slerp
+    Returns the spherical linear 
+    interpolation of two quaternions
+    given a fraction.
+    Code partially from https://github.com/recp/cglm
+    @param The first quaternion
+    @param The target quaternion
+    @param The fraction
+    @return The interpolated quaternion
+==============================*/
+
+static inline s64Quat s64slerp(s64Quat a, s64Quat b, f32 f)
+{
+    s64Quat result, q1, q2;
+    float cosTheta, sinTheta, angle, s;
+    cosTheta = s64clamp(s64quat_dot(a, b), -1, 1);
+    sinTheta = sqrtf(1 - cosTheta*cosTheta);
+    
+    // Lerp to avoid division by zero
+    if (sinTheta < 0.001 || sinTheta > -0.001)
+    {
+        result.x = s64lerp(a.x, b.x, f);
+        result.y = s64lerp(a.y, b.y, f);
+        result.z = s64lerp(a.z, b.z, f);
+        result.w = s64lerp(a.w, b.w, f);
+        return result;
+    }
+
+    // Spherical lerp implementation starts here
+    angle = acos(cosTheta);
+    s = sinf((1 - f)*angle);
+    q1.x = a.x*s;
+    q1.y = a.y*s;
+    q1.z = a.z*s;
+    q1.w = a.w*s;
+    
+    s = sinf(f*angle);
+    q2.x = b.x*s;
+    q2.y = b.y*s;
+    q2.z = b.z*s;
+    q2.w = b.w*s;
+    
+    q1.x += q1.x + q2.x;
+    q1.y += q1.y + q2.y;
+    q1.z += q1.z + q2.z;
+    q1.w += q1.w + q2.w;
+
+    s = 1/sinTheta;
+    result.x = q1.x*s;
+    result.y = q1.y*s;
+    result.z = q1.z*s;
+    result.w = q1.w*s;
+    return result;
+}
+
+
+/*==============================
+    s64quat_to_mtx
+    Converts a quaternion to a rotation matrix
+    @param The quaternion to convert
+    @param The rotation matrix to modify
+==============================*/
+
+static inline void s64quat_to_mtx(s64Quat q, float dest[][4])
+{
+    float w, x, y, z, xx, yy, zz, xy, yz, xz, wx, wy, wz, norm, s = 0;
+    
+    // Normalize the quaternion, and then check for division by zero
+    norm = s64quat_normalize(q);
+    if (norm > 0)
+        s = 2/norm;
+
+    // Calculate helper values to reduce computations later
+    xx = q.x*q.x*s;
+    xy = q.x*q.y*s;
+    xz = q.x*q.z*s;
+    yy = q.y*q.y*s;
+    yz = q.y*q.z*s;
+    zz = q.z*q.z*s;
+    wx = q.w*q.x*s;
+    wy = q.w*q.y*s;
+    wz = q.w*q.z*s;
+
+    // Calculate the indices of the matrix
+    dest[0][1] = xy + wz;
+    dest[1][2] = yz + wx;
+    dest[2][0] = xz + wy;
+    dest[1][0] = xy - wz;
+    dest[2][1] = yz - wx;
+    dest[0][2] = xz - wy;
+
+    // Calculate the diagonal of the matrix
+    dest[0][0] = 1 - yy - zz;
+    dest[1][1] = 1 - xx - zz;
+    dest[2][2] = 1 - xx - yy;
+    dest[3][3] = 1;
+
+    // The rest of the matrix should be 0
+    dest[3][0] = 0;
+    dest[0][3] = 0;
+    dest[1][3] = 0;
+    dest[2][3] = 0;
+    dest[3][1] = 0;
+    dest[3][2] = 0;
+}
+
+
+/*==============================
+    s64quat_fromeuler
+    Currently unused
+    Converts a Euler angle (in radians)
+    to a quaternion
+    @param The euler yaw (in radians)
+    @param The euler pitch (in radians)
+    @param The euler roll (in radians)
+==============================*/
+
+static inline s64Quat s64quat_fromeuler(float yaw, float pitch, float roll)
+{
+    s64Quat q;
     const float c1 = cosf(yaw/2);
     const float s1 = sinf(yaw/2);
     const float c2 = cosf(pitch/2);
@@ -28,64 +215,17 @@ static void quaternion_fromeuler(s64Quat* q, float yaw, float pitch, float roll)
     const float s3 = sinf(roll/2);
     const float c1c2 = c1*c2;
     const float s1s2 = s1*s2;
-    q->w = c1c2*c3 - s1s2*s3;
-    q->x = c1c2*s3 + s1s2*c3;
-    q->y = s1*c2*c3 + c1*s2*s3;
-    q->z = c1*s2*c3 - s1*c2*s3;
+    q.w = c1c2*c3 - s1s2*s3;
+    q.x = c1c2*s3 + s1s2*c3;
+    q.y = s1*c2*c3 + c1*s2*s3;
+    q.z = c1*s2*c3 - s1*c2*s3;
+    return q;
 }
 
-static inline float quaternion_dot(s64Quat q1, s64Quat q2) {
-    return q1.x*q2.x + q1.y*q2.y + q1.z*q2.z + q1.w*q2.w;
-}
 
-static inline float quaternion_normalize(s64Quat q) {
-    return sqrtf(quaternion_dot(q, q));
-}
-
-static void quaternion_to_mtx(s64Quat* q, float dest[][4])
-{
-    float w, x, y, z, xx, yy, zz, xy, yz, xz, wx, wy, wz, norm, s;
-
-    guMtxIdentF(dest);
-    norm = quaternion_normalize(*q);
-    s    = norm > 0 ? 2 / norm : 0;
-
-    x = q->x;
-    y = q->y;
-    z = q->z;
-    w = q->w;
-
-    xx = s * x * x;
-    xy = s * x * y;
-    xz = s * x * z;
-    yy = s * y * y;
-    yz = s * y * z;
-    zz = s * z * z;
-    wx = s * w * x;
-    wy = s * w * y;
-    wz = s * w * z;
-
-    dest[0][0] = 1 - yy - zz;
-    dest[1][1] = 1 - xx - zz;
-    dest[2][2] = 1 - xx - yy;
-
-    dest[0][1] = xy + wz;
-    dest[1][2] = yz + wx;
-    dest[2][0] = xz + wy;
-
-    dest[1][0] = xy - wz;
-    dest[2][1] = yz - wx;
-    dest[0][2] = xz - wy;
-
-    dest[0][3] = 0;
-    dest[1][3] = 0;
-    dest[2][3] = 0;
-    dest[3][0] = 0;
-    dest[3][1] = 0;
-    dest[3][2] = 0;
-    dest[3][3] = 1;
-}
-
+/*********************************
+       Sausage64 Functions
+*********************************/
 
 /*==============================
     sausage64_initmodel
@@ -313,70 +453,6 @@ void sausage64_set_anim(s64ModelHelper* mdl, u16 anim)
 
 
 /*==============================
-    s64lerp
-    Returns the linear interpolation of 
-    two values given a fraction
-    @param The first value
-    @param The target value
-    @param The fraction
-==============================*/
-
-static inline f32 s64lerp(f32 a, f32 b, f32 f)
-{
-    return a + f*(b - a);
-}
-
-static inline f32 clamp(f32 d, f32 min, f32 max) {
-  const f32 t = d < min ? min : d;
-  return t > max ? max : t;
-}
-
-static inline s64Quat s64slerp(s64Quat a, s64Quat b, f32 f)
-{
-    s64Quat result, q1, q2;
-    float cosTheta, sinTheta, angle, s;
-    
-    cosTheta = clamp(quaternion_dot(a, b), -1, 1);
-    sinTheta = sqrtf(1 - cosTheta*cosTheta);
-    
-    // lerp to avoid division by zero
-    if (sinTheta < 0.001 || sinTheta > -0.001)
-    {
-        result.x = s64lerp(a.x, b.x, f);
-        result.y = s64lerp(a.y, b.y, f);
-        result.z = s64lerp(a.z, b.z, f);
-        result.w = s64lerp(a.w, b.w, f);
-        return result;
-    }
-
-    // Spherical lerp
-    angle = acos(cosTheta);
-    s = sinf((1 - f)*angle);
-    q1.x = a.x*s;
-    q1.y = a.y*s;
-    q1.z = a.z*s;
-    q1.w = a.w*s;
-    
-    s = sinf(f*angle);
-    q2.x = b.x*s;
-    q2.y = b.y*s;
-    q2.z = b.z*s;
-    q2.w = b.w*s;
-    
-    q1.x += q1.x + q2.x;
-    q1.y += q1.y + q2.y;
-    q1.z += q1.z + q2.z;
-    q1.w += q1.w + q2.w;
-
-    s = 1/sinTheta;
-    result.x = q1.x*s;
-    result.y = q1.y*s;
-    result.z = q1.z*s;
-    result.w = q1.w*s;
-    return result;
-}
-
-/*==============================
     sausage64_drawpart
     Renders a part of a Sausage64 model
     @param A pointer to a display list pointer
@@ -390,53 +466,41 @@ static inline s64Quat s64slerp(s64Quat a, s64Quat b, f32 f)
 
 static inline void sausage64_drawpart(Gfx** glistp, const s64FrameData* cfdata, const s64FrameData* nfdata, const u8 interpolate, const f32 l, Mtx* matrix, Gfx* dl)
 {
-    Mtx helper;
-    float fhelper[4][4];
-
-    // Initialize the matricies
-    guMtxIdent(matrix);
-    guMtxIdent(&helper);
+    float helper1[4][4];
+    float helper2[4][4];
+    s64Quat q = {cfdata->rot[0], cfdata->rot[1], cfdata->rot[2], cfdata->rot[3]};
     
     // Calculate the transformations on the CPU
     if (interpolate)
     {
-        s64Quat q1 = {
-            cfdata->rot[0],
-            cfdata->rot[1],
-            cfdata->rot[2],
-            cfdata->rot[3],
-        };
-        s64Quat q2 = {
-            nfdata->rot[0],
-            nfdata->rot[1],
-            nfdata->rot[2],
-            nfdata->rot[3],
-        };
-        q1 = s64slerp(q1, q2, l);
+        // Setup the quaternions
+        s64Quat qn = {nfdata->rot[0], nfdata->rot[1], nfdata->rot[2], nfdata->rot[3]};
+        q = s64slerp(q, qn, l);
         
-        guTranslate(matrix, 
-            s64lerp(cfdata->pos[0], nfdata->pos[0], l), 
-            s64lerp(cfdata->pos[1], nfdata->pos[1], l), 
-            s64lerp(cfdata->pos[2], nfdata->pos[2], l)
-        );
-        guScale(&helper, 
+        // Combine the translation and scale matrix
+        guScaleF(helper1, 
             s64lerp(cfdata->scale[0], nfdata->scale[0], l), 
             s64lerp(cfdata->scale[1], nfdata->scale[1], l), 
             s64lerp(cfdata->scale[2], nfdata->scale[2], l)
         );
-        guMtxCatL(&helper, matrix, matrix);
-        quaternion_to_mtx(&q1, fhelper);
-        guMtxF2L(fhelper, &helper);
-        guMtxCatL(&helper, matrix, matrix);
+        guTranslateF(helper2, 
+            s64lerp(cfdata->pos[0], nfdata->pos[0], l), 
+            s64lerp(cfdata->pos[1], nfdata->pos[1], l), 
+            s64lerp(cfdata->pos[2], nfdata->pos[2], l)
+        );
+        guMtxCatF(helper2, helper1, helper1);
     }
     else
     {
-        guTranslate(matrix, cfdata->pos[0], cfdata->pos[1], cfdata->pos[2]);    
-        guScale(&helper, cfdata->scale[0], cfdata->scale[1], cfdata->scale[2]);
-        guMtxCatL(&helper, matrix, matrix);
-        guRotateRPY(&helper, cfdata->rot[0], cfdata->rot[1], cfdata->rot[2]);
-        guMtxCatL(&helper, matrix, matrix);
+        guScaleF(helper1, cfdata->scale[0], cfdata->scale[1], cfdata->scale[2]);
+        guTranslateF(helper2, cfdata->pos[0], cfdata->pos[1], cfdata->pos[2]);    
+        guMtxCatF(helper2, helper1, helper1);
     }
+        
+    // Combine the rotation matrix
+    s64quat_to_mtx(q, helper2);
+    guMtxCatF(helper2, helper1, helper1);
+    guMtxF2L(helper1, matrix);
     
     // Draw the body part
     gSPMatrix((*glistp)++, OS_K0_TO_PHYSICAL(matrix), G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_PUSH);

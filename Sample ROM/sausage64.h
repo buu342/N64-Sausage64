@@ -7,7 +7,7 @@
 
     typedef struct {
         f32 pos[3];
-        f32 rot[3];
+        f32 rot[4];
         f32 scale[3];
     } s64FrameData;
 

@@ -12,10 +12,10 @@ https://github.com/buu342/Blender-Sausage64
 #define DTOR (3.1415926/180.0)
 
 typedef struct {
+    f32 w;
     f32 x;
     f32 y;
     f32 z;
-    f32 w;
 } s64Quat;
 
 static void quaternion_fromeuler(s64Quat* q, float yaw, float pitch, float roll)
@@ -399,16 +399,19 @@ static inline void sausage64_drawpart(Gfx** glistp, const s64FrameData* cfdata, 
     // Calculate the transformations on the CPU
     if (interpolate)
     {
-        s64Quat q1, q2;
-        const float r1 = cfdata->rot[0]*DTOR;
-        const float p1 = cfdata->rot[1]*DTOR;
-        const float h1 = cfdata->rot[2]*DTOR;
-        const float r2 = nfdata->rot[0]*DTOR;
-        const float p2 = nfdata->rot[1]*DTOR;
-        const float h2 = nfdata->rot[2]*DTOR;
-        quaternion_fromeuler(&q1, p1, h1, r1);
-        quaternion_fromeuler(&q2, p2, h2, r2);
-        q1 = s64slerp(q1, q2, l);
+        s64Quat q1 = {
+            cfdata->rot[0],
+            cfdata->rot[1],
+            cfdata->rot[2],
+            cfdata->rot[3],
+        };
+        s64Quat q2 = {
+            nfdata->rot[0],
+            nfdata->rot[1],
+            nfdata->rot[2],
+            nfdata->rot[3],
+        };
+        //q1 = s64slerp(q1, q2, l);
         
         guTranslate(matrix, 
             s64lerp(cfdata->pos[0], nfdata->pos[0], l), 

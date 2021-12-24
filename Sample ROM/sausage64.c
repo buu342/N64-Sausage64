@@ -326,16 +326,17 @@ static inline f32 s64lerp(f32 a, f32 b, f32 f)
     return a + f*(b - a);
 }
 
-#include "debug.h"
+static inline f32 clamp(f32 d, f32 min, f32 max) {
+  const f32 t = d < min ? min : d;
+  return t > max ? max : t;
+}
+
 static inline s64Quat s64slerp(s64Quat a, s64Quat b, f32 f)
 {
     s64Quat result, q1, q2;
     float cosTheta, sinTheta, angle, s;
     
-    if (a.x == b.x && a.y == b.y && a.z == b.z && a.w == b.w)
-        return a;
-    
-    cosTheta = quaternion_dot(a, b);
+    cosTheta = clamp(quaternion_dot(a, b), -1, 1);
     sinTheta = sqrtf(1 - cosTheta*cosTheta);
     
     // lerp to avoid division by zero
@@ -411,7 +412,7 @@ static inline void sausage64_drawpart(Gfx** glistp, const s64FrameData* cfdata, 
             nfdata->rot[2],
             nfdata->rot[3],
         };
-        //q1 = s64slerp(q1, q2, l);
+        q1 = s64slerp(q1, q2, l);
         
         guTranslate(matrix, 
             s64lerp(cfdata->pos[0], nfdata->pos[0], l), 

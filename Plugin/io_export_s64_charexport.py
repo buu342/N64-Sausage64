@@ -2,7 +2,7 @@ bl_info = {
     "name": "Sausage64 Character Export",
     "description": "Exports a sausage-link character with animations.",
     "author": "Buu342",
-    "version": (1, 0),
+    "version": (1, 1),
     "blender": (2, 80, 0),
     "location": "File > Export > Sausage64 Character (.S64)",
     "warning": "",
@@ -155,7 +155,7 @@ def writeFile(self, object, finalList, animList):
                     frame = a.frames[kf][b]
                     file.write(frame.bone)
                     file.write((" %.4f " % frame.pos.x)+("%.4f " % frame.pos.y)+("%.4f" % frame.pos.z))
-                    file.write((" %.4f " % frame.ang.x)+("%.4f " % frame.ang.y)+("%.4f" % frame.ang.z))
+                    file.write((" %.4f " % frame.ang.w)+(" %.4f " % frame.ang.x)+("%.4f " % frame.ang.y)+("%.4f" % frame.ang.z))
                     file.write((" %.4f " % frame.scale.x)+("%.4f " % frame.scale.y)+("%.4f\n" % frame.scale.z))
                 file.write("END KEYFRAME "+str(int(kf))+"\n")
                 
@@ -338,9 +338,6 @@ def setupData(self, object, skeletonList, meshList, settingsList):
            
             # Get the current frame so that we can reset it later
             framebefore = bpy.context.scene.frame_current
-            
-            # For angle rollover correction
-            oldangle = {}
            
             # Now that we have a list of places where keyframes exist, lets get anim data for that frame
             for k in anim.frames:
@@ -383,12 +380,8 @@ def setupData(self, object, skeletonList, meshList, settingsList):
                         boneframe.pos   = mat_final.to_translation()
                         boneframe.scale = mat_final.to_scale()
                         
-                        # Store the rotation, correcting for angle rollover
-                        if (b.name in oldangle and settingsList.rolloverfix):
-                            boneframe.ang   = mat_final.to_euler(oldangle[b.name].order, oldangle[b.name])
-                        else:
-                            boneframe.ang   = mat_final.to_euler()
-                        oldangle[b.name] = boneframe.ang
+                        # Store the rotation
+                        boneframe.ang   = mat_final.to_quaternion()
                         
                         # Add this bone's frame data to the to the list of frame data for this keyframe
                         anim.frames[k][b.name] = boneframe
@@ -458,7 +451,6 @@ class ObjectExport(bpy.types.Operator):
     setting_triangulate = bpy.props.BoolProperty(name="Triangulate", description="Triangulate objects", default=False)
     setting_selected    = bpy.props.BoolProperty(name="Selected only", description="Export selected objects only", default=False)
     setting_visible     = bpy.props.BoolProperty(name="Visible only", description="Export visible objects only", default=True)
-    setting_rolloverfix = bpy.props.BoolProperty(name="Correct angle rollover", description="Add/Subtract 360 degrees to angles that roll over", default=True)
     filepath            = bpy.props.StringProperty(subtype='FILE_PATH')    
 
     # If we are running on Blender 2.9.3 or newer, it will expect the new "annotation"
@@ -469,7 +461,6 @@ class ObjectExport(bpy.types.Operator):
                            "setting_triangulate" : setting_triangulate,
                            "setting_selected" : setting_selected,
                            "setting_visible" : setting_visible,
-                           "setting_rolloverfix" : setting_rolloverfix,
                            "filepath" : filepath}
     
     def execute(self, context):
@@ -482,7 +473,6 @@ class ObjectExport(bpy.types.Operator):
         settingsList.triangulate  = self.setting_triangulate
         settingsList.onlyselected = self.setting_selected
         settingsList.onlyvisible  = self.setting_visible
-        settingsList.rolloverfix  = self.setting_rolloverfix
         
         # Pick out what objects we're going to look over
         list = bpy.data.objects

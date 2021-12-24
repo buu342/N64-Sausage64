@@ -13,7 +13,6 @@ Outputs the parsed data to a file
 #include "animation.h"
 
 #define STRBUF_SIZE 512
-#define RADIAN 57.2957795
 
 /*==============================
     write_output_text
@@ -123,9 +122,9 @@ void write_output_text()
                 for (fdatanode = keyf->framedata.head; fdatanode != NULL; fdatanode = fdatanode->next)
                 {
                     s64FrameData* fdata = (s64FrameData*)fdatanode->data;
-                    fprintf(fp, "    {%.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f},\n", 
+                    fprintf(fp, "    {%.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f},\n", 
                         fdata->translation.x, fdata->translation.y, fdata->translation.z,
-                        fdata->rotation.x*RADIAN, fdata->rotation.y*RADIAN, fdata->rotation.z*RADIAN,
+                        fdata->rotation.w, fdata->rotation.x, fdata->rotation.y, fdata->rotation.z,
                         fdata->scale.x, fdata->scale.y, fdata->scale.z
                     );
                 }

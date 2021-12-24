@@ -9,7 +9,7 @@
     *********************************/
 
     #define PROGRAM_NAME    "Arabiki64"
-    #define PROGRAM_VERSION "1.0"
+    #define PROGRAM_VERSION "1.1"
     
     
     /*********************************

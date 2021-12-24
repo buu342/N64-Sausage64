@@ -224,6 +224,7 @@ void parse_sausage(FILE* fp)
                         curframedata->translation.x = atof(strtok(NULL, " "));
                         curframedata->translation.y = atof(strtok(NULL, " "));
                         curframedata->translation.z = atof(strtok(NULL, " "));
+                        curframedata->rotation.w = atof(strtok(NULL, " "));
                         curframedata->rotation.x = atof(strtok(NULL, " "));
                         curframedata->rotation.y = atof(strtok(NULL, " "));
                         curframedata->rotation.z = atof(strtok(NULL, " "));

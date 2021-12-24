@@ -9,7 +9,7 @@
     typedef struct {
         s64Mesh* mesh;
         Vector3D translation;
-        Vector3D rotation;
+        Vector4D rotation;
         Vector3D scale;
     } s64FrameData;
     

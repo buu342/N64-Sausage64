@@ -64,6 +64,13 @@
     /* --- Vectors --- */
     
     typedef struct {
+        float w;
+        float x;
+        float y;
+        float z;
+    } Vector4D;
+    
+    typedef struct {
         float x;
         float y;
         float z;

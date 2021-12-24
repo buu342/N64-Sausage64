@@ -33,10 +33,14 @@ void mainproc(void)
     {
         osViSetMode(&osViModeTable[OS_VI_FPAL_LAN1]);
         osViSetYScale(0.833);
+        osViSetSpecialFeatures(OS_VI_DITHER_FILTER_ON | OS_VI_GAMMA_OFF | OS_VI_GAMMA_DITHER_OFF | OS_VI_DIVOT_ON);
     }
     else if (TV_TYPE == MPAL)
+    {
         osViSetMode(&osViModeTable[OS_VI_MPAL_LAN1]);
-
+        osViSetSpecialFeatures(OS_VI_DITHER_FILTER_ON | OS_VI_GAMMA_OFF | OS_VI_GAMMA_DITHER_OFF | OS_VI_DIVOT_ON);
+    }
+    
     // Initialize and activate the graphics thread and Graphics Task Manager.
     nuGfxInit();
     

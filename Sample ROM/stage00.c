@@ -363,13 +363,19 @@ void stage00_draw(void)
     
     // Ensure we haven't gone over the display list size and start the graphics task
     debug_assert((glistp-glist) < GLIST_LENGTH);
-    nuGfxTaskStart(glist, (s32)(glistp - glist) * sizeof(Gfx), NU_GFX_UCODE_F3DEX, NU_SC_NOSWAPBUFFER);
+    #if TV_TYPE != PAL
+        nuGfxTaskStart(glist, (s32)(glistp - glist) * sizeof(Gfx), NU_GFX_UCODE_F3DEX, NU_SC_NOSWAPBUFFER);
+    #else
+        nuGfxTaskStart(glist, (s32)(glistp - glist) * sizeof(Gfx), NU_GFX_UCODE_F3DEX, NU_SC_SWAPBUFFER);
+    #endif
     
-    // Draw the menu
-    nuDebConClear(NU_DEB_CON_WINDOW0);
-    if (menuopen)
-        draw_menu();
-    nuDebConDisp(NU_SC_SWAPBUFFER);
+    // Draw the menu (doesn't work on PAL)
+    #if TV_TYPE != PAL
+        nuDebConClear(NU_DEB_CON_WINDOW0);
+        if (menuopen)
+            draw_menu();
+        nuDebConDisp(NU_SC_SWAPBUFFER);
+    #endif
 }
 
 

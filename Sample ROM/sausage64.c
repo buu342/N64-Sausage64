@@ -116,7 +116,7 @@ static inline s64Quat s64slerp(s64Quat a, s64Quat b, f32 f)
     result.z = s64lerp(a.z, result.z, f);
 
     // Normalize the quaternion
-    scale = sqrtf(result.x*result.x + result.y*result.y + result.z*result.z + result.w*result.w);
+    scale = s64quat_normalize(result);
     result.x /= scale;
     result.y /= scale;
     result.z /= scale;

@@ -13,7 +13,8 @@ bl_info = {
 }
 
 # TODO:
-## Support multiple Colors/UV's per vertex by duplicating vertices
+## Support multiple UV's per vertex by duplicating vertices
+## Support multiple Colors per vertex by duplicating vertices
 ## bpy.context.scene.render.fps
 
 import bpy
@@ -22,9 +23,10 @@ import math
 import bmesh
 import operator
 import mathutils
+import itertools
 import collections
 
-DebugS64acterExport = 0
+DebugS64Export = False
 
 class S64Vertex:
     def __init__(self):
@@ -51,10 +53,12 @@ class S64Mesh:
         self.name  = name # Skeleton name
         self.verts = {}   # Dict of vertices
         self.faces = []   # List of faces
+        self.mats = []    # List of materials used by this mesh
         self.root  = None # Bone root location
     def __str__(self):
         string = "S64Mesh: '"+self.name+"'\n"
         string = string+"Root: "+str(self.root)+"\n"
+        string = string+"Materials: "+str(self.mats)+"\n"
         string = string + "Verts:\n"
         for i in self.verts:
             string = string + "\t"+str(i)+" -> "+str(self.verts[i])+"\n"
@@ -62,6 +66,13 @@ class S64Mesh:
         for i in self.faces:
             string = string + "\t"+str(i)+"\n"
         return string
+    def sharesMats(self, other):
+        if (len(self.mats) != len(other.mats)):
+           return False
+        for m in self.mats:
+            if (not m in other.mats):
+                return False
+        return True
         
 class S64Anim:
     def __init__(self, name):
@@ -88,11 +99,19 @@ class S64KeyFrame:
         string = string+"\t\t Scale = "+str(self.scale)
         return string
 
+class TSPNode:
+    def __init__(self, id):
+        self.id = id        # The ID of this node
+        self.materials = [] # The materials used by this node
+        self.meshes = []    # The meshes used by this node
+        self.edges = []     # A list with a tuple of nodes and the corresponding edge weight
+        self.ignore = []    # A list of node ID's to ignore if this node is visited
+
 class settingsExport:
     triangulate  = None
     onlyvisible  = None
     onlyselected = None
-    rolloverfix  = None
+    sortmats  = None
     
 def isNewBlender():
     return bpy.app.version >= (2, 80)
@@ -107,7 +126,7 @@ def writeFile(self, object, finalList, animList):
         file.write("/**********************************\n")
         file.write("      Sausage64 Character Mesh\n")
         file.write("         Script by Buu342\n")
-        file.write("            Version 1.0\n")
+        file.write("            Version 1.1\n")
         file.write("**********************************/\n\n")
         
         # Write the mesh data
@@ -182,10 +201,12 @@ def addFace(finalList, f, name, vertex_normals, vertex_colors, vertex_uvs, mater
     except IndexError:
         face.mat = "None"
     finalList[name].faces.append(face)
+    if (not face.mat in finalList[name].mats):
+        finalList[name].mats.append(face.mat)
 
 def setupData(self, object, skeletonList, meshList, settingsList):
-    finalList = {}
-    animList = {}
+    finalList = collections.OrderedDict()
+    animList = collections.OrderedDict()
     
     # The first element should always be None (for objects without bones)
     finalList["None"] = S64Mesh("None")
@@ -430,14 +451,144 @@ def setupData(self, object, skeletonList, meshList, settingsList):
     for i in animList:
         animList[i].frames = collections.OrderedDict(sorted(animList[i].frames.items()))
     
+    # Sort animations alphabetically
+    animList = collections.OrderedDict(sorted(animList.items()))
+        
+    # Return the list with all the meshes and animations
+    return finalList, animList
+
+def optimizeData(self, context, finalList, animList, settingsList):
+
+    # Sort meshes alphabetically
+    finalList = collections.OrderedDict(sorted(finalList.items()))
+    
+    # We want to sort meshes to reduce the amount of material loads
+    # The algorithm works as follows:
+    # Treat each mesh as a node. For a mesh that loads N materials, you must create N! nodes
+    # For instance, a mesh that loads material A and B must have nodes A+B and B+A
+    # When all nodes are generated, connect every node to each other. If a material swap occurs, then that edge has weight 1, 0 otherwise.
+    # Once the network has been created, solve the problem using Traveling Salesman
+    # Note: If, for instance, the path A+B is taken, B+A must be ignored as it's no longer needed
+    
+    # Skip this optimization unless we have enough meshes to sort
+    if ((len(finalList) > 2) and (settingsList.sortmats)):
+    
+        # First, group all meshes by the materials they use
+        mGroupedByMat = []
+        empty = True
+        for m in finalList:
+            found = False
+            
+            # First element of the list
+            if (empty):
+                mGroupedByMat.append([finalList[m]])
+                empty = False
+                continue
+                
+            # Find meshes that share materials with us
+            for e in mGroupedByMat:
+                if (finalList[m].sharesMats(e[0])):
+                    e.append(finalList[m])
+                    found = True
+                    break;
+            
+            # There were no meshes that had this collection of materials
+            if (not found):
+                mGroupedByMat.append([finalList[m]])
+                
+    
+        # Now that we have a list of meshes, sorted by the materials they load, create N factorial nodes for N material loads
+        id = 0
+        nodesList = []
+        for m in mGroupedByMat:
+            mats = m[0].mats.copy() # m[0] because the first mesh uses the same materials as all other meshes
+            factorial = list(itertools.permutations(mats, len(m[0].mats)))
+            startid = id
+            for e in factorial:
+                node = TSPNode(id)
+                node.materials = e
+                node.meshes = m
+                
+                # Create the ignore list for this node
+                for i in range(startid, startid+len(factorial)):
+                    if (i != id):
+                        node.ignore.append(i)
+                
+                # Add this node to the nodes list and increment the id tracker
+                nodesList.append(node)
+                id += 1
+                
+        # Generate the undirected weighted graph
+        for n1 in nodesList:
+            for n2 in nodesList:
+                if ((n1 != n2) and (not n2.id in n1.ignore)):
+                    if (n1.materials[len(n1.materials)-1] != n2.materials[0]):
+                        n1.edges.append((n2, 1))
+                    else:
+                        n1.edges.append((n2, 0))
+        
+        # Solve the traveling salesman problem
+        # Using nearest neighbor because I'm lazy
+        loads = []
+        shortest = []
+        shortestsize = 2147483647
+        for n1 in nodesList:
+        
+            # Initialize the algorithm
+            cur = n1
+            path = [cur.id]
+            pathsize = 0
+            left = []
+            for n2 in nodesList:
+                if ((cur != n2) and (not n2.id in cur.ignore)):
+                    left.append(n2.id)
+            
+            # Do the algorithm
+            while len(left) != 0:
+                next = None
+                nextsize = 2147483647
+                
+                # Find the shortest path
+                for n in cur.edges:
+                    if ((n[0].id in left) and (n[1] < nextsize)):
+                        next = n[0]
+                        nextsize = n[1]
+                
+                # Travel down that path
+                path.append(next.id)
+                left.remove(next.id)
+                for i in next.ignore:
+                    if i in left:
+                        left.remove(i)
+                cur = next
+                pathsize += nextsize
+                
+            # If this solution was better, store the result
+            if (pathsize < shortestsize):
+                shortest = path
+                shortestsize = pathsize
+        
+        # Store the new order
+        finalList = collections.OrderedDict()
+        if (DebugS64Export):
+            print("Optimal model loading order:")
+        for n in shortest:
+            for m in nodesList[n].meshes:
+                finalList[m.name] = m
+                if (DebugS64Export):
+                    print(m.name.ljust(16)+" loads: "+str(nodesList[n].materials))
+                
+        # Now we need to sort the faces inside each mesh to fit the correct loading order
+        # TODO, but on the Parser side:
+    
     # Print the model data for debugging purposes
-    if (DebugS64acterExport):
+    if (DebugS64Export):
         for i in finalList:
             print(finalList[i])
         for i in animList:
             print(animList[i])
-        
-    # Return the list with all the meshes and animations
+    
+    # Return the sorted lists
     return finalList, animList
 
 class ObjectExport(bpy.types.Operator):
@@ -451,6 +602,7 @@ class ObjectExport(bpy.types.Operator):
     setting_triangulate = bpy.props.BoolProperty(name="Triangulate", description="Triangulate objects", default=False)
     setting_selected    = bpy.props.BoolProperty(name="Selected only", description="Export selected objects only", default=False)
     setting_visible     = bpy.props.BoolProperty(name="Visible only", description="Export visible objects only", default=True)
+    setting_sortmats    = bpy.props.BoolProperty(name="Optimize material loading order", description="Sorts the model to reduce material loading. Can be slow for very large models!", default=True)
     filepath            = bpy.props.StringProperty(subtype='FILE_PATH')    
 
     # If we are running on Blender 2.9.3 or newer, it will expect the new "annotation"
@@ -461,6 +613,7 @@ class ObjectExport(bpy.types.Operator):
                            "setting_triangulate" : setting_triangulate,
                            "setting_selected" : setting_selected,
                            "setting_visible" : setting_visible,
+                           "setting_sortmats" : setting_sortmats,
                            "filepath" : filepath}
     
     def execute(self, context):
@@ -473,6 +626,7 @@ class ObjectExport(bpy.types.Operator):
         settingsList.triangulate  = self.setting_triangulate
         settingsList.onlyselected = self.setting_selected
         settingsList.onlyvisible  = self.setting_visible
+        settingsList.sortmats     = self.setting_sortmats
         
         # Pick out what objects we're going to look over
         list = bpy.data.objects
@@ -491,6 +645,9 @@ class ObjectExport(bpy.types.Operator):
         finalList, animList = setupData(self, context, skeletonList, meshList, settingsList)
         if (finalList == 'CANCELLED'):
             return {'CANCELLED'}
+            
+        # Optimize the data further
+        finalList, animList = optimizeData(self, context, finalList, animList, settingsList)
             
         # Finally, dump all the organized data to a file
         writeFile(self, context, finalList, animList);

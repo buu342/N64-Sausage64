@@ -13,7 +13,6 @@ bl_info = {
 }
 
 # TODO:
-## Scene FPS: bpy.context.scene.render.fps
 ## Do a second pass over the wiki because of all the new changes
 ## Test changes on the N64 to ensure all the stuff is working as intended, and close the issues
 ## Billboard tag for bones
@@ -27,6 +26,7 @@ import mathutils
 import itertools
 import collections
 
+DefaultAnimFPS = 30.0
 DebugS64Export = False
 
 class S64Vertex:
@@ -112,7 +112,8 @@ class settingsExport:
     triangulate  = None
     onlyvisible  = None
     onlyselected = None
-    sortmats  = None
+    sortmats     = None
+    animfps      = None
     
 def isNewBlender():
     return bpy.app.version >= (2, 80)
@@ -330,12 +331,13 @@ def setupData(self, object, skeletonList, meshList, settingsList):
             anim = S64Anim(a.name)
             start = a.frame_range.x
             end = a.frame_range.y
+            keyscale = (DefaultAnimFPS/settingsList.animfps)
             
             # Cycle through all the fcurves and add keyframe numbers that exist
             for fcurve in a.fcurves:
                 for p in fcurve.keyframe_points:
                     if not p.co.x in anim.frames:
-                        anim.frames[p.co.x] = {}
+                        anim.frames[p.co.x*keyscale] = {}
            
             # Get the current frame so that we can reset it later
             framebefore = bpy.context.scene.frame_current
@@ -344,7 +346,7 @@ def setupData(self, object, skeletonList, meshList, settingsList):
             for k in anim.frames:
 
                 # Modify the current Blender keyframe so we can get the pose data
-                bpy.context.scene.frame_set(int(k))
+                bpy.context.scene.frame_set(int(k/keyscale))
 
                 # Go through all skeletons and add the bone's data
                 for s in skeletonList:
@@ -595,10 +597,11 @@ class ObjectExport(bpy.types.Operator):
     filename_ext = ".S64"
     
     filter_glob         = bpy.props.StringProperty(default="*.S64", options={'HIDDEN'}, maxlen=255)
-    setting_triangulate = bpy.props.BoolProperty(name="Triangulate", description="Triangulate objects", default=False)
-    setting_selected    = bpy.props.BoolProperty(name="Selected only", description="Export selected objects only", default=False)
-    setting_visible     = bpy.props.BoolProperty(name="Visible only", description="Export visible objects only", default=True)
+    setting_triangulate = bpy.props.BoolProperty(name="Triangulate", description="Triangulate objects.", default=False)
+    setting_selected    = bpy.props.BoolProperty(name="Selected only", description="Export selected objects only.", default=False)
+    setting_visible     = bpy.props.BoolProperty(name="Visible only", description="Export visible objects only.", default=True)
     setting_sortmats    = bpy.props.BoolProperty(name="Optimize material loading order", description="Sorts the model to reduce material loading. Can be slow for very large models!", default=True)
+    setting_animfps     = bpy.props.FloatProperty(name="Animation FPS", description="By default, Sausage64 assumes animations are 30FPS. Changing this value will scale the animation to match this framerate.", min=0.0, max=1000.0, default=30.0)
     filepath            = bpy.props.StringProperty(subtype='FILE_PATH')    
 
     # If we are running on Blender 2.9.3 or newer, it will expect the new "annotation"
@@ -610,6 +613,7 @@ class ObjectExport(bpy.types.Operator):
                            "setting_selected" : setting_selected,
                            "setting_visible" : setting_visible,
                            "setting_sortmats" : setting_sortmats,
+                           "setting_animfps" : setting_animfps,
                            "filepath" : filepath}
     
     def execute(self, context):
@@ -623,6 +627,7 @@ class ObjectExport(bpy.types.Operator):
         settingsList.onlyselected = self.setting_selected
         settingsList.onlyvisible  = self.setting_visible
         settingsList.sortmats     = self.setting_sortmats
+        settingsList.animfps      = self.setting_animfps
         
         # Pick out what objects we're going to look over
         list = bpy.data.objects

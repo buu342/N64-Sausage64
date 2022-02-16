@@ -12,11 +12,6 @@ bl_info = {
     "category": "Import-Export"
 }
 
-# TODO:
-## Do a second pass over the wiki because of all the new changes
-## Test changes on the N64 to ensure all the stuff is working as intended, and close the issues
-## Billboard tag for bones
-
 import bpy
 import copy
 import math
@@ -54,7 +49,8 @@ class S64Mesh:
         self.name  = name # Skeleton name
         self.verts = {}   # Dict of vertices
         self.faces = []   # List of faces
-        self.mats = []    # List of materials used by this mesh
+        self.mats  = []   # List of materials used by this mesh
+        self.props = []   # List of custom properties
         self.root  = None # Bone root location
     def __str__(self):
         string = "S64Mesh: '"+self.name+"'\n"
@@ -123,68 +119,6 @@ def matmul(a, b):
         return operator.matmul(a, b)
     return a*b
 
-def writeFile(self, object, finalList, animList):
-    with open(self.filepath, 'w') as file:
-        file.write("/**********************************\n")
-        file.write("      Sausage64 Character Mesh\n")
-        file.write("         Script by Buu342\n")
-        file.write("            Version 1.1\n")
-        file.write("**********************************/\n\n")
-        
-        # Write the mesh data
-        for n, m in finalList.items():
-        
-            # Start a new mesh
-            file.write("BEGIN MESH "+n+"\n")
-            file.write("ROOT "+("%.4f " % m.root.x)+("%.4f " % m.root.y)+("%.4f\n" % m.root.z))
-            
-            # Write the list of vertices
-            file.write("BEGIN VERTICES\n")
-            for k, v in m.verts.items():
-                file.write("%.4f %.4f %.4f " % v.coor[:])
-                file.write("%.4f %.4f %.4f " % v.norm[:])
-                file.write(("%.4f " % v.colr[0])+("%.4f " % v.colr[1])+("%.4f " % v.colr[2]))
-                file.write("%.4f %.4f" % v.uv[:])
-                file.write("\n")
-            file.write("END VERTICES\n")
-            
-            # Write the list of faces
-            file.write("BEGIN FACES\n")
-            for f in m.faces:
-                file.write(str(len(f.verts))+" ")
-                for v in f.verts:
-                    file.write(str(v)+" ")
-                if (f.mat != "" and f.mat is not None):
-                    file.write(f.mat+"\n")
-                else:
-                    file.write("None\n")
-            file.write("END FACES\n")
-            
-            # End this mesh
-            file.write("END MESH "+n+"\n\n")
-            
-        # Write the animation data
-        for n, a in animList.items():
-        
-            # Start a new Animation
-            file.write("BEGIN ANIMATION "+n+"\n")
-            
-            # Write the list of keyframes
-            for kf in a.frames:
-                file.write("BEGIN KEYFRAME "+str(int(kf))+"\n")
-                for b in a.frames[kf]:
-                    frame = a.frames[kf][b]
-                    file.write(frame.bone)
-                    file.write((" %.4f " % frame.pos.x)+("%.4f " % frame.pos.y)+("%.4f" % frame.pos.z))
-                    file.write((" %.4f " % frame.ang.w)+(" %.4f " % frame.ang.x)+("%.4f " % frame.ang.y)+("%.4f" % frame.ang.z))
-                    file.write((" %.4f " % frame.scale.x)+("%.4f " % frame.scale.y)+("%.4f\n" % frame.scale.z))
-                file.write("END KEYFRAME "+str(int(kf))+"\n")
-                
-            file.write("END ANIMATION "+n+"\n\n")
-            
-    self.report({'INFO'}, 'File exported sucessfully!')
-    return {'FINISHED'}
-
 def setupData(self, object, skeletonList, meshList, settingsList):
     finalList = collections.OrderedDict()
     animList = collections.OrderedDict()
@@ -212,7 +146,12 @@ def setupData(self, object, skeletonList, meshList, settingsList):
                     return 'CANCELLED'
                 finalList[b.name] = S64Mesh(b.name)
                 finalList[b.name].root = mathutils.Vector((b.head_local.x, b.head_local.y, b.head_local.z))
-    
+                
+                # Add custom bone properties
+                for prop in b.keys():
+                    if (prop != "_RNA_UI"):
+                        finalList[b.name].props.append(prop)
+                        
     # Now go through all the meshes and create the model data, finding out which vert belongs to which bone
     for m in meshList:
         
@@ -588,6 +527,70 @@ def optimizeData(self, context, finalList, animList, settingsList):
     
     # Return the sorted lists
     return finalList, animList
+
+def writeFile(self, object, finalList, animList):
+    with open(self.filepath, 'w') as file:
+        file.write("/**********************************\n")
+        file.write("      Sausage64 Character Mesh\n")
+        file.write("         Script by Buu342\n")
+        file.write("            Version 1.1\n")
+        file.write("**********************************/\n\n")
+        
+        # Write the mesh data
+        for n, m in finalList.items():
+        
+            # Start a new mesh
+            file.write("BEGIN MESH "+n+"\n")
+            file.write("ROOT "+("%.4f " % m.root.x)+("%.4f " % m.root.y)+("%.4f\n" % m.root.z))
+            if (len(m.props) > 0):
+                file.write("PROPERTIES "+' '.join(m.props)+"\n")
+            
+            # Write the list of vertices
+            file.write("BEGIN VERTICES\n")
+            for k, v in m.verts.items():
+                file.write("%.4f %.4f %.4f " % v.coor[:])
+                file.write("%.4f %.4f %.4f " % v.norm[:])
+                file.write(("%.4f " % v.colr[0])+("%.4f " % v.colr[1])+("%.4f " % v.colr[2]))
+                file.write("%.4f %.4f" % v.uv[:])
+                file.write("\n")
+            file.write("END VERTICES\n")
+            
+            # Write the list of faces
+            file.write("BEGIN FACES\n")
+            for f in m.faces:
+                file.write(str(len(f.verts))+" ")
+                for v in f.verts:
+                    file.write(str(v)+" ")
+                if (f.mat != "" and f.mat is not None):
+                    file.write(f.mat+"\n")
+                else:
+                    file.write("None\n")
+            file.write("END FACES\n")
+            
+            # End this mesh
+            file.write("END MESH "+n+"\n\n")
+            
+        # Write the animation data
+        for n, a in animList.items():
+        
+            # Start a new Animation
+            file.write("BEGIN ANIMATION "+n+"\n")
+            
+            # Write the list of keyframes
+            for kf in a.frames:
+                file.write("BEGIN KEYFRAME "+str(int(kf))+"\n")
+                for b in a.frames[kf]:
+                    frame = a.frames[kf][b]
+                    file.write(frame.bone)
+                    file.write((" %.4f " % frame.pos.x)+("%.4f " % frame.pos.y)+("%.4f" % frame.pos.z))
+                    file.write((" %.4f " % frame.ang.w)+(" %.4f " % frame.ang.x)+("%.4f " % frame.ang.y)+("%.4f" % frame.ang.z))
+                    file.write((" %.4f " % frame.scale.x)+("%.4f " % frame.scale.y)+("%.4f\n" % frame.scale.z))
+                file.write("END KEYFRAME "+str(int(kf))+"\n")
+                
+            file.write("END ANIMATION "+n+"\n\n")
+            
+    self.report({'INFO'}, 'File exported sucessfully!')
+    return {'FINISHED'}
 
 class ObjectExport(bpy.types.Operator):
     """Exports a sausage-link character with animations."""

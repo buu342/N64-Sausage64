@@ -13,9 +13,10 @@ bl_info = {
 }
 
 # TODO:
-## Support multiple UV's per vertex by duplicating vertices
-## Support multiple Colors per vertex by duplicating vertices
-## bpy.context.scene.render.fps
+## Scene FPS: bpy.context.scene.render.fps
+## Do a second pass over the wiki because of all the new changes
+## Test changes on the N64 to ensure all the stuff is working as intended, and close the issues
+## Billboard tag for bones
 
 import bpy
 import copy
@@ -183,27 +184,6 @@ def writeFile(self, object, finalList, animList):
     self.report({'INFO'}, 'File exported sucessfully!')
     return {'FINISHED'}
 
-def addFace(finalList, f, name, vertex_normals, vertex_colors, vertex_uvs, materials_list, prevcount):
-    face = S64Face()
-    for vi in f.verts:
-        face.verts.append(vi.index+prevcount)
-        vert = S64Vertex()
-        vert.coor = vi.co[:]
-        vert.norm = vertex_normals[vi.index][:]
-        try:
-            vert.colr = vertex_colors[vi.index][:]
-        except KeyError:
-            vert.colr = (1.0, 1.0, 1.0)
-        vert.uv = vertex_uvs[vi.index][:]
-        finalList[name].verts[vi.index+prevcount] = vert
-    try:
-        face.mat = materials_list[f.material_index].name
-    except IndexError:
-        face.mat = "None"
-    finalList[name].faces.append(face)
-    if (not face.mat in finalList[name].mats):
-        finalList[name].mats.append(face.mat)
-
 def setupData(self, object, skeletonList, meshList, settingsList):
     finalList = collections.OrderedDict()
     animList = collections.OrderedDict()
@@ -232,7 +212,7 @@ def setupData(self, object, skeletonList, meshList, settingsList):
                 finalList[b.name] = S64Mesh(b.name)
                 finalList[b.name].root = mathutils.Vector((b.head_local.x, b.head_local.y, b.head_local.z))
     
-    # Now go through all the meshes and find out which bone they belong to
+    # Now go through all the meshes and create the model data, finding out which vert belongs to which bone
     for m in meshList:
         
         # If auto smooth is enabled, calculate the split normals
@@ -259,73 +239,73 @@ def setupData(self, object, skeletonList, meshList, settingsList):
             tris = bm.calc_loop_triangles()
         else:
             tris = bm.calc_tessface()
-            
-        # Get the vertex normals and create a dictionary that maps their normals to their indices
-        vertex_normals = {}
-        if (m.data.has_custom_normals):
-            for l in m.data.loops:
-                vertex_normals[l.vertex_index] = l.normal
-        else:
-            for f in bm.faces:
-                for l in f.loops:
-                    for vi in f.verts:
-                        vertex_normals[vi.index] = vi.normal
 
-        # Get the vertex colors and create a dictionary that maps their colors to their indices
-        vertex_colors = {}
-        for name, cl in bm.loops.layers.color.items():
-            for i, tri in enumerate(tris):
-                for loop in tri:
-                    vertex_colors[loop.vert.index] = loop[cl][:]
-                    
-        # Get the vertex UVs and create a dictionary that maps their UVs to their indices
-        vertex_uvs = {}
         for f in bm.faces:
-            for l in f.loops:
-                try:
-                    vertex_uvs[l.vert.index] = mathutils.Vector((l[bm.loops.layers.uv.active].uv[0], 1-l[bm.loops.layers.uv.active].uv[1]))
-                except AttributeError:
-                    vertex_uvs[l.vert.index] = (0.0, 0.0)
-                    
-        # Get a list of materials used by this mesh
-        materials_list = m.material_slots
-        for mat in materials_list:
-            if (mat.name == "None"):
-                self.report({'ERROR'}, 'You should not have a material named "None"')
+            face = S64Face()
+            
+            bone_name = "None"
+            
+            # Ensure we don't have too many verts in this face
+            if (len(f.verts) > 4):
+                self.report({'ERROR'}, 'Faces should have more than 4 vertices!')
                 return 'CANCELLED'
-        
-        # Get the vertex groups and create a dictionary that maps their name to their indices
-        layer_deform = bm.verts.layers.deform.active
-        vgroup_names = {vgroup.index: vgroup.name for vgroup in m.vertex_groups}
-        
-        # Append all faces to their respective vertex group data in finalList
-        finalListCopy = copy.deepcopy(finalList) # Deep copy needed in case we're adding verts to an already existing collection
-        if (layer_deform is not None):
-            for f in bm.faces:
-            
-                # Error if a face has too many verts
-                if (len(f.verts) > 4):
-                    self.report({'ERROR'}, 'Faces should have more than 4 vertices!')
-                    return 'CANCELLED'
-            
-                # Get the vertex groups of the first vertex of this face
-                v = f.verts[0][layer_deform].items()
-                for g in v:
                 
-                    # If the vertex has weights, add all verts in this face to the list of vertices and faces in this mesh
-                    if (g[1] > 0.5): 
-                        if (vgroup_names[g[0]] in finalList):
-                            addFace(finalList, f, vgroup_names[g[0]], vertex_normals, vertex_colors, vertex_uvs, materials_list, len(finalListCopy[vgroup_names[g[0]]].verts))
-                        else:
-                            self.report({'WARNING'}, 'Vertex group "'+vgroup_names[g[0]]+'" does not match any bone names. Assuming None.')
-                            addFace(finalList, f, "None", vertex_normals, vertex_colors, vertex_uvs, materials_list, len(finalListCopy["None"].verts))
-                            
-                        # Move onto the next face
-                        break
-        else:
-            for f in bm.faces:
-                addFace(finalList, f, "None", vertex_normals, vertex_colors, vertex_uvs, materials_list, len(finalListCopy["None"].verts)) # These faces/vertices have no weights
-
+            # Go through all the verts
+            for i, v in enumerate(f.verts):
+                loop_index = f.loops[i].index
+                vert_index = v.index
+                
+                # Create the vertex
+                vert = S64Vertex()
+                vert.coor = v.co[:]
+                
+                # Add the vertex normal
+                if (m.data.has_custom_normals):
+                    vert.norm = m.data.loops[loop_index].normal[:]
+                else:
+                    vert.norm = v.normal[:]
+                
+                # Try to add the vertex color
+                try:
+                    vert.colr = m.data.vertex_colors[bm.loops.layers.color.active.name].data[loop_index].color
+                except (KeyError, AttributeError) as e:
+                    vert.colr = (1.0, 1.0, 1.0)
+                
+                # Try to add the vertex UV
+                try:
+                    vert.uv = m.data.uv_layers[bm.loops.layers.uv.active.name].data[loop_index].uv
+                    vert.uv = (vert.uv[0], 1-vert.uv[1])
+                except (KeyError, AttributeError) as e:
+                    vert.uv = (0.0, 0.0)
+                
+                # Get the vertex weight and store this vertex in the corresponding bone in our mesh list
+                layer_deform = bm.verts.layers.deform.active
+                vgroup_names = {vgroup.index: vgroup.name for vgroup in m.vertex_groups}
+                if (layer_deform is not None):
+                    for g in v[layer_deform].items():
+                        if (g[1] > 0.5): 
+                            if (vgroup_names[g[0]] in finalList):
+                                bone_name = vgroup_names[g[0]]
+                            else:
+                                self.report({'WARNING'}, 'Vertex group "'+vgroup_names[g[0]]+'" does not match any bone names. Assuming None.')
+                finalList[bone_name].verts[len(finalList[bone_name].verts)] = vert
+                
+                # Add this vertex's index to the face's vertex list
+                face.verts.append(len(finalList[bone_name].verts)-1)
+            
+            # Get the material used by this face
+            try:
+                face.mat = m.material_slots[f.material_index].name
+            except IndexError:
+                face.mat = "None"
+            
+            # Store the material used by this face in the finalList
+            if (not face.mat in finalList[bone_name].mats):
+                finalList[bone_name].mats.append(face.mat)
+                
+            # Store this face in finalList
+            finalList[bone_name].faces.append(face)
+        
     # Remove any list element that's empty
     for i in list(finalList.keys()):
         if (len(finalList[i].faces) == 0):
@@ -422,17 +402,33 @@ def setupData(self, object, skeletonList, meshList, settingsList):
     
     # Sort the faces by texture
     for i in finalList:
-        finalList[i].faces.sort(key=lambda x: x.mat, reverse=False)    
+        finalList[i].faces.sort(key=lambda x: x.mat, reverse=False)
+
+    # Fix meshes that have no root (because they don't have bones)
+    if (finalList[i].root == None):
+        finalList[i].root = mathutils.Vector((0.0, 0.0, 0.0))
     
-    # Because the vertex indices are not necessarily in order, let's fix that
+    # Now, lets find redundant vertices and remove them
+    for i in finalList:
+        vertscopy = finalList[i].verts.copy()
+        for i1, v1 in vertscopy.items():
+            if (not i1 in finalList[i].verts):
+                continue
+            for i2, v2 in vertscopy.items():
+                if ((i1 == i2) or (not i2 in finalList[i].verts)):
+                    continue
+                if ((v1.coor == v2.coor) and (v1.norm == v2.norm) and (v1.colr == v2.colr) and (v1.uv == v2.uv)):
+                    for f in finalList[i].faces:
+                        for fi, fv in enumerate(f.verts):
+                            if (fv == i2):
+                                f.verts[fi] = i1
+                    finalList[i].verts.pop(i2)
+
+    # Because the vertex indices are now not in order, let's fix that
     for i in finalList:
         vertdict = {}
         vertcount = 0
         ordered = collections.OrderedDict()
-        
-        # Fix meshes that have no root (because they don't have bones)
-        if (finalList[i].root == None):
-            finalList[i].root = mathutils.Vector((0.0, 0.0, 0.0))
             
         # Get the list of verts in order of appearance from the faces
         for f in finalList[i].faces:
@@ -446,7 +442,7 @@ def setupData(self, object, skeletonList, meshList, settingsList):
         for v in finalList[i].verts:
             ordered[vertdict[v]] = finalList[i].verts[v]
         finalList[i].verts = collections.OrderedDict(sorted(ordered.items()))
-        
+    
     # Animation keyframes are also not in order, so sort them too
     for i in animList:
         animList[i].frames = collections.OrderedDict(sorted(animList[i].frames.items()))

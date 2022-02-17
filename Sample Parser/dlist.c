@@ -1094,11 +1094,27 @@ void construct_dl()
                 if (face->vertcount == 3)
                     fprintf(fp, "    gsSP1Triangle(%d, %d, %d, 0),\n", face->verts[0], face->verts[1], face->verts[2]);
                 else if (face->vertcount == 4)
-                    fprintf(fp, "    gsSP2Triangles(%d, %d, %d, 0, %d, %d, %d, 0),\n", face->verts[0], face->verts[1], face->verts[2], 
-                                                                                       face->verts[0], face->verts[2], face->verts[3]);
+                {
+                    if (global_no2tri)
+                    {
+                        fprintf(fp, "    gsSP1Triangle(%d, %d, %d, 0),\n", face->verts[0], face->verts[1], face->verts[2]);
+                        fprintf(fp, "    gsSP1Triangle(%d, %d, %d, 0),\n", face->verts[0], face->verts[2], face->verts[3]);
+                    }
+                    else
+                        fprintf(fp, "    gsSP2Triangles(%d, %d, %d, 0, %d, %d, %d, 0),\n", face->verts[0], face->verts[1], face->verts[2], 
+                                                                                           face->verts[0], face->verts[2], face->verts[3]);
+                }
                 else if (face->vertcount == 6)
-                    fprintf(fp, "    gsSP2Triangles(%d, %d, %d, 0, %d, %d, %d, 0),\n", face->verts[0], face->verts[1], face->verts[2], 
-                                                                                       face->verts[3], face->verts[4], face->verts[5]);
+                {
+                    if (global_no2tri)
+                    {
+                        fprintf(fp, "    gsSP1Triangle(%d, %d, %d, 0),\n", face->verts[0], face->verts[1], face->verts[2]);
+                        fprintf(fp, "    gsSP1Triangle(%d, %d, %d, 0),\n", face->verts[3], face->verts[4], face->verts[5]);
+                    }
+                    else
+                        fprintf(fp, "    gsSP2Triangles(%d, %d, %d, 0, %d, %d, %d, 0),\n", face->verts[0], face->verts[1], face->verts[2], 
+                                                                                           face->verts[3], face->verts[4], face->verts[5]);
+                }
             }
             
             // Newline if we have another vertex block to load

@@ -35,6 +35,7 @@ bool global_quiet = FALSE;
 bool global_fixroot = TRUE;
 bool global_binaryout = FALSE;
 bool global_initialload = TRUE;
+bool global_no2tri = FALSE;
 char* global_outputname = "outdlist.h";
 char* global_modelname = "MyModel";
 unsigned int global_cachesize = 32;
@@ -64,13 +65,14 @@ int main(int argc, char* argv[])
             "Program arguments:\n"
             "\t-f <File>\tThe file to load\n"
             //"\t-b \t\t(optional) Binary Display List\n" // TODO
+            "\t-t <File>\t(optional) A list of textures and their data\n"
+            "\t-2 \t\t(optional) Disable 2Tri optimization\n"
             "\t-c <Int>\t(optional) Vertex cache size (default '32')\n"
             "\t-i \t\t(optional) Omit initial display list setup\n"
             "\t-n <Name>\t(optional) Model name (default 'MyModel')\n"
             "\t-o <File>\t(optional) Output filename (default 'outdlist.h')\n"
             "\t-q \t\t(optional) Quiet mode\n"
             "\t-r \t\t(optional) Don't add root to coordinates/translations\n"
-            "\t-t <File>\t(optional) A list of textures and their data\n"
         );
      
     // Parse the command line arguments
@@ -166,6 +168,9 @@ static void parse_programargs(int argc, char* argv[])
                     break;
                 case 'i':
                     global_initialload = !global_initialload;
+                    break;
+                case '2':
+                    global_no2tri = !global_no2tri;
                     break;
                 default:
                     sprintf(errbuf, "Error: Unknown argument '%s'\n", argv[i]);

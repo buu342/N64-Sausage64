@@ -180,6 +180,14 @@ void parse_sausage(FILE* fp)
                             tempvec.z = atof(strtok(NULL, " "));
                             curmesh->root = tempvec;
                         }
+                        if (!strcmp(strdata, "PROPERTIES"))
+                        {
+                            while ((strdata = strtok(NULL, " ")) != NULL)
+                            {
+                                char* prop = (char*)calloc(strlen(strdata)+1, 1);
+                                list_append(&curmesh->props, prop);
+                            }
+                        }
                         break;
                     case STATE_VERTICES:
                         curvert = add_vertex(curmesh);

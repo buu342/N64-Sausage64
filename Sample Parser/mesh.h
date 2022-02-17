@@ -11,6 +11,7 @@
         Vector3D root;
         linkedList verts;
         linkedList faces;
+        linkedList props;
     } s64Mesh;
     
     // Vertex struct

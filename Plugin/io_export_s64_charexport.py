@@ -187,7 +187,7 @@ def setupData(self, object, skeletonList, meshList, settingsList):
             
             # Ensure we don't have too many verts in this face
             if (len(f.verts) > 4):
-                self.report({'ERROR'}, 'Faces should have more than 4 vertices!')
+                self.report({'ERROR'}, 'Faces should not have more than 4 vertices!')
                 return 'CANCELLED'
                 
             # Go through all the verts

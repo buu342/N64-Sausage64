@@ -11,13 +11,15 @@ Executing the program without any arguments will display a full list of accepted
 `arabiki64 -f model.s64`
 
 The following optional arguments are accepted:
+
+* `-t <File>` - A list of textures and their data. More information in the [textures section of the wiki](../../../wiki/4%29-Arabiki64%3A-Example-S64-to-Display-List-Converter#textures).
+* `-2` - Disables 2tri optimization (required if using Fast3D).
 * `-c <Int>` - Change the size of the vertex cache. Default is `32`.
 * `-i` - Omits the display list setup on the very first mesh load (in case you deem it unecessary).
 * `-n <Name>` - Sets the model name for the exported file. Default is `MyModel`.
 * `-o <File>`- Sets the outputted display list's file name. Default is `outdlist.h`.
 * `-q` - Quiet mode. Prevents the program from outputting info that you probably don't care about.
 * `-r` - Disable the correction of the mesh's position data from the root coordinate.
-* `-t <File>` - A list of textures and their data. More information in the next section.
 
 
 ### Compiling

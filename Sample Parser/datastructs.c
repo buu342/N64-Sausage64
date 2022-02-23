@@ -207,6 +207,24 @@ listNode* list_node_from_index(linkedList* list, int index)
 
 
 /*==============================
+    list_index_from_data
+    Finds the index of the node in the list, given the data
+    @param The linked list to search
+    @param The data to find
+    @returns The index of the node, or -1
+==============================*/
+
+int list_index_from_data(linkedList* list, void* data)
+{
+    int index = 0;
+    for (listNode* node = list->head; node != NULL; node = node->next, index++)
+        if (node->data == data)
+            return index;
+    return -1;
+}
+
+
+/*==============================
     list_swapindex_withlist
     Replaces an element at an index with a list
     Assumes non null lists
@@ -260,6 +278,23 @@ listNode* list_swapindex_withlist(linkedList* dest, int index, linkedList* list)
     
     // Return the replaced node
     return curnode;
+}
+
+
+/*==============================
+    list_hasvalue
+    Returns whether a value is in a list
+    @param The list to check
+    @param The data to check for
+    @return Whether the value is in the list
+==============================*/
+
+bool list_hasvalue(linkedList* list, void* data)
+{
+    for (listNode* node = list->head; node != NULL; node = node->next)
+        if (node->data == data)
+            return TRUE;
+    return FALSE;
 }
 
 

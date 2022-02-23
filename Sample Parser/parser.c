@@ -68,9 +68,11 @@ static inline void lexer_restorestate()
 
 void parse_sausage(FILE* fp)
 {
+    int vertcount;
     listNode* curnode;
     s64Mesh* curmesh;
     s64Vert* curvert;
+    s64Face* prevface;
     s64Face* curface;
     s64Anim* curanim;
     s64Keyframe* curkeyframe;
@@ -78,7 +80,7 @@ void parse_sausage(FILE* fp)
     n64Texture* curtex;
     Vector3D tempvec;
     
-    if (!global_quiet) printf("*Parsing s64 model\n");
+    if (!global_quiet) printf("Parsing s64 model\n");
     
     // Read the file until we reached the end
     while (!feof(fp))
@@ -147,7 +149,7 @@ void parse_sausage(FILE* fp)
                             
                             // Create the mesh
                             curmesh = add_mesh(strdata);
-                            if (!global_quiet) printf("Created new mesh '%s'\n", strdata);
+                            if (!global_quiet) printf("    Created new mesh '%s'\n", strdata);
                         }
                         else if (!strcmp(strdata, "ANIMATION"))
                         {
@@ -159,7 +161,7 @@ void parse_sausage(FILE* fp)
                             
                             // Create the animation
                             curanim = add_animation(strdata);
-                            if (!global_quiet) printf("Created new animation '%s'\n", strdata);
+                            if (!global_quiet) printf("    Created new animation '%s'\n", strdata);
                         }
                         break;
                 }
@@ -170,6 +172,7 @@ void parse_sausage(FILE* fp)
             }
             else // Handle the rest
             {
+                listNode* mtex = NULL;
                 switch (lexer_curstate)
                 {
                     case STATE_MESH:
@@ -209,14 +212,23 @@ void parse_sausage(FILE* fp)
                         curface = add_face(curmesh);
                         
                         // Set the face data
-                        curface->vertcount = atoi(strdata);
-                        if (curface->vertcount > 4)
+                        vertcount = atoi(strdata);
+                        if (vertcount > 4)
                             terminate("Error: This tool does not support faces with more than 4 vertices\n");
-                        curface->verts[0] = atof(strtok(NULL, " "));
-                        curface->verts[1] = atof(strtok(NULL, " "));
-                        curface->verts[2] = atof(strtok(NULL, " "));
-                        if (curface->vertcount == 4)
-                            curface->verts[3] = atof(strtok(NULL, " "));
+                        curface->verts[0] = find_vert(curmesh, atof(strtok(NULL, " ")));
+                        curface->verts[1] = find_vert(curmesh, atof(strtok(NULL, " ")));
+                        curface->verts[2] = find_vert(curmesh, atof(strtok(NULL, " ")));
+                            
+                        // Handle quads
+                        prevface = NULL;
+                        if (vertcount == 4)
+                        {
+                            prevface = curface;
+                            curface = add_face(curmesh);
+                            curface->verts[0] = prevface->verts[0];
+                            curface->verts[1] = prevface->verts[2];
+                            curface->verts[2] = find_vert(curmesh, atof(strtok(NULL, " ")));
+                        }
                             
                         // Get the texture name and check if it exists already
                         strdata = strtok(NULL, " ");
@@ -225,6 +237,22 @@ void parse_sausage(FILE* fp)
                         if (curtex == NULL && strcmp(strdata, "None") != 0)
                             curtex = request_texture(strdata);
                         curface->texture = curtex;
+                        
+                        // Assign the face to the previous face as well, if we have a quad
+                        if (prevface != NULL)
+                        {
+                            prevface->texture = curtex;
+                            prevface = NULL;
+                        }
+                        
+                        // Check if this texture name has been added to this mesh's texture list
+                        for (mtex = curmesh->textures.head; mtex != NULL; mtex = mtex->next)
+                            if (!strcmp(((n64Texture*)mtex->data)->name,  strdata))
+                                break;
+                                
+                        // If it hasn't been, add it
+                        if (mtex == NULL)
+                            list_append(&curmesh->textures, curtex);
                         break;
                     case STATE_KEYFRAME:
                         curframedata = add_framedata(curkeyframe);
@@ -247,10 +275,8 @@ void parse_sausage(FILE* fp)
     }
         
     // Close the file as we're done with it
-    if (!global_quiet) printf("*Finished parsing s64 model\nMesh count: %d\nAnimation count: %d\nTexture count: %d\n", list_meshes.size, list_animations.size, list_textures.size);
+    if (!global_quiet) printf("Finished parsing s64 model\n    Mesh count: %d\n    Animation count: %d\n    Texture count: %d\n", list_meshes.size, list_animations.size, list_textures.size);
     fclose(fp);
-    
-    // TODO: Sort the meshes to reduce texture loading
     
     // Sort the framedata by the order the meshes are in (Note: horrible time complexity as this is a bodge solution)
     for (curnode = list_animations.head; curnode != NULL; curnode = curnode->next)
@@ -333,6 +359,6 @@ void parse_sausage(FILE* fp)
                 }
             }
         }
-        if (!global_quiet) printf("*Fixed model and animation roots\n");
+        if (!global_quiet) printf("Fixed model and animation roots\n");
     }
 }

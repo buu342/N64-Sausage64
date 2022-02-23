@@ -27,7 +27,7 @@ If you are on Windows, assuming you have GCC installed and setup, you can compil
 
 If you are on Linux or macOS, compilation can be done in one line:
 ```
-gcc -O3 -o arabiki64 main.c datastructs.c mesh.c texture.c animation.c parser.c dlist.c output.c -lm
+gcc -O3 -o arabiki64 main.c datastructs.c mesh.c texture.c animation.c parser.c optimizer.c dlist.c output.c -lm
 ```
 
 ### Using the Program

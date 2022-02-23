@@ -4,6 +4,8 @@
     /*********************************
                  Structs
     *********************************/
+    
+    #define MAXVERTS 3
 
     // Mesh struct
     typedef struct {
@@ -11,7 +13,9 @@
         Vector3D root;
         linkedList verts;
         linkedList faces;
+        linkedList textures;
         linkedList props;
+        linkedList vertcache;
     } s64Mesh;
     
     // Vertex struct
@@ -24,19 +28,26 @@
     
     // Face struct
     typedef struct {
-        int vertcount;
-        unsigned int verts[6];
+        s64Vert* verts[MAXVERTS];
         n64Texture* texture;
     } s64Face;
+    
+    // Vertex cache struct
+    typedef struct {
+        linkedList verts;
+        linkedList faces;
+    } vertCache;
     
     
     /*********************************
                 Functions
     *********************************/
     
-    extern s64Mesh* add_mesh(char* name);
-    extern s64Vert* add_vertex(s64Mesh* mesh);
-    extern s64Face* add_face(s64Mesh* mesh);
-    extern s64Mesh* find_mesh(char* name);
+    extern s64Mesh*    add_mesh(char* name);
+    extern s64Vert*    add_vertex(s64Mesh* mesh);
+    extern s64Face*    add_face(s64Mesh* mesh);
+    extern s64Mesh*    find_mesh(char* name);
+    extern s64Vert*    find_vert(s64Mesh* mesh, int index);
+    extern n64Texture* find_texture_fromvert(linkedList* faces, s64Vert* vert);
     
 #endif

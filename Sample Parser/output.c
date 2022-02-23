@@ -116,17 +116,25 @@ void write_output_text()
             // Print an array of framedata
             for (keyfnode = anim->keyframes.head; keyfnode != NULL; keyfnode = keyfnode->next)
             {
-                listNode* fdatanode;
+                listNode* meshnode;
                 s64Keyframe* keyf = (s64Keyframe*)keyfnode->data;
                 fprintf(fp, "static s64FrameData anim_%s_%s_framedata%d[] = {\n", global_modelname, anim->name, keyf->keyframe);
-                for (fdatanode = keyf->framedata.head; fdatanode != NULL; fdatanode = fdatanode->next)
+                for (meshnode = list_meshes.head; meshnode != NULL; meshnode = meshnode->next) // Iterating meshes because they can be out of order to the frame data, due to texture sorting optimization
                 {
-                    s64FrameData* fdata = (s64FrameData*)fdatanode->data;
-                    fprintf(fp, "    {%.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f},\n", 
-                        fdata->translation.x, fdata->translation.y, fdata->translation.z,
-                        fdata->rotation.w, fdata->rotation.x, fdata->rotation.y, fdata->rotation.z,
-                        fdata->scale.x, fdata->scale.y, fdata->scale.z
-                    );
+                    listNode* fdatanode;
+                    for (fdatanode = keyf->framedata.head; fdatanode != NULL; fdatanode = fdatanode->next)
+                    {
+                        s64FrameData* fdata = (s64FrameData*)fdatanode->data;
+                        if (meshnode->data == fdata->mesh)
+                        {
+                            fprintf(fp, "    {%.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f},\n", 
+                                fdata->translation.x, fdata->translation.y, fdata->translation.z,
+                                fdata->rotation.w, fdata->rotation.x, fdata->rotation.y, fdata->rotation.z,
+                                fdata->scale.x, fdata->scale.y, fdata->scale.z
+                            );
+                            break;
+                        }
+                    }
                 }
                 fprintf(fp, "};\n");
             }
@@ -168,7 +176,7 @@ void write_output_text()
     }
     
     // Finish
-    if (!global_quiet) printf("*Wrote output to '%s'\n", global_outputname);
+    if (!global_quiet) printf("Wrote output to '%s'\n", global_outputname);
     fclose(fp);
 }
 
@@ -190,6 +198,6 @@ void write_output_binary()
     
     // TODO
         
-    if (!global_quiet) printf("*Wrote output to '%s'", global_outputname);
+    if (!global_quiet) printf("Wrote output to '%s'", global_outputname);
     fclose(fp);
 }

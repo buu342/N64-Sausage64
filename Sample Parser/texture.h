@@ -24,6 +24,7 @@
     #define G_IM_SIZ_    "G_IM_SIZ_"
     #define G_TX_        "G_TX_"
     #define DONTLOAD     "DONTLOAD"
+    #define LOADFIRST    "LOADFIRST"
 
 
     /*********************************
@@ -97,6 +98,7 @@
         char    geomode[MAXGEOFLAGS][GEOFLAGSIZE];
         char*   texfilter;
         bool    dontload;
+        bool    loadfirst;
         texType type;
         texData data;
     } n64Texture;

@@ -24,6 +24,13 @@
                  Structs
     *********************************/
     
+    /* --- Useful ---*/
+    
+    typedef struct {
+        void* a;
+        void* b;
+    } Tuple;
+    
     /* --- Linked List --- */
     
     typedef struct listNode_t {
@@ -94,6 +101,8 @@
     extern void      list_destroy_deep(linkedList* list);
     extern listNode* list_swapindex_withlist(linkedList* dest, int index, linkedList* list);
     extern listNode* list_node_from_index(linkedList* list, int index);
+    extern int       list_index_from_data(linkedList* list, void* data);
+    extern bool      list_hasvalue(linkedList* list, void* data);
     
     // Dictionary functions
     extern dictNode* dict_append(Dictionary* dict, int key, void* data);

@@ -96,3 +96,43 @@ s64Mesh* find_mesh(char* name)
     // No mesh found, return NULL
     return NULL;
 }
+
+
+/*==============================
+    find_vert
+    Returns a pointer to the vertex object from a given index
+    @param The mesh to search
+    @param The vertex index to find
+    @returns A pointer to the corresponding s64Vert, or NULL
+==============================*/
+
+s64Vert* find_vert(s64Mesh* mesh, int index)
+{
+    listNode* vertnode = list_node_from_index(&mesh->verts, index);
+    if (vertnode == NULL)
+        return NULL;
+    return (s64Vert*)vertnode->data;
+}
+
+
+/*==============================
+    find_texture_fromvert
+    Returns the texture used by a vertex
+    @param The list of faces
+    @param The vertex to search for
+    @returns The texture assigned to the FIRST face with the given vertex, or NULL if none is found
+==============================*/
+
+n64Texture* find_texture_fromvert(linkedList* faces, s64Vert* vert)
+{
+    for (listNode* facenode = faces->head; facenode != NULL; facenode = facenode->next)
+    {
+        s64Face* face = (s64Face*)facenode->data;
+        for (int i=0; i<MAXVERTS; i++)
+            if (face->verts[i] == vert)
+                return face->texture;
+    }
+    
+    // No face found, return NULL
+    return NULL;
+}

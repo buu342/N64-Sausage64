@@ -152,7 +152,7 @@ n64Texture* find_texture(char* name)
 n64Texture* parse_textures(FILE* fp)
 {
     n64Texture* tex;
-    if (!global_quiet) printf("*Parsing textures file\n");
+    if (!global_quiet) printf("Parsing textures file\n");
     
     // Read the file until we reached the end
     while (!feof(fp))
@@ -201,14 +201,14 @@ n64Texture* parse_textures(FILE* fp)
                 w = (short)atoi(strtok(NULL, " "));
                 h = (short)atoi(strtok(NULL, " "));
                 tex = add_texture(name, w, h);
-                if (!global_quiet) printf("Added texture '%s'\n", name);
+                if (!global_quiet) printf("    Added texture '%s'\n", name);
                 break;
             case TYPE_PRIMCOL:
                 r = (color)atoi(strtok(NULL, " "));
                 g = (color)atoi(strtok(NULL, " "));
                 b = (color)atoi(strtok(NULL, " "));
                 tex = add_primcol(name, r, g, b);
-                if (!global_quiet) printf("Added primitive color '%s'\n", name);
+                if (!global_quiet) printf("    Added primitive color '%s'\n", name);
                 break;
             case TYPE_OMIT:
                 tex = (n64Texture*)calloc(1, sizeof(n64Texture));
@@ -229,7 +229,7 @@ n64Texture* parse_textures(FILE* fp)
     }
     
     // Close the file, as it's done being parsed
-    if (!global_quiet) printf("*Finished parsing textures file\n");
+    if (!global_quiet) printf("Finished parsing textures file\n");
     fclose(fp);
     return tex;
 }
@@ -340,6 +340,10 @@ void tex_setflag(n64Texture* tex, char* flag)
     if (!strncmp(copy, DONTLOAD, sizeof(DONTLOAD)-1))
     {
         tex->dontload = TRUE;
+    }
+    else if (!strncmp(copy, LOADFIRST, sizeof(LOADFIRST)-1))
+    {
+        tex->loadfirst = TRUE;
     }
     else if (!strncmp(copy, G_CYC_, sizeof(G_CYC_)-1))
     {

@@ -10,6 +10,7 @@ Program entrypoint
 #include "main.h"
 #include "texture.h"
 #include "parser.h"
+#include "optimizer.h"
 #include "dlist.h"
 #include "output.h"
 
@@ -85,6 +86,9 @@ int main(int argc, char* argv[])
         
     // Parse the model file
     parse_sausage(fp_m);
+    
+    // Optimize the model
+    optimize_mdl();
     
     // Construct a display list
     construct_dl();

@@ -686,8 +686,11 @@ static void optimize_textureloads()
             if (nodeslist[i].id != nodeslist[j].id)
             {
                 // Check we're not in the ignore list
+                #pragma GCC diagnostic push
+                #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
                 if (list_hasvalue(&nodeslist[i].ignore, (int*)nodeslist[j].id))
                     continue;
+                #pragma GCC diagnostic pop
                 
                 // Create a tuple
                 Tuple* edge = (Tuple*) malloc(sizeof(Tuple));
@@ -725,10 +728,10 @@ static void optimize_textureloads()
         {
             if (cur->id != nodeslist[j].id)
             {
-                if (list_hasvalue(&cur->ignore, (int*)nodeslist[j].id))
-                    continue;
                 #pragma GCC diagnostic push
                 #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
+                if (list_hasvalue(&cur->ignore, (int*)nodeslist[j].id))
+                    continue;
                 list_append(&left, (int*)nodeslist[j].id);
                 #pragma GCC diagnostic pop
             }
@@ -750,16 +753,21 @@ static void optimize_textureloads()
                 // Check if this node's ID is in our list of nodes left to visit
                 for (listNode* l = left.head; l != NULL; l = l->next)
                 {
+                    #pragma GCC diagnostic push
+                    #pragma GCC diagnostic ignored "-Wpointer-to-int-cast"
                     if ((int)l->data == (int)t->a)
                     {
                         inlist = TRUE;
                         break;
                     }
+                    #pragma GCC diagnostic pop
                 }
                 if (!inlist)
                     continue;
                     
                 // Calculate extra weight due to previous texture switch
+                #pragma GCC diagnostic push
+                #pragma GCC diagnostic ignored "-Wpointer-to-int-cast"
                 if (prev != NULL && strcmp((char*)nodeslist[(int)t->a].textures.head->data, (char*)prev->textures.tail->data) != 0)
                     extra = 1;
                 
@@ -769,14 +777,15 @@ static void optimize_textureloads()
                     next = &nodeslist[(int)t->a];
                     nextsize = (int)t->b+extra;
                 }
+                #pragma GCC diagnostic pop
             }
             
             // Travel down that path
             path[pathindex++] = next->id;
             #pragma GCC diagnostic push
             #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
+            #pragma GCC diagnostic ignored "-Wpointer-to-int-cast"
             free(list_remove(&left, (int*)next->id));
-            #pragma GCC diagnostic pop
             
             // Remove all nodes that we should ignore from the list of nodes left to visit
             for (listNode* e = next->ignore.head; e != NULL; e = e->next)
@@ -785,14 +794,12 @@ static void optimize_textureloads()
                 {
                     if ((int)l->data == (int)e->data)
                     {
-                        #pragma GCC diagnostic push
-                        #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
                         free(list_remove(&left, (int*)e->data));
-                        #pragma GCC diagnostic pop
                         break;
                     }
                 }
             }
+            #pragma GCC diagnostic pop
             prev = cur;
             cur = next;
             pathsize += nextsize;

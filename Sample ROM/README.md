@@ -19,8 +19,15 @@ The menu allows you to modify the model and face animations, toggle lighting, fr
 
 
 ### Compiling the ROM
-Assuming you have the Libultra SDK installed in your machine, simply run `makeme.bat`. This currently only works on WindowsXP. A compiled version of the ROM should be available in the [releases page](../../../releases).
+The ROM is available for Libultra users, using either a WindowsXP machine or the ModernSDK. A compiled version of the ROM should be available in the [releases page](../../../releases).
 
+#### Libultra
+
+Simply run `makeme.bat`. 
+
+#### Libultra with ModernSDK
+
+Simply call `make`.
 
 ### USB
 If you modify `debug.h` by changing `DEBUG_MODE` to `1`, you can enable USB input+output for flashcarts, allowing you to modify the ROM with your command prompt. This requires loading the ROM using a program such as [UNFLoader](https://github.com/buu342/N64-UNFLoader) with debug mode enabled.

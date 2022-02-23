@@ -5,6 +5,7 @@ Handles the first level of the game.
 ***************************************************************/
 
 #include <nusys.h>
+#include <string.h> // Needed for CrashSDK compatibility
 #include "config.h"
 #include "helper.h"
 #include "sausage64.h"

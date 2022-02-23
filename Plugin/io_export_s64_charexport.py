@@ -143,7 +143,14 @@ def setupData(self, object, skeletonList, meshList, settingsList):
             if b.use_deform: # Ignore non deformable bones
                 if (b.name == "None"):
                     self.report({'ERROR'}, 'You should not have a bone named "None"')
+                    for v in skeletonList: # Fix the bone poses
+                        v.data.pose_position = originPoses[v]
+                        if (isNewBlender()):
+                            bpy.context.view_layer.update()
+                        else:
+                            bpy.context.scene.update()
                     return 'CANCELLED'
+                
                 finalList[b.name] = S64Mesh(b.name)
                 finalList[b.name].root = mathutils.Vector((b.head_local.x, b.head_local.y, b.head_local.z))
                 
@@ -188,6 +195,12 @@ def setupData(self, object, skeletonList, meshList, settingsList):
             # Ensure we don't have too many verts in this face
             if (len(f.verts) > 4):
                 self.report({'ERROR'}, 'Faces should not have more than 4 vertices!')
+                for v in skeletonList: # Fix the bone poses
+                    v.data.pose_position = originPoses[v]
+                    if (isNewBlender()):
+                        bpy.context.view_layer.update()
+                    else:
+                        bpy.context.scene.update()
                 return 'CANCELLED'
                 
             # Go through all the verts

@@ -148,6 +148,8 @@ static void parse_programargs(int argc, char* argv[])
                     if (i == argc)
                         terminate("Error: Incorrect number of arguments provided for '-c'\n");
                     global_cachesize = atoi(argv[i]);
+                    if (global_cachesize < 3)
+                        terminate("Error: Vertex cache size can't be smaller than a triangle.\n");
                     break;
                 case 'o':
                     i++;

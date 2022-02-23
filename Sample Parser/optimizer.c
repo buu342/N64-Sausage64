@@ -437,7 +437,7 @@ static linkedList* forsyth(vertCache* vcacheoriginal)
                 list_append(&vcachenew->verts, face->verts[j]);
         list_append(&vcachenew->faces, face);
     }
-       
+           
     // Free all the memory used by the algorithm
     free(indices);
     free(activetricount);
@@ -1123,7 +1123,6 @@ void optimize_mdl()
         if (mesh->verts.size > global_cachesize)
         {
             int index = 0;
-            listNode* prevnode = mesh->vertcache.head;
             printf("    Mesh '%s' too large for vertex cache, splitting by texture.\n", mesh->name);
         
             // Oh dear, this model doesn't fit... Let's split the mesh by texture and see if that helps
@@ -1144,10 +1143,10 @@ void optimize_mdl()
                     // Apply Forsyth on this cache node and retrieve a new list of vertex caches to replace this one
                     list = forsyth(vcache);
                     free(list_swapindex_withlist(&mesh->vertcache, index, list));
-                    vcachenode = prevnode;
+                    vcachenode = list->tail;
+                    index += list->size;
                     continue;
                 }
-                prevnode = vcachenode;
                 index++;
             }
         }

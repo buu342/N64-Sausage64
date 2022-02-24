@@ -22,6 +22,14 @@ A tutorial on how to use the library is available [in the wiki](../../../wiki/5%
 extern void sausage64_initmodel(s64ModelHelper* mdl, s64ModelData* mdldata, Mtx* matrices);
 
 /*==============================
+    sausage64_set_camera
+    Sets the camera for Sausage64 to use for billboarding
+    @param The view matrix
+    @param The projection matrix
+==============================*/
+extern void sausage64_set_camera(Mtx* view, Mtx* projection);
+
+/*==============================
     sausage64_set_anim
     Sets an animation on the model. Does not perform 
     error checking if an invalid animation is given.
@@ -46,7 +54,6 @@ extern void sausage64_set_animcallback(s64ModelHelper* mdl, void (*animcallback)
 ==============================*/
 extern void sausage64_set_predrawfunc(s64ModelHelper* mdl, void (*predraw)(u16));
 
-    
 /*==============================
     sausage64_set_postdrawfunc
     Set a function that gets called after any mesh is rendered

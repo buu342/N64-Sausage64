@@ -188,6 +188,8 @@ void parse_sausage(FILE* fp)
                             while ((strdata = strtok(NULL, " ")) != NULL)
                             {
                                 char* prop = (char*)calloc(strlen(strdata)+1, 1);
+                                strdata[strcspn(strdata, "\r\n")] = 0;
+                                strcpy(prop, strdata);
                                 list_append(&curmesh->props, prop);
                             }
                         }

@@ -24,6 +24,14 @@ typedef struct {
 
 
 /*********************************
+             Globals
+*********************************/
+
+static float s64_viewmat[4][4];
+static float s64_projmat[4][4];
+
+
+/*********************************
       Helper Math Functions
 *********************************/
 
@@ -243,6 +251,20 @@ void sausage64_initmodel(s64ModelHelper* mdl, s64ModelData* mdldata, Mtx* matric
 
 
 /*==============================
+    sausage64_set_camera
+    Sets the camera for Sausage64 to use for billboarding
+    @param The view matrix
+    @param The projection matrix
+==============================*/
+
+void sausage64_set_camera(Mtx* view, Mtx* projection)
+{
+    guMtxL2F(s64_viewmat, view);
+    guMtxL2F(s64_projmat, projection);
+}
+
+
+/*==============================
     sausage64_set_predrawfunc
     Set a function that gets called before any mesh is rendered
     @param The model helper pointer
@@ -438,6 +460,7 @@ void sausage64_set_anim(s64ModelHelper* mdl, u16 anim)
     sausage64_drawpart
     Renders a part of a Sausage64 model
     @param A pointer to a display list pointer
+    @param The mesh to draw
     @param The current framedata
     @param The next framedata
     @param Whether to interpolate or not
@@ -446,7 +469,7 @@ void sausage64_set_anim(s64ModelHelper* mdl, u16 anim)
     @param The mesh's display list
 ==============================*/
 
-static inline void sausage64_drawpart(Gfx** glistp, const s64FrameData* cfdata, const s64FrameData* nfdata, const u8 interpolate, const f32 l, Mtx* matrix, Gfx* dl)
+static inline void sausage64_drawpart(Gfx** glistp, s64Mesh* mesh, const s64FrameData* cfdata, const s64FrameData* nfdata, const u8 interpolate, const f32 l, Mtx* matrix)
 {
     float helper1[4][4];
     float helper2[4][4];
@@ -456,8 +479,11 @@ static inline void sausage64_drawpart(Gfx** glistp, const s64FrameData* cfdata, 
     if (interpolate)
     {
         // Setup the quaternions
-        s64Quat qn = {nfdata->rot[0], nfdata->rot[1], nfdata->rot[2], nfdata->rot[3]};
-        q = s64slerp(q, qn, l);
+        if (!mesh->is_billboard)
+        {
+            s64Quat qn = {nfdata->rot[0], nfdata->rot[1], nfdata->rot[2], nfdata->rot[3]};
+            q = s64slerp(q, qn, l);
+        }
         
         // Combine the translation and scale matrix
         guScaleF(helper1, 
@@ -466,27 +492,58 @@ static inline void sausage64_drawpart(Gfx** glistp, const s64FrameData* cfdata, 
             s64lerp(cfdata->scale[2], nfdata->scale[2], l)
         );
         guTranslateF(helper2, 
-            s64lerp(cfdata->pos[0], nfdata->pos[0], l), 
-            s64lerp(cfdata->pos[1], nfdata->pos[1], l), 
+            s64lerp(cfdata->pos[0], nfdata->pos[0], l),
+            s64lerp(cfdata->pos[1], nfdata->pos[1], l),
             s64lerp(cfdata->pos[2], nfdata->pos[2], l)
         );
         guMtxCatF(helper2, helper1, helper1);
     }
     else
     {
+        // Combine the translation and scale matrix
         guScaleF(helper1, cfdata->scale[0], cfdata->scale[1], cfdata->scale[2]);
-        guTranslateF(helper2, cfdata->pos[0], cfdata->pos[1], cfdata->pos[2]);    
+        guTranslateF(helper2, 
+            cfdata->pos[0],
+            cfdata->pos[1],
+            cfdata->pos[2]
+        );
         guMtxCatF(helper2, helper1, helper1);
     }
         
     // Combine the rotation matrix
-    s64quat_to_mtx(q, helper2);
-    guMtxCatF(helper2, helper1, helper1);
+    if (!mesh->is_billboard)
+    {
+        s64quat_to_mtx(q, helper2);
+        guMtxCatF(helper2, helper1, helper1);
+    }
+    else
+    {
+        helper2[0][0] = s64_viewmat[0][0];
+        helper2[1][0] = s64_viewmat[0][1];
+        helper2[2][0] = s64_viewmat[0][2];
+        helper2[3][0] = 0;
+        
+        helper2[0][1] = s64_viewmat[1][0];
+        helper2[1][1] = s64_viewmat[1][1];
+        helper2[2][1] = s64_viewmat[1][2];
+        helper2[3][1] = 0;
+        
+        helper2[0][2] = s64_viewmat[2][0];
+        helper2[1][2] = s64_viewmat[2][1];
+        helper2[2][2] = s64_viewmat[2][2];
+        helper2[3][2] = 0;
+        
+        helper2[0][3] = 0;
+        helper2[1][3] = 0;
+        helper2[2][3] = 0;
+        helper2[3][3] = 1;
+        guMtxCatF(helper2, helper1, helper1);
+    }
     guMtxF2L(helper1, matrix);
     
     // Draw the body part
     gSPMatrix((*glistp)++, OS_K0_TO_PHYSICAL(matrix), G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_PUSH);
-    gSPDisplayList((*glistp)++, dl);
+    gSPDisplayList((*glistp)++, mesh->dl);
     gSPPopMatrix((*glistp)++, G_MTX_MODELVIEW);
 }
 
@@ -527,7 +584,7 @@ void sausage64_drawmodel(Gfx** glistp, s64ModelHelper* mdl)
                 mdl->predraw(i);
                 
             // Draw this part of the model with animations
-            sausage64_drawpart(glistp, cfdata, nfdata, mdl->interpolate, l, &mdl->matrix[i],  mdata->meshes[i].dl);
+            sausage64_drawpart(glistp, &mdata->meshes[i], cfdata, nfdata, mdl->interpolate, l, &mdl->matrix[i]);
             
             // Call the post draw function
             if (mdl->postdraw != NULL)

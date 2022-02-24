@@ -24,6 +24,7 @@
 
     typedef struct {
         const char* name;
+        const u32 is_billboard;
         Gfx* dl;
     } s64Mesh;
 
@@ -61,7 +62,18 @@
         @param An array of matrices for each mesh part
     ==============================*/
     
+    
     extern void sausage64_initmodel(s64ModelHelper* mdl, s64ModelData* mdldata, Mtx* matrices);
+    
+    
+    /*==============================
+        sausage64_set_camera
+        Sets the camera for Sausage64 to use for billboarding
+        @param The view matrix
+        @param The projection matrix
+    ==============================*/
+    
+    extern void sausage64_set_camera(Mtx* view, Mtx* projection);
     
     
     /*==============================

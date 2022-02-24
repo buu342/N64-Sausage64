@@ -30,6 +30,8 @@ void draw_menu();
 void catherine_predraw(u16 part);
 void catherine_animcallback(u16 anim);
 
+void matrix_inverse(float mat[4][4], float dest[4][4]);
+
 
 /*********************************
              Globals
@@ -246,30 +248,6 @@ void stage00_update(void)
 }
 
 
-void catherine_predraw(u16 part)
-{
-    // Handle face drawing
-    switch (part)
-    {
-        case MESH_Catherine_Head:
-            gDPLoadTextureBlock(glistp++, faceanim->faces[faceindex], G_IM_FMT_RGBA, G_IM_SIZ_16b, 32, 64, 0, G_TX_CLAMP, G_TX_CLAMP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
-            break;
-    }
-}
-
-void catherine_animcallback(u16 anim)
-{
-    // Go to idle animation when we finished attacking
-    switch(anim)
-    {
-        case ANIMATION_Catherine_Attack1:
-        case ANIMATION_Catherine_ThrowKnife:
-            sausage64_set_anim(&catherine, ANIMATION_Catherine_Idle);
-            break;
-    }
-}
-
-
 /*==============================
     stage00_draw
     Draw the stage
@@ -278,7 +256,7 @@ void catherine_animcallback(u16 anim)
 void stage00_draw(void)
 {
     int i, ambcol = 100;
-    float fmat1[4][4], fmat2[4][4];
+    float fmat1[4][4], fmat2[4][4], w;
     
     // Assign our glist pointer to our glist array for ease of access
     glistp = glist;
@@ -302,6 +280,9 @@ void stage00_draw(void)
     gSPMatrix(glistp++, &projection, G_MTX_PROJECTION | G_MTX_LOAD | G_MTX_NOPUSH);
     gSPMatrix(glistp++, &viewing, G_MTX_PROJECTION | G_MTX_MUL | G_MTX_NOPUSH);
     gSPPerspNormalize(glistp++, &normal);
+    
+    // Setup the Sausage64 camera for billboarding
+    sausage64_set_camera(&viewing, &projection);
     
     // Setup the lights
     if (!uselight)
@@ -443,6 +424,47 @@ void draw_menu()
     }
     nuDebConTextPos(NU_DEB_CON_WINDOW0, cx, 5+cury);
     nuDebConCPuts(NU_DEB_CON_WINDOW0, ">");
+}
+
+
+/*********************************
+     Model callback functions
+*********************************/
+
+/*==============================
+    catherine_predraw
+    Called before Catherine is drawn
+    @param The model segment being drawn
+==============================*/
+
+void catherine_predraw(u16 part)
+{
+    // Handle face drawing
+    switch (part)
+    {
+        case MESH_Catherine_Head:
+            gDPLoadTextureBlock(glistp++, faceanim->faces[faceindex], G_IM_FMT_RGBA, G_IM_SIZ_16b, 32, 64, 0, G_TX_CLAMP, G_TX_CLAMP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+            break;
+    }
+}
+
+
+/*==============================
+    catherine_animcallback
+    Called before an animation finishes
+    @param The animation that is finishing
+==============================*/
+
+void catherine_animcallback(u16 anim)
+{
+    // Go to idle animation when we finished attacking
+    switch(anim)
+    {
+        case ANIMATION_Catherine_Attack1:
+        case ANIMATION_Catherine_ThrowKnife:
+            sausage64_set_anim(&catherine, ANIMATION_Catherine_Idle);
+            break;
+    }
 }
 
 

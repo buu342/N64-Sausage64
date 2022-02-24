@@ -971,7 +971,6 @@ static void optimize_duplicatedverts()
                         (vert1->normal.x == vert2->normal.x && vert1->normal.y == vert2->normal.y && vert1->normal.z == vert2->normal.z) && 
                         (vert1->color.x == vert2->color.x && vert1->color.y == vert2->color.y && vert1->color.z == vert2->color.z))
                     {
-                        // TODO: Fix the next pointer
                         free(list_remove(&mesh->verts, vert2));
                         merged++;
                         

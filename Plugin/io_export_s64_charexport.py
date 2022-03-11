@@ -103,13 +103,6 @@ class TSPNode:
         self.meshes = []    # The meshes used by this node
         self.edges = []     # A list with a tuple of nodes and the corresponding edge weight
         self.ignore = []    # A list of node ID's to ignore if this node is visited
-
-class settingsExport:
-    triangulate  = None
-    onlyvisible  = None
-    onlyselected = None
-    sortmats     = None
-    animfps      = None
     
 def isNewBlender():
     return bpy.app.version >= (2, 80)
@@ -119,7 +112,7 @@ def matmul(a, b):
         return operator.matmul(a, b)
     return a*b
 
-def setupData(self, object, skeletonList, meshList, settingsList):
+def setupData(self, object, skeletonList, meshList):
     finalList = collections.OrderedDict()
     animList = collections.OrderedDict()
     
@@ -176,7 +169,7 @@ def setupData(self, object, skeletonList, meshList, settingsList):
         # Setup a bmesh and validate the data
         bm = bmesh.new()
         bm.from_mesh(mcopy)
-        if (settingsList.triangulate):
+        if (self.setting_triangulate):
             bmesh.ops.triangulate(bm, faces=bm.faces[:])
         bm.verts.index_update()
         bm.verts.ensure_lookup_table()
@@ -283,7 +276,7 @@ def setupData(self, object, skeletonList, meshList, settingsList):
             anim = S64Anim(a.name)
             start = a.frame_range.x
             end = a.frame_range.y
-            keyscale = (DefaultAnimFPS/settingsList.animfps)
+            keyscale = (DefaultAnimFPS/self.setting_animfps)
             
             # Cycle through all the fcurves and add keyframe numbers that exist
             for fcurve in a.fcurves:
@@ -407,7 +400,7 @@ def setupData(self, object, skeletonList, meshList, settingsList):
     # Return the list with all the meshes and animations
     return finalList, animList
 
-def optimizeData(self, context, finalList, animList, settingsList):
+def optimizeData(self, context, finalList, animList):
 
     # Sort meshes alphabetically
     finalList = collections.OrderedDict(sorted(finalList.items()))
@@ -493,13 +486,13 @@ class ObjectExport(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
     filename_ext = ".S64"
     
-    filter_glob         = bpy.props.StringProperty(default="*.S64", options={'HIDDEN'}, maxlen=255)
-    setting_triangulate = bpy.props.BoolProperty(name="Triangulate", description="Triangulate objects.", default=False)
-    setting_selected    = bpy.props.BoolProperty(name="Selected only", description="Export selected objects only.", default=False)
-    setting_visible     = bpy.props.BoolProperty(name="Visible only", description="Export visible objects only.", default=True)
-    setting_sortmats    = bpy.props.BoolProperty(name="Optimize material loading order", description="Sorts the model to reduce material loading. Can be slow for very large models!", default=True)
-    setting_animfps     = bpy.props.FloatProperty(name="Animation FPS", description="By default, Sausage64 assumes animations are 30FPS. Changing this value will scale the animation to match this framerate.", min=0.0, max=1000.0, default=30.0)
-    filepath            = bpy.props.StringProperty(subtype='FILE_PATH')    
+    filter_glob          = bpy.props.StringProperty(default="*.S64", options={'HIDDEN'}, maxlen=255)
+    setting_triangulate  = bpy.props.BoolProperty(name="Triangulate", description="Triangulate objects.", default=False)
+    setting_onlyselected = bpy.props.BoolProperty(name="Selected only", description="Export selected objects only.", default=False)
+    setting_onlyvisible  = bpy.props.BoolProperty(name="Visible only", description="Export visible objects only.", default=True)
+    setting_sortmats     = bpy.props.BoolProperty(name="Optimize material loading order", description="Sorts the model to reduce material loading. Can be slow for very large models!", default=True)
+    setting_animfps      = bpy.props.FloatProperty(name="Animation FPS", description="By default, Sausage64 assumes animations are 30FPS. Changing this value will scale the animation to match this framerate.", min=0.0, max=1000.0, default=30.0)
+    filepath             = bpy.props.StringProperty(subtype='FILE_PATH')    
 
     # If we are running on Blender 2.9.3 or newer, it will expect the new "annotation"
     # syntax on these parameters. In order to make newer versions of blender happy
@@ -507,45 +500,36 @@ class ObjectExport(bpy.types.Operator):
     if isNewBlender():
         __annotations__ = {"filter_glob" : filter_glob,
                            "setting_triangulate" : setting_triangulate,
-                           "setting_selected" : setting_selected,
-                           "setting_visible" : setting_visible,
-                           "setting_sortmats" : setting_sortmats,
+                           "setting_onlyselected" : setting_onlyselected,
+                           "setting_onlyvisible" : setting_onlyvisible,
                            "setting_animfps" : setting_animfps,
                            "filepath" : filepath}
     
     def execute(self, context):
         skeletonList = []
         meshList = []
-        settingsList = settingsExport()
         self.filepath = bpy.path.ensure_ext(self.filepath, ".S64")
                 
-        # First, store the settings in an object
-        settingsList.triangulate  = self.setting_triangulate
-        settingsList.onlyselected = self.setting_selected
-        settingsList.onlyvisible  = self.setting_visible
-        settingsList.sortmats     = self.setting_sortmats
-        settingsList.animfps      = self.setting_animfps
-        
         # Pick out what objects we're going to look over
         list = bpy.data.objects
-        if (settingsList.onlyselected):
+        if (self.setting_onlyselected):
             list = bpy.context.selected_objects
             
         # Start the actual parsing by organizing all the objects in the scene into an array
         for v in list:
-            if (not settingsList.onlyvisible or ((isNewBlender() and v.visible_get()) or (not isNewBlender() and v.is_visible(bpy.context.scene)))):
+            if (not self.setting_onlyvisible or ((isNewBlender() and v.visible_get()) or (not isNewBlender() and v.is_visible(bpy.context.scene)))):
                 if v.type == 'ARMATURE':
                     skeletonList.append(v)
                 elif v.type == 'MESH':
                     meshList.append(v)
                 
         # Next, organize the data further by splitting them into categories
-        finalList, animList = setupData(self, context, skeletonList, meshList, settingsList)
+        finalList, animList = setupData(self, context, skeletonList, meshList)
         if (finalList == 'CANCELLED'):
             return {'CANCELLED'}
             
         # Optimize the data further
-        finalList, animList = optimizeData(self, context, finalList, animList, settingsList)
+        finalList, animList = optimizeData(self, context, finalList, animList)
             
         # Finally, dump all the organized data to a file
         writeFile(self, context, finalList, animList);

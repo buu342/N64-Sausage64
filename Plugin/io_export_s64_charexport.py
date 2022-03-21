@@ -118,6 +118,7 @@ def setupData(self, object, skeletonList, meshList):
     
     # The first element should always be None (for objects without bones)
     finalList["None"] = S64Mesh("None")
+    finalList["None"].root = mathutils.Vector((0, 0, 0))
     
     # Go through the list of bones and add all deformable bones
     originPoses = {}

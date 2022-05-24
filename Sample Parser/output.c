@@ -161,22 +161,11 @@ void write_output_text()
         fprintf(fp, "static s64Mesh meshes_%s[] = {\n", global_modelname);
         for (curnode = list_meshes.head; curnode != NULL; curnode = curnode->next)
         {
-            listNode* propsnode;
             bool billboard = FALSE;
             s64Mesh* mesh = (s64Mesh*)curnode->data;
             
-            // Check for billboard property
-            for (propsnode = mesh->props.head; propsnode != NULL; propsnode = propsnode->next)
-            {
-                if (!strcasecmp((char*)propsnode->data, "Billboard"))
-                {
-                    billboard = TRUE;
-                    break;
-                }
-            }
-            
             // Write the model data line
-            fprintf(fp, "    {\"%s\", %d, gfx_%s_%s},\n", mesh->name, billboard, global_modelname, mesh->name);
+            fprintf(fp, "    {\"%s\", %d, gfx_%s_%s},\n", mesh->name, has_property(mesh, "Billboard"), global_modelname, mesh->name);
         }
         fputs("};\n\n", fp);
         fprintf(fp, "static s64Animation anims_%s[] = {\n", global_modelname);

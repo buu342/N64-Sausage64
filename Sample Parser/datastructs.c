@@ -345,7 +345,6 @@ dictNode* dict_append(Dictionary* dict, int key, void* value)
 
 dictNode* dict_getkey(Dictionary* dict, int key)
 {
-    int i;
     dictNode* curnode;
     
     // Make sure we have a valid dictionary
@@ -518,5 +517,5 @@ Vector3D vector_scale(Vector3D vec, float scale)
 
 inline int nearest_pow2(int n)
 {
-    return ceil(log(n)/log(2));
+    return (int)ceil(log(n)/log(2));
 }

@@ -49,5 +49,6 @@
     extern s64Mesh*    find_mesh(char* name);
     extern s64Vert*    find_vert(s64Mesh* mesh, int index);
     extern n64Texture* find_texture_fromvert(linkedList* faces, s64Vert* vert);
+    extern bool        has_property(s64Mesh* mesh, char* property);
     
 #endif

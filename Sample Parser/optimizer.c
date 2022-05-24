@@ -24,7 +24,7 @@ generates vertex caches. The optimizations are as follows:
               Macros
 *********************************/
     
-#define DEBUG 0
+#define DEBUG 1
 
 #define FORSYTH_SCORE_SCALING       7281
 #define FORSYTH_CACHE_DECAY_POWER   1.5
@@ -560,7 +560,7 @@ static void optimize_textureloads()
     for (listNode* mesh = list_meshes.head; mesh != NULL; mesh = mesh->next)
     {
         bool found = FALSE;
-                
+                        
         // Find meshes that share textures with us
         for (listNode* e = meshes_groupedby_mat.head; e != NULL; e = e->next)
         {
@@ -590,7 +590,7 @@ static void optimize_textureloads()
         int loadfirstcount = 0;
         s64Mesh* mesh = (s64Mesh*)((linkedList*)e->data)->head->data;
         
-        // Check for node which need to be loaded first, since we don't need to sort them
+        // Check for nodes which need to be loaded first, since we don't need to sort them
         for (listNode* texes = mesh->textures.head; texes != NULL; texes = texes->next)
             if (((n64Texture*)texes->data)->loadfirst)
                 loadfirstcount++;
@@ -600,7 +600,19 @@ static void optimize_textureloads()
             terminate("Error: Mesh uses two textures with LOADFIRST flag\n");
             
         // Add to our total node count the factorial of the texture count (excluding textures with LOADFIRST)
-        nodecount += factorial[mesh->textures.size-loadfirstcount];
+        if (has_property(mesh, "NoSort"))
+        {
+            nodecount += 1;
+            printf("    Skipping texture optimization on %s\n", mesh->name);
+        }
+        else
+        {
+            nodecount += factorial[mesh->textures.size-loadfirstcount];
+        
+            // Warn for too many textures
+            if (mesh->textures.size > 7)
+                printf("    WARNING: %s has %d textures. Consider using the 'NoSort' property.\n", mesh->name, mesh->textures.size);
+        }
     }
     
     // Allocate memory for an array of Traveling Salesman nodes
@@ -614,9 +626,11 @@ static void optimize_textureloads()
         int startid = id;
         char* loadfirst = NULL;
         s64Mesh* mesh = (s64Mesh*)((linkedList*)e->data)->head->data;
+        bool sorttextures = !has_property(mesh, "NoSort");
+        int texcount = sorttextures ? mesh->textures.size : 1;
         char** textures = (char**) calloc(mesh->textures.size, sizeof(char*));
-        char*** perms = (char***) calloc(factorial[mesh->textures.size], sizeof(char**));
-        for (i=0 ; i<factorial[mesh->textures.size]; i++)
+        char*** perms = (char***) calloc(factorial[texcount], sizeof(char**));
+        for (i=0 ; i<factorial[texcount]; i++)
             perms[i] = (char**) calloc(mesh->textures.size, sizeof(char*));
         
         // Initialize the textures array
@@ -626,7 +640,15 @@ static void optimize_textureloads()
         
         // Generate permutations of the textures array
         i=0;
-        permute(textures, 0, mesh->textures.size-1, &i, perms, mesh->textures.size);
+        if (sorttextures)
+        {
+            permute(textures, 0, texcount-1, &i, perms, texcount);
+        }
+        else
+        {
+            for (int j=0; j<mesh->textures.size; j++)
+                perms[i][j] = textures[j];
+        }
         
         // Get which texture needs to be loaded first
         for (listNode* tex = mesh->textures.head; tex != NULL; tex = tex->next)
@@ -639,9 +661,9 @@ static void optimize_textureloads()
         }
         
         // Create all the nodes
-        for (i=0; i<factorial[mesh->textures.size]; i++)
+        for (i=0; i<factorial[texcount]; i++)
         {
-            int end = startid+factorial[mesh->textures.size];
+            int end = startid+factorial[texcount];
             
             // Skip if the first texture in this permutation is not the one that needs to be loaded first
             if (loadfirst != NULL && strcmp(loadfirst, perms[i][0]) != 0)
@@ -655,7 +677,7 @@ static void optimize_textureloads()
             
             // If we load a texture first, then we have less nodes to ignore
             if (loadfirst != NULL)
-                end = startid+factorial[mesh->textures.size-1];
+                end = startid+factorial[texcount-1];
             
             // Generate the ignore list
             for (int j=startid; j<end; j++)
@@ -672,7 +694,7 @@ static void optimize_textureloads()
         }
         
         // Free the memory used to generate the permutations
-        for (i=0; i<factorial[mesh->textures.size]; i++)
+        for (i=0; i<factorial[texcount]; i++)
             free(perms[i]);
         free(perms);
         free(textures);
@@ -834,7 +856,7 @@ static void optimize_textureloads()
                 printf("\n");
             }
         }
-    #endif
+    #endif  
     
     // Now we need to sort the faces inside each mesh to fit the new loading order
     for (int i=0; i<finalpathsize; i++)

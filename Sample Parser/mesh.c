@@ -136,3 +136,27 @@ n64Texture* find_texture_fromvert(linkedList* faces, s64Vert* vert)
     // No face found, return NULL
     return NULL;
 }
+
+
+/*==============================
+    has_property
+    Checks whether the mesh has a given property
+    @param The mesh pointer to check
+    @param The property to check
+    @returns The requested s64Mesh, or NULL if none was found 
+==============================*/
+
+bool has_property(s64Mesh* mesh, char* property)
+{
+    // Check for the given property
+    for (listNode* propsnode = mesh->props.head; propsnode != NULL; propsnode = propsnode->next)
+    {
+        if (!strcasecmp((char*)propsnode->data, property))
+        {
+            return TRUE;
+        }
+    }
+    
+    // Property was not found
+    return FALSE;
+}

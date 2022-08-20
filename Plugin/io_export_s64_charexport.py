@@ -525,6 +525,21 @@ class ObjectExport(bpy.types.Operator):
                     skeletonList.append(v)
                 elif v.type == 'MESH':
                     meshList.append(v)
+                    
+        # Warn if stuff might be missing
+        list = bpy.data.objects
+        meshcount = 0
+        skeletoncount = 0
+        for v in list:
+            if (v.type == 'ARMATURE'):
+                skeletoncount = skeletoncount + 1
+            elif (v.type == 'MESH'):
+                meshcount = meshcount + 1
+        if (meshcount > 0 and not meshList):
+            self.report({'WARNING'}, 'No mesh was exported with the selected options. Did you mean to do this?')
+            return {'CANCELLED'}
+        if (self.setting_onlyselected and skeletoncount > 0 and not skeletonList):
+            self.report({'WARNING'}, 'No skeleton was exported with the selected options. Did you mean to do this?')
                 
         # Next, organize the data further by splitting them into categories
         finalList, animList = setupData(self, context, skeletonList, meshList)

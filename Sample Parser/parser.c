@@ -315,6 +315,25 @@ void parse_sausage(FILE* fp)
             keyf->framedata = correctorder;
         }
     }
+    
+    // Iterate through the animations
+    for (curnode = list_animations.head; curnode != NULL; curnode = curnode->next)
+    {
+        listNode* animnode;
+        s64Anim* anim = (s64Anim*)curnode->data;
+        
+        // Iterate through the animations
+        for (animnode = anim->keyframes.head; animnode != NULL; animnode = animnode->next)
+        {
+            listNode* keyfnode;
+            s64Keyframe* keyf = (s64Keyframe*)animnode->data;
+            if (firstframe == -1 && keyf->keyframe == 0)
+                break;
+            if (firstframe == -1 && keyf->keyframe != 0)
+                firstframe = keyf->keyframe;
+            keyf->keyframe -= firstframe;
+        }
+    }    
 
     // Fix mesh and animation roots
     if (global_fixroot)

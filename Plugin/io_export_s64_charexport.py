@@ -491,7 +491,6 @@ class ObjectExport(bpy.types.Operator):
     setting_triangulate  = bpy.props.BoolProperty(name="Triangulate", description="Triangulate objects.", default=False)
     setting_onlyselected = bpy.props.BoolProperty(name="Selected only", description="Export selected objects only.", default=False)
     setting_onlyvisible  = bpy.props.BoolProperty(name="Visible only", description="Export visible objects only.", default=True)
-    setting_sortmats     = bpy.props.BoolProperty(name="Optimize material loading order", description="Sorts the model to reduce material loading. Can be slow for very large models!", default=True)
     setting_animfps      = bpy.props.FloatProperty(name="Animation FPS", description="By default, Sausage64 assumes animations are 30FPS. Changing this value will scale the animation to match this framerate.", min=0.0, max=1000.0, default=30.0)
     filepath             = bpy.props.StringProperty(subtype='FILE_PATH')    
 

@@ -115,6 +115,7 @@ def matmul(a, b):
 def setupData(self, object, skeletonList, meshList):
     finalList = collections.OrderedDict()
     animList = collections.OrderedDict()
+    warnedgroups = []
     
     # The first element should always be None (for objects without bones)
     finalList["None"] = S64Mesh("None")
@@ -233,8 +234,9 @@ def setupData(self, object, skeletonList, meshList):
                         if (g[1] > 0.5): 
                             if (vgroup_names[g[0]] in finalList):
                                 bone_name = vgroup_names[g[0]]
-                            else:
+                            elif (vgroup_names[g[0]] not in warnedgroups):
                                 self.report({'WARNING'}, 'Vertex group "'+vgroup_names[g[0]]+'" does not match any bone names. Assuming None.')
+                                warnedgroups.append(vgroup_names[g[0]])
                 finalList[bone_name].verts[len(finalList[bone_name].verts)] = vert
                 
                 # Add this vertex's index to the face's vertex list
@@ -491,6 +493,7 @@ class ObjectExport(bpy.types.Operator):
     setting_triangulate  = bpy.props.BoolProperty(name="Triangulate", description="Triangulate objects.", default=False)
     setting_onlyselected = bpy.props.BoolProperty(name="Selected only", description="Export selected objects only.", default=False)
     setting_onlyvisible  = bpy.props.BoolProperty(name="Visible only", description="Export visible objects only.", default=True)
+    setting_sortmats     = bpy.props.BoolProperty(name="Optimize material loading order", description="Sorts the model to reduce material loading. Can be slow for very large models!", default=True)
     setting_animfps      = bpy.props.FloatProperty(name="Animation FPS", description="By default, Sausage64 assumes animations are 30FPS. Changing this value will scale the animation to match this framerate.", min=0.0, max=1000.0, default=30.0)
     filepath             = bpy.props.StringProperty(subtype='FILE_PATH')    
 

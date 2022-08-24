@@ -20,6 +20,7 @@ import operator
 import mathutils
 import itertools
 import collections
+from bpy_extras.io_utils import axis_conversion
 
 DefaultAnimFPS = 30.0
 DebugS64Export = False
@@ -96,14 +97,6 @@ class S64KeyFrame:
         string = string+"\t\t Scale = "+str(self.scale)
         return string
 
-class TSPNode:
-    def __init__(self, id):
-        self.id = id        # The ID of this node
-        self.materials = [] # The materials used by this node
-        self.meshes = []    # The meshes used by this node
-        self.edges = []     # A list with a tuple of nodes and the corresponding edge weight
-        self.ignore = []    # A list of node ID's to ignore if this node is visited
-    
 def isNewBlender():
     return bpy.app.version >= (2, 80)
 
@@ -181,7 +174,7 @@ def setupData(self, object, skeletonList, meshList):
             tris = bm.calc_loop_triangles()
         else:
             tris = bm.calc_tessface()
-
+            
         for f in bm.faces:
             face = S64Face()
             
@@ -231,12 +224,13 @@ def setupData(self, object, skeletonList, meshList):
                 vgroup_names = {vgroup.index: vgroup.name for vgroup in m.vertex_groups}
                 if (layer_deform is not None):
                     for g in v[layer_deform].items():
-                        if (g[1] > 0.5): 
-                            if (vgroup_names[g[0]] in finalList):
-                                bone_name = vgroup_names[g[0]]
-                            elif (vgroup_names[g[0]] not in warnedgroups):
-                                self.report({'WARNING'}, 'Vertex group "'+vgroup_names[g[0]]+'" does not match any bone names. Assuming None.')
-                                warnedgroups.append(vgroup_names[g[0]])
+                        if (g[1] > 0.5):
+                            if (g[0] in vgroup_names):
+                                if (vgroup_names[g[0]] in finalList):
+                                    bone_name = vgroup_names[g[0]]
+                                elif (vgroup_names[g[0]] not in warnedgroups):
+                                    self.report({'WARNING'}, 'Vertex group "'+vgroup_names[g[0]]+'" does not match any bone names. Assuming None.')
+                                    warnedgroups.append(vgroup_names[g[0]])
                 finalList[bone_name].verts[len(finalList[bone_name].verts)] = vert
                 
                 # Add this vertex's index to the face's vertex list
@@ -431,15 +425,22 @@ def writeFile(self, object, finalList, animList):
         
             # Start a new mesh
             file.write("BEGIN MESH "+n+"\n")
-            file.write("ROOT "+("%.4f " % m.root.x)+("%.4f " % m.root.y)+("%.4f\n" % m.root.z))
+            if (self.setting_upaxis == 'Z'):
+                file.write("ROOT "+("%.4f " % m.root.x)+("%.4f " % m.root.y)+("%.4f\n" % m.root.z))
+            else:
+                file.write("ROOT "+("%.4f " % m.root.x)+("%.4f " % m.root.z)+("%.4f\n" % (-m.root.y)))
             if (len(m.props) > 0):
                 file.write("PROPERTIES "+' '.join(m.props)+"\n")
             
             # Write the list of vertices
             file.write("BEGIN VERTICES\n")
             for k, v in m.verts.items():
-                file.write("%.4f %.4f %.4f " % v.coor[:])
-                file.write("%.4f %.4f %.4f " % v.norm[:])
+                if (self.setting_upaxis == 'Z'):
+                    file.write("%.4f %.4f %.4f " % v.coor[:])
+                    file.write("%.4f %.4f %.4f " % v.norm[:])
+                else:
+                    file.write(("%.4f " % v.coor[0])+("%.4f " % v.coor[2])+("%.4f " % (-v.coor[1])))
+                    file.write(("%.4f " % v.norm[0])+("%.4f " % v.norm[2])+("%.4f " % (-v.norm[1])))
                 file.write(("%.4f " % v.colr[0])+("%.4f " % v.colr[1])+("%.4f " % v.colr[2]))
                 file.write("%.4f %.4f" % v.uv[:])
                 file.write("\n")
@@ -472,9 +473,14 @@ def writeFile(self, object, finalList, animList):
                 for b in a.frames[kf]:
                     frame = a.frames[kf][b]
                     file.write(frame.bone)
-                    file.write((" %.4f " % frame.pos.x)+("%.4f " % frame.pos.y)+("%.4f" % frame.pos.z))
-                    file.write((" %.4f " % frame.ang.w)+(" %.4f " % frame.ang.x)+("%.4f " % frame.ang.y)+("%.4f" % frame.ang.z))
-                    file.write((" %.4f " % frame.scale.x)+("%.4f " % frame.scale.y)+("%.4f\n" % frame.scale.z))
+                    if (self.setting_upaxis == 'Z'):
+                        file.write((" %.4f " % frame.pos.x)+("%.4f " % frame.pos.y)+("%.4f" % frame.pos.z))
+                        file.write((" %.4f " % frame.ang.w)+(" %.4f " % frame.ang.x)+("%.4f " % frame.ang.y)+("%.4f" % frame.ang.z))
+                        file.write((" %.4f " % frame.scale.x)+("%.4f " % frame.scale.y)+("%.4f\n" % frame.scale.z))
+                    else:
+                        file.write((" %.4f " % frame.pos.x)+("%.4f " % frame.pos.z)+("%.4f" % (-frame.pos.y)))
+                        file.write((" %.4f " % (frame.ang.w))+(" %.4f " % frame.ang.x)+("%.4f " % frame.ang.z)+("%.4f" % (-frame.ang.y)))
+                        file.write((" %.4f " % frame.scale.x)+("%.4f " % frame.scale.z)+("%.4f\n" % frame.scale.y))
                 file.write("END KEYFRAME "+str(int(kf))+"\n")
                 
             file.write("END ANIMATION "+n+"\n\n")
@@ -493,8 +499,8 @@ class ObjectExport(bpy.types.Operator):
     setting_triangulate  = bpy.props.BoolProperty(name="Triangulate", description="Triangulate objects.", default=False)
     setting_onlyselected = bpy.props.BoolProperty(name="Selected only", description="Export selected objects only.", default=False)
     setting_onlyvisible  = bpy.props.BoolProperty(name="Visible only", description="Export visible objects only.", default=True)
-    setting_sortmats     = bpy.props.BoolProperty(name="Optimize material loading order", description="Sorts the model to reduce material loading. Can be slow for very large models!", default=True)
     setting_animfps      = bpy.props.FloatProperty(name="Animation FPS", description="By default, Sausage64 assumes animations are 30FPS. Changing this value will scale the animation to match this framerate.", min=0.0, max=1000.0, default=30.0)
+    setting_upaxis       = bpy.props.EnumProperty(name="Up Axis", description="The selected axis points upward", items=(('Z', "Z", "The Z axis points up"), ('Y', "Y", "The Y axis points up")), default='Z')
     filepath             = bpy.props.StringProperty(subtype='FILE_PATH')    
 
     # If we are running on Blender 2.9.3 or newer, it will expect the new "annotation"
@@ -506,6 +512,7 @@ class ObjectExport(bpy.types.Operator):
                            "setting_onlyselected" : setting_onlyselected,
                            "setting_onlyvisible" : setting_onlyvisible,
                            "setting_animfps" : setting_animfps,
+                           "setting_upaxis" : setting_upaxis,
                            "filepath" : filepath}
     
     def execute(self, context):
@@ -521,9 +528,9 @@ class ObjectExport(bpy.types.Operator):
         # Start the actual parsing by organizing all the objects in the scene into an array
         for v in list:
             if (not self.setting_onlyvisible or ((isNewBlender() and v.visible_get()) or (not isNewBlender() and v.is_visible(bpy.context.scene)))):
-                if v.type == 'ARMATURE':
+                if (v.type == 'ARMATURE'):
                     skeletonList.append(v)
-                elif v.type == 'MESH':
+                elif (v.type == 'MESH'):
                     meshList.append(v)
                     
         # Warn if stuff might be missing
@@ -548,7 +555,7 @@ class ObjectExport(bpy.types.Operator):
             
         # Optimize the data further
         finalList, animList = optimizeData(self, context, finalList, animList)
-            
+        
         # Finally, dump all the organized data to a file
         writeFile(self, context, finalList, animList);
         return {'FINISHED'}

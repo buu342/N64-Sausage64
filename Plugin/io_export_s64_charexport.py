@@ -175,6 +175,10 @@ def setupData(self, object, skeletonList, meshList):
         else:
             tris = bm.calc_tessface()
             
+        # Warn if the model is small
+        if (bm.calc_volume() < 10000):
+            self.report({'WARNING'}, 'Your model seems quite small, it might not render properly!')
+            
         for f in bm.faces:
             face = S64Face()
             

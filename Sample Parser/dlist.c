@@ -247,10 +247,20 @@ void construct_dl()
                     {
                         if (tex->type == TYPE_TEXTURE)
                         {
-                            fprintf(fp, "    gsDPLoadTextureBlock(%s, %s, %s, %d, %d, 0, %s, %s, %d, %d, G_TX_NOLOD, G_TX_NOLOD),\n",
-                                tex->name, tex->data.image.coltype, tex->data.image.colsize, tex->data.image.w, tex->data.image.h, 
-                                tex->data.image.texmodes, tex->data.image.texmodet, nearest_pow2(tex->data.image.w), nearest_pow2(tex->data.image.h)
-                            );
+                            if (!strcmp(tex->data.image.colsize, "G_IM_SIZ_4b"))
+                            {
+                                fprintf(fp, "    gsDPLoadTextureBlock_4b(%s, %s, %d, %d, 0, %s, %s, %d, %d, G_TX_NOLOD, G_TX_NOLOD),\n",
+                                    tex->name, tex->data.image.coltype, tex->data.image.w, tex->data.image.h, 
+                                    tex->data.image.texmodes, tex->data.image.texmodet, nearest_pow2(tex->data.image.w), nearest_pow2(tex->data.image.h)
+                                );
+                            }
+                            else
+                            {
+                                fprintf(fp, "    gsDPLoadTextureBlock(%s, %s, %s, %d, %d, 0, %s, %s, %d, %d, G_TX_NOLOD, G_TX_NOLOD),\n",
+                                    tex->name, tex->data.image.coltype, tex->data.image.colsize, tex->data.image.w, tex->data.image.h, 
+                                    tex->data.image.texmodes, tex->data.image.texmodet, nearest_pow2(tex->data.image.w), nearest_pow2(tex->data.image.h)
+                                );
+                            }
                             pipesync = TRUE;
                         }
                         else if (tex->type == TYPE_PRIMCOL)

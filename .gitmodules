@@ -1,0 +1,3 @@
+[submodule "Sample Previewer/Include/glm"]
+	path = Sample Previewer/Include/glm
+	url = https://github.com/g-truc/glm.git

@@ -12,6 +12,7 @@ This repository contains five folders:
 * `Plugin` - The Blender plugin itself. Installation instructions provided in a further section of this README. 
 * `Sample Model` - An example character model with animations, with the source files available alongside the .s64 file exported by the plugin. `Catherine.blend` is for 2.7, with `Catherine 2.8.blend` for Blender versions 2.8 onwards. 
 * `Sample Parser` - An example Sausage64 to N64 display list converter, written in C. More info about the program in the folder's README. 
+* `Sample Previewer` - An example Sausage64 model previewer, written in C++ and OpenGL. More info about the program in the folder's README. 
 * `Sample Library` - An example library for the N64, designed for the output from `Sample Parser`. More info about the library in the folder's README. 
 * `Sample ROM` - An example N64 ROM displaying the character and the animations in action, with the help of the `Sample Library`. The .s64 file and the textures were converted to display lists and other parsable data with the `Sample Parser` program. More information available in the folder's README. 
 

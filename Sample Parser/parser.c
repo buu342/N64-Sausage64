@@ -319,6 +319,7 @@ void parse_sausage(FILE* fp)
     // Iterate through the animations
     for (curnode = list_animations.head; curnode != NULL; curnode = curnode->next)
     {
+        int firstframe = -1;
         listNode* animnode;
         s64Anim* anim = (s64Anim*)curnode->data;
         

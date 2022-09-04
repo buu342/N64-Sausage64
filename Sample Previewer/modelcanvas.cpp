@@ -13,11 +13,7 @@
 // Camera macros
 #define GRIDSIZE 10000.0
 #define CAMSPEED 300.0f
-#ifdef LINUX
-    #define CAMSENSITIVITY 0.01f
-#else
-    #define CAMSENSITIVITY 0.1f
-#endif
+#define CAMSENSITIVITY 0.1f
 #define UPVECTORZ glm::vec3(0.0f, 0.0f, 1.0f)
 #define UPVECTORY glm::vec3(0.0f, 1.0f, 0.0f)
 
@@ -65,7 +61,7 @@ static wxPoint lastmousepos;
     @param The window name
 ==============================*/
 
-ModelCanvas::ModelCanvas(wxWindow *parent, const wxGLAttributes &attribs, wxWindowID id, const wxPoint& pos, const wxSize& size, long style, const wxString& name) : wxGLCanvas(parent, id, NULL, pos, size, style | wxFULL_REPAINT_ON_RESIZE, name)
+ModelCanvas::ModelCanvas(wxWindow *parent, int* attribs, wxWindowID id, const wxPoint& pos, const wxSize& size, long style, const wxString& name) : wxGLCanvas(parent, id, NULL, pos, size, style | wxFULL_REPAINT_ON_RESIZE, name)
 {
     this->m_context = new wxGLContext(this);
     this->Connect(wxEVT_PAINT, wxPaintEventHandler(ModelCanvas::m_Canvas_OnPaint), NULL, this);
@@ -387,9 +383,8 @@ void ModelCanvas::RenderSausage64()
         // Generate the triangles for each mesh
         for (std::list<s64Face*>::iterator itface = mesh->faces.begin(); itface != mesh->faces.end(); ++itface)
         {
-            glm::vec3 facenormal = glm::vec3(0, 0, 0);
             texCol* col = NULL;
-            bool hashighlight = false, smoothshade = true;
+            bool hashighlight = false;
             s64Face* face = *itface;
             std::list<s64Vert*> verts = face->verts;
 
@@ -413,6 +408,10 @@ void ModelCanvas::RenderSausage64()
                     glCullFace(GL_BACK);
                 else
                     glDisable(GL_CULL_FACE);
+                if (face->texture->HasGeoFlag("G_SHADING_SMOOTH"))
+                    glShadeModel(GL_SMOOTH);
+                else
+                    glShadeModel(GL_FLAT);
                 switch (face->texture->type)
                 {
                     case TYPE_PRIMCOL:
@@ -451,13 +450,6 @@ void ModelCanvas::RenderSausage64()
 
             // Render
             glBegin(GL_TRIANGLES);
-            if (!face->texture->HasGeoFlag("G_SHADING_SMOOTH"))
-            {
-                smoothshade = false;
-                for (std::list<s64Vert*>::iterator itvert = verts.begin(); itvert != verts.end(); ++itvert)
-                    facenormal += (*itvert)->normal;
-                facenormal /= 3;
-            }
             for (std::list<s64Vert*>::iterator itvert = verts.begin(); itvert != verts.end(); ++itvert)
             {
                 s64Vert* vert = *itvert;
@@ -470,10 +462,7 @@ void ModelCanvas::RenderSausage64()
                 else
                     glColor3f(1.0f, 1.0f, 1.0f);
                 glTexCoord2f(vert->UV.x, vert->UV.y);
-                if (smoothshade)
-                    glNormal3f(vert->normal.x, vert->normal.y, vert->normal.z);
-                else
-                    glNormal3f(facenormal.x, facenormal.y, facenormal.z);
+                glNormal3f(vert->normal.x, vert->normal.y, vert->normal.z);
                 glVertex3f(vert->pos.x, vert->pos.y, vert->pos.z);
             }
             glEnd();

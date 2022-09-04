@@ -50,7 +50,7 @@ class ModelCanvas : public wxGLCanvas
     protected:
     
     public:
-        ModelCanvas(wxWindow *parent, const wxGLAttributes &attribs, wxWindowID id, const wxPoint& pos, const wxSize& size, long style, const wxString& name);
+        ModelCanvas(wxWindow *parent, int* attribs, wxWindowID id, const wxPoint& pos, const wxSize& size, long style, const wxString& name);
         ~ModelCanvas();
         void      SetApp(void* app);
         glm::vec3 DirFromAngles(float pitch, float yaw);

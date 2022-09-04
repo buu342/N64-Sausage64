@@ -584,7 +584,7 @@ void Main::m_MenuItem_ExportTextureOnMenuSelection(wxCommandEvent& event)
         {
             case TYPE_TEXTURE:
                 file.Write(" TEXTURE");
-                file.Write(wxString::Format(wxT(" %d %d"), tex->GetTextureData()->w, tex->GetTextureData()->h));
+                file.Write(wxString::Format(wxT(" %zu %zu"), tex->GetTextureData()->w, tex->GetTextureData()->h));
                 if (tex->GetTextureData()->coltype != DEFAULT_IMAGEFORMAT)
                     file.Write(tex->GetTextureData()->coltype);
                 if (tex->GetTextureData()->colsize != DEFAULT_IMAGESIZE)

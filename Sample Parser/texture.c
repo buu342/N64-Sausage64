@@ -171,6 +171,10 @@ n64Texture* parse_textures(FILE* fp)
         name = strtok(strbuf, " ");
         tok = strtok(NULL, " ");
         
+        // Ignore empty lines
+        if (tok == NULL)
+            continue;
+        
         // Get the texture type
         if (!strcmp(tok, TEXTURE))
             type = TYPE_TEXTURE;

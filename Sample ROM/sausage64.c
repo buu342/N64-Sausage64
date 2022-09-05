@@ -486,27 +486,27 @@ static inline void sausage64_drawpart(Gfx** glistp, s64Mesh* mesh, const s64Fram
         }
         
         // Combine the translation and scale matrix
-        guScaleF(helper1, 
-            s64lerp(cfdata->scale[0], nfdata->scale[0], l), 
-            s64lerp(cfdata->scale[1], nfdata->scale[1], l), 
-            s64lerp(cfdata->scale[2], nfdata->scale[2], l)
-        );
-        guTranslateF(helper2, 
+        guTranslateF(helper1, 
             s64lerp(cfdata->pos[0], nfdata->pos[0], l),
             s64lerp(cfdata->pos[1], nfdata->pos[1], l),
             s64lerp(cfdata->pos[2], nfdata->pos[2], l)
+        );
+        guScaleF(helper2, 
+            s64lerp(cfdata->scale[0], nfdata->scale[0], l), 
+            s64lerp(cfdata->scale[1], nfdata->scale[1], l), 
+            s64lerp(cfdata->scale[2], nfdata->scale[2], l)
         );
         guMtxCatF(helper2, helper1, helper1);
     }
     else
     {
         // Combine the translation and scale matrix
-        guScaleF(helper1, cfdata->scale[0], cfdata->scale[1], cfdata->scale[2]);
-        guTranslateF(helper2, 
+        guTranslateF(helper1, 
             cfdata->pos[0],
             cfdata->pos[1],
             cfdata->pos[2]
         );
+        guScaleF(helper2, cfdata->scale[0], cfdata->scale[1], cfdata->scale[2]);
         guMtxCatF(helper2, helper1, helper1);
     }
         

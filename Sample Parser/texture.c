@@ -166,6 +166,7 @@ n64Texture* parse_textures(FILE* fp)
         
         // Read a string from the text file
         fgets(strbuf, STRBUFF_SIZE, fp);
+        strbuf[strcspn(strbuf, "\r\n")] = 0;
         
         // Get our starting data
         name = strtok(strbuf, " ");

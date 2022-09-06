@@ -176,7 +176,7 @@ def setupData(self, object, skeletonList, meshList):
             tris = bm.calc_tessface()
             
         # Warn if the model is small
-        if (bm.calc_volume() < 10000):
+        if (bm.calc_volume() < 10000/self.setting_scale):
             self.report({'WARNING'}, 'Your model seems quite small, it might not render properly!')
             
         for f in bm.faces:
@@ -430,9 +430,9 @@ def writeFile(self, object, finalList, animList):
             # Start a new mesh
             file.write("BEGIN MESH "+n+"\n")
             if (self.setting_upaxis == 'Z'):
-                file.write("ROOT "+("%.4f " % m.root.x)+("%.4f " % m.root.y)+("%.4f\n" % m.root.z))
+                file.write("ROOT "+("%.4f " % (m.root.x*self.setting_scale))+("%.4f " % (m.root.y*self.setting_scale))+("%.4f\n" % (m.root.z*self.setting_scale)))
             else:
-                file.write("ROOT "+("%.4f " % m.root.x)+("%.4f " % m.root.z)+("%.4f\n" % (-m.root.y)))
+                file.write("ROOT "+("%.4f " % (m.root.x*self.setting_scale))+("%.4f " % (m.root.z*self.setting_scale))+("%.4f\n" % (-m.root.y*self.setting_scale)))
             if (len(m.props) > 0):
                 file.write("PROPERTIES "+' '.join(m.props)+"\n")
             
@@ -440,10 +440,10 @@ def writeFile(self, object, finalList, animList):
             file.write("BEGIN VERTICES\n")
             for k, v in m.verts.items():
                 if (self.setting_upaxis == 'Z'):
-                    file.write("%.4f %.4f %.4f " % v.coor[:])
+                    file.write(("%.4f " % (v.coor[0]*self.setting_scale))+("%.4f " % (v.coor[1]*self.setting_scale))+("%.4f " % (v.coor[2]*self.setting_scale)))
                     file.write("%.4f %.4f %.4f " % v.norm[:])
                 else:
-                    file.write(("%.4f " % v.coor[0])+("%.4f " % v.coor[2])+("%.4f " % (-v.coor[1])))
+                    file.write(("%.4f " % (v.coor[0]*self.setting_scale))+("%.4f " % (v.coor[2]*self.setting_scale))+("%.4f " % (-v.coor[1]*self.setting_scale)))
                     file.write(("%.4f " % v.norm[0])+("%.4f " % v.norm[2])+("%.4f " % (-v.norm[1])))
                 file.write(("%.4f " % v.colr[0])+("%.4f " % v.colr[1])+("%.4f " % v.colr[2]))
                 file.write("%.4f %.4f" % v.uv[:])
@@ -478,11 +478,11 @@ def writeFile(self, object, finalList, animList):
                     frame = a.frames[kf][b]
                     file.write(frame.bone)
                     if (self.setting_upaxis == 'Z'):
-                        file.write((" %.4f " % frame.pos.x)+("%.4f " % frame.pos.y)+("%.4f" % frame.pos.z))
+                        file.write((" %.4f " % (frame.pos.x*self.setting_scale))+("%.4f " % (frame.pos.y*self.setting_scale))+("%.4f" % (frame.pos.z*self.setting_scale)))
                         file.write((" %.4f " % frame.ang.w)+(" %.4f " % frame.ang.x)+("%.4f " % frame.ang.y)+("%.4f" % frame.ang.z))
                         file.write((" %.4f " % frame.scale.x)+("%.4f " % frame.scale.y)+("%.4f\n" % frame.scale.z))
                     else:
-                        file.write((" %.4f " % frame.pos.x)+("%.4f " % frame.pos.z)+("%.4f" % (-frame.pos.y)))
+                        file.write((" %.4f " % (frame.pos.x*self.setting_scale))+("%.4f " % (frame.pos.z*self.setting_scale))+("%.4f" % (-frame.pos.y*self.setting_scale)))
                         file.write((" %.4f " % (frame.ang.w))+(" %.4f " % frame.ang.x)+("%.4f " % frame.ang.z)+("%.4f" % (-frame.ang.y)))
                         file.write((" %.4f " % frame.scale.x)+("%.4f " % frame.scale.z)+("%.4f\n" % frame.scale.y))
                 file.write("END KEYFRAME "+str(int(kf))+"\n")
@@ -504,6 +504,7 @@ class ObjectExport(bpy.types.Operator):
     setting_onlyselected = bpy.props.BoolProperty(name="Selected only", description="Export selected objects only.", default=False)
     setting_onlyvisible  = bpy.props.BoolProperty(name="Visible only", description="Export visible objects only.", default=True)
     setting_animfps      = bpy.props.FloatProperty(name="Animation FPS", description="By default, Sausage64 assumes animations are 30FPS. Changing this value will scale the animation to match this framerate.", min=0.0, max=1000.0, default=30.0)
+    setting_scale        = bpy.props.FloatProperty(name="Export Scale", description="The size of the exported model", min=0.0, max=1000.0, default=1.0)
     setting_upaxis       = bpy.props.EnumProperty(name="Up Axis", description="The selected axis points upward", items=(('Z', "Z", "The Z axis points up"), ('Y', "Y", "The Y axis points up")), default='Z')
     filepath             = bpy.props.StringProperty(subtype='FILE_PATH')    
 
@@ -516,6 +517,7 @@ class ObjectExport(bpy.types.Operator):
                            "setting_onlyselected" : setting_onlyselected,
                            "setting_onlyvisible" : setting_onlyvisible,
                            "setting_animfps" : setting_animfps,
+                           "setting_scale" : setting_scale,
                            "setting_upaxis" : setting_upaxis,
                            "filepath" : filepath}
     

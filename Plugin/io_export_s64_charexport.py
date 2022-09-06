@@ -116,28 +116,11 @@ def setupData(self, object, skeletonList, meshList):
     finalList["None"].root = mathutils.Vector((0, 0, 0))
     
     # Go through the list of bones and add all deformable bones
-    originPoses = {}
     for v in skeletonList:
-    
-        # Get the original pose and then change the armature to rest pose
-        originPoses[v] = v.data.pose_position
-        v.data.pose_position = "REST"
-        if (isNewBlender()):
-            bpy.context.view_layer.update()
-        else:
-            bpy.context.scene.update()
-        
-        # Go through all the bones
         for b in v.data.bones:
             if b.use_deform: # Ignore non deformable bones
                 if (b.name == "None"):
                     self.report({'ERROR'}, 'You should not have a bone named "None"')
-                    for v in skeletonList: # Fix the bone poses
-                        v.data.pose_position = originPoses[v]
-                        if (isNewBlender()):
-                            bpy.context.view_layer.update()
-                        else:
-                            bpy.context.scene.update()
                     return 'CANCELLED'
                 
                 finalList[b.name] = S64Mesh(b.name)
@@ -156,11 +139,12 @@ def setupData(self, object, skeletonList, meshList):
             m.data.calc_normals_split()
         
         # Create a copy of the mesh
+        self.duplicatemodel = m
         mcopy = None
         if (isNewBlender()):
-            mcopy = m.evaluated_get(bpy.context.evaluated_depsgraph_get()).to_mesh()
+            mcopy = self.duplicatemodel.evaluated_get(bpy.context.evaluated_depsgraph_get()).to_mesh()
         else:
-            mcopy = m.to_mesh(scene=bpy.context.scene, apply_modifiers=True, settings='PREVIEW', calc_undeformed=True)
+            mcopy = self.duplicatemodel.to_mesh(scene=bpy.context.scene, apply_modifiers=True, settings='PREVIEW', calc_undeformed=True)
         
         # Setup a bmesh and validate the data
         bm = bmesh.new()
@@ -188,12 +172,6 @@ def setupData(self, object, skeletonList, meshList):
             # Ensure we don't have too many verts in this face
             if (len(f.verts) > 4):
                 self.report({'ERROR'}, 'Faces should not have more than 4 vertices!')
-                for v in skeletonList: # Fix the bone poses
-                    v.data.pose_position = originPoses[v]
-                    if (isNewBlender()):
-                        bpy.context.view_layer.update()
-                    else:
-                        bpy.context.scene.update()
                 return 'CANCELLED'
                 
             # Go through all the verts
@@ -258,14 +236,6 @@ def setupData(self, object, skeletonList, meshList):
     for i in list(finalList.keys()):
         if (len(finalList[i].faces) == 0):
             del finalList[i]
-        
-    # Fix the bone poses
-    for v in skeletonList:
-        v.data.pose_position = originPoses[v]
-        if (isNewBlender()):
-            bpy.context.view_layer.update()
-        else:
-            bpy.context.scene.update()
         
     # Now iterate through all the animations and add them to the list
     if (len(bpy.data.actions) > 0):
@@ -493,6 +463,20 @@ def writeFile(self, object, finalList, animList):
     self.report({'INFO'}, 'File exported sucessfully!')
     return {'FINISHED'}
 
+def CleanUp(meshList, skeletonList, oldmodes, oldposes, oldactive):
+    for v in meshList:
+        bpy.context.scene.objects.active = v
+        bpy.ops.object.mode_set(mode=oldmodes[v])
+    for v in skeletonList:
+        bpy.context.scene.objects.active = v
+        bpy.ops.object.mode_set(mode=oldmodes[v])
+        v.data.pose_position = oldposes[v]
+        if (isNewBlender()):
+            bpy.context.view_layer.update()
+        else:
+            bpy.context.scene.update()
+    bpy.context.scene.objects.active = oldactive
+
 class ObjectExport(bpy.types.Operator):
     """Exports a sausage-link character with animations."""
     bl_idname = "object.export_sausage64"
@@ -526,6 +510,7 @@ class ObjectExport(bpy.types.Operator):
         skeletonList = []
         meshList = []
         self.filepath = bpy.path.ensure_ext(self.filepath, ".S64")
+        self.duplicatemodel = None
                 
         # Pick out what objects we're going to look over
         list = bpy.data.objects
@@ -556,14 +541,33 @@ class ObjectExport(bpy.types.Operator):
             self.report({'WARNING'}, 'No skeleton was exported with the selected options. Did you mean to do this?')
                 
         # Next, organize the data further by splitting them into categories
-        oldmode = bpy.context.object.mode
+        oldmodes = {}
+        oldposes = {}
+        oldactive = bpy.context.scene.objects.active
         try:
-            bpy.ops.object.mode_set(mode='OBJECT')
+            # Force the objects in the scene to specific modes before export
+            for v in meshList:
+                oldmodes[v] = v.mode
+                bpy.context.scene.objects.active = v
+                bpy.ops.object.mode_set(mode="OBJECT")
+            for v in skeletonList:
+                oldmodes[v] = v.mode
+                bpy.context.scene.objects.active = v
+                bpy.ops.object.mode_set(mode="OBJECT")
+                oldposes[v] = v.data.pose_position
+                v.data.pose_position = "REST"
+                if (isNewBlender()):
+                    bpy.context.view_layer.update()
+                else:
+                    bpy.context.scene.update()
+            bpy.context.scene.objects.active = oldactive
+            
+            # Perform the data parsing
             finalList, animList = setupData(self, context, skeletonList, meshList)
-            bpy.ops.object.mode_set(mode=oldmode)
+            CleanUp(meshList, skeletonList, oldmodes, oldposes, oldactive)
         except Exception:
             self.report({'ERROR'}, traceback.format_exc())
-            bpy.ops.object.mode_set(mode=oldmode)
+            CleanUp(meshList, skeletonList, oldmodes, oldposes, oldactive)
             return {'CANCELLED'}
         if (finalList == 'CANCELLED'):
             return {'CANCELLED'}

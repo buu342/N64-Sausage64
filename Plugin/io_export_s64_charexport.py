@@ -17,6 +17,7 @@ import copy
 import math
 import bmesh
 import operator
+import traceback
 import mathutils
 import itertools
 import collections
@@ -213,14 +214,14 @@ def setupData(self, object, skeletonList, meshList):
                 # Try to add the vertex color
                 try:
                     vert.colr = m.data.vertex_colors[bm.loops.layers.color.active.name].data[loop_index].color
-                except (KeyError, AttributeError) as e:
+                except (IndexError, KeyError, AttributeError) as e:
                     vert.colr = (1.0, 1.0, 1.0)
                 
                 # Try to add the vertex UV
                 try:
                     vert.uv = m.data.uv_layers[bm.loops.layers.uv.active.name].data[loop_index].uv
                     vert.uv = (vert.uv[0], 1-vert.uv[1])
-                except (KeyError, AttributeError) as e:
+                except (IndexError, KeyError, AttributeError) as e:
                     vert.uv = (0.0, 0.0)
                 
                 # Get the vertex weight and store this vertex in the corresponding bone in our mesh list
@@ -555,7 +556,15 @@ class ObjectExport(bpy.types.Operator):
             self.report({'WARNING'}, 'No skeleton was exported with the selected options. Did you mean to do this?')
                 
         # Next, organize the data further by splitting them into categories
-        finalList, animList = setupData(self, context, skeletonList, meshList)
+        oldmode = bpy.context.object.mode
+        try:
+            bpy.ops.object.mode_set(mode='OBJECT')
+            finalList, animList = setupData(self, context, skeletonList, meshList)
+            bpy.ops.object.mode_set(mode=oldmode)
+        except Exception:
+            self.report({'ERROR'}, traceback.format_exc())
+            bpy.ops.object.mode_set(mode=oldmode)
+            return {'CANCELLED'}
         if (finalList == 'CANCELLED'):
             return {'CANCELLED'}
             

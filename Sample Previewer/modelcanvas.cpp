@@ -61,7 +61,7 @@ static wxPoint lastmousepos;
     @param The window name
 ==============================*/
 
-ModelCanvas::ModelCanvas(wxWindow *parent, int* attribs, wxWindowID id, const wxPoint& pos, const wxSize& size, long style, const wxString& name) : wxGLCanvas(parent, id, NULL, pos, size, style | wxFULL_REPAINT_ON_RESIZE, name)
+ModelCanvas::ModelCanvas(wxWindow* parent, const wxGLAttributes& attriblist, wxWindowID id, const wxPoint& pos, const wxSize& size, long style, const wxString& name) : wxGLCanvas(parent, attriblist, id, pos, size, style | wxFULL_REPAINT_ON_RESIZE, name)
 {
     this->m_context = new wxGLContext(this);
     this->Connect(wxEVT_PAINT, wxPaintEventHandler(ModelCanvas::m_Canvas_OnPaint), NULL, this);

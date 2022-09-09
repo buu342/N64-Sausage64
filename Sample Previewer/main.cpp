@@ -132,8 +132,9 @@ Main::Main() : wxFrame(nullptr, wxID_ANY, PROGRAM_NAME, wxPoint(0, 0), wxSize(64
     this->m_Splitter_Vertical->Connect(wxEVT_IDLE, wxIdleEventHandler(Main::m_Splitter_VerticalOnIdle), NULL, this);
 
     // Create our OpenGL canvas
-    int gl_attrib[20] = { WX_GL_RGBA, WX_GL_MIN_RED, 1, WX_GL_MIN_GREEN, 1, WX_GL_MIN_BLUE, 1, WX_GL_DEPTH_SIZE, 1, WX_GL_DOUBLEBUFFER, 0 };
-    this->m_Model_Canvas = new ModelCanvas(this->m_Splitter_Vertical, gl_attrib, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxSUNKEN_BORDER, "");
+	wxGLAttributes args;
+	args.PlatformDefaults().Depth(24).RGBA().DoubleBuffer().EndList();
+    this->m_Model_Canvas = new ModelCanvas(this->m_Splitter_Vertical, args, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxSUNKEN_BORDER, "");
     this->m_Model_Canvas->SetApp(this);
 
     // Create the panel to hold our TreeCtrl

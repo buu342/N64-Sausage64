@@ -114,7 +114,7 @@ void s64Mesh::ParseProperties()
 	for (std::list<std::string>::iterator itprops = this->props.begin(); itprops != this->props.end(); ++itprops)
 	{
 		std::string str = *itprops;
-        std::transform(str.begin(), str.end(), str.begin(), [](unsigned char c){return std::tolower(c);});
+        std::transform(str.begin(), str.end(), str.begin(), [](unsigned char c){return ::tolower(c);});
 		if (str == "billboard")
 			this->billboard = true;
 	}

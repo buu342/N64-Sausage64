@@ -1,5 +1,7 @@
 # Sausage64
 
+[![Build Status](https://dev.azure.com/buu342/Sausage64/_apis/build/status/buu342.N64-Sausage64?branchName=master)](https://dev.azure.com/buu342/Sausage64/_build/latest?definitionId=1&branchName=master)
+
 <img src=".github/Catherine.gif" width="179" height="281"/>
 
 Sausage64 is a plugin for Blender 2.7 onwards, which allows you to export "sausage link" style character models with animations. 

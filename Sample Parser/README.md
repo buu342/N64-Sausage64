@@ -27,10 +27,7 @@ Compiling is very simple, as the program is entirely self contained and does not
 
 If you are on Windows, assuming you have GCC installed and setup, you can compile by executing `makeme.bat`.
 
-If you are on Linux or macOS, compilation can be done in one line:
-```
-gcc -O3 -o arabiki64 main.c datastructs.c mesh.c texture.c animation.c parser.c optimizer.c dlist.c output.c -lm
-```
+If you are on Linux or macOS, compilation can be done by just calling `make`.
 
 ### Using the Program
 For more information on how to use Arabiki64, check out [the wiki](../../../wiki/4%29-Arabiki64%3A-Example-S64-to-Display-List-Converter).

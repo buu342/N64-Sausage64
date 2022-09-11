@@ -122,7 +122,7 @@ jobs:
   - task: PublishBuildArtifacts@1
     displayName: Publish Build Artifacts
     inputs:
-      pathtoPublish: '$(Build.SourcesDirectory)/Sample Parser/arabiki' 
+      pathtoPublish: '$(Build.SourcesDirectory)/Sample Parser/arabiki64' 
       #pathtoPublish: '$(Build.ArtifactStagingDirectory)'
       artifactName: 'arabiki-linux' 
       publishLocation: 'Container' # Options: container, filePath

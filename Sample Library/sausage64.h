@@ -1,6 +1,47 @@
 #ifndef SAUSAGE64_H
 #define SAUSAGE64_H
 
+    // UNCOMMENT THE #DEFINE IF USING LIBDRAGON
+    //#define LIBDRAGON
+
+
+    /*********************************
+      Libultra types (for libdragon)
+    *********************************/
+
+    #ifdef LIBDRAGON
+        #include <stdint.h>
+        #include <math.h>
+        typedef uint8_t  u8;
+        typedef uint16_t u16;
+        typedef uint32_t u32;
+        typedef uint64_t u64;
+
+        typedef int8_t  s8;
+        typedef int16_t s16;
+        typedef int32_t s32;
+        typedef int64_t s64;
+
+        typedef volatile uint8_t  vu8;
+        typedef volatile uint16_t vu16;
+        typedef volatile uint32_t vu32;
+        typedef volatile uint64_t vu64;
+
+        typedef volatile int8_t  vs8;
+        typedef volatile int16_t vs16;
+        typedef volatile int32_t vs32;
+        typedef volatile int64_t vs64;
+
+        typedef float  f32;
+        typedef double f64;
+        typedef float Mtx[4][4];
+    #else
+        #ifndef _ULTRA64_H_
+            #include <ultra64.h>
+        #endif
+    #endif
+
+
     /*********************************
             Sausage64 Structs
     *********************************/
@@ -25,7 +66,9 @@
     typedef struct {
         const char* name;
         const u32 is_billboard;
-        Gfx* dl;
+        #ifndef LIBDRAGON
+            Gfx* dl;
+        #endif
     } s64Mesh;
 
     typedef struct {
@@ -74,7 +117,6 @@
     ==============================*/
     
     extern void sausage64_set_camera(Mtx* view, Mtx* projection);
-    
     
     /*==============================
         sausage64_set_anim
@@ -134,6 +176,10 @@
         @param The model helper data
     ==============================*/
     
-    extern void sausage64_drawmodel(Gfx** glistp, s64ModelHelper* mdl);
+    #ifndef LIBDRAGON
+        extern void sausage64_drawmodel(Gfx** glistp, s64ModelHelper* mdl);
+    #else
+        extern void sausage64_drawmodel(s64ModelHelper* mdl);
+    #endif
 
 #endif

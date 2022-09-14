@@ -12,6 +12,7 @@ Program entrypoint
 #include "parser.h"
 #include "optimizer.h"
 #include "dlist.h"
+#include "opengl.h"
 #include "output.h"
 
 
@@ -37,6 +38,7 @@ bool global_fixroot = TRUE;
 bool global_binaryout = FALSE;
 bool global_initialload = TRUE;
 bool global_no2tri = FALSE;
+bool global_opengl = FALSE;
 char* global_outputname = "outdlist.h";
 char* global_modelname = "MyModel";
 unsigned int global_cachesize = 32;
@@ -67,9 +69,10 @@ int main(int argc, char* argv[])
             "\t-f <File>\tThe file to load\n"
             //"\t-b \t\t(optional) Binary Display List\n" // TODO
             "\t-t <File>\t(optional) A list of textures and their data\n"
-            "\t-2 \t\t(optional) Disable 2Tri optimization\n"
-            "\t-c <Int>\t(optional) Vertex cache size (default '32')\n"
-            "\t-i \t\t(optional) Omit initial display list setup\n"
+            "\t-2 \t\t(optional) Disable 2Tri optimization (libultra only)\n"
+            "\t-g \t\t(optional) Export an OpenGL compatible model instead\n"
+            "\t-c <Int>\t(optional) Vertex cache size (default '32') (libultra only)\n"
+            "\t-i \t\t(optional) Omit initial display list setup (libultra only)\n"
             "\t-n <Name>\t(optional) Model name (default 'MyModel')\n"
             "\t-o <File>\t(optional) Output filename (default 'outdlist.h')\n"
             "\t-q \t\t(optional) Quiet mode\n"
@@ -91,7 +94,10 @@ int main(int argc, char* argv[])
     optimize_mdl();
     
     // Construct a display list
-    construct_dl();
+    if (!global_opengl)
+        construct_dl();
+    else
+        construct_opengl();
     
     // Save our model data to a file
     if (!global_binaryout)
@@ -142,6 +148,9 @@ static void parse_programargs(int argc, char* argv[])
                         sprintf(errbuf, "Error: Unable to open file '%s'\n", argv[i]);
                         terminate(errbuf);
                     }
+                    break;
+                case 'g':
+                    global_opengl = !global_opengl;
                     break;
                 case 'c':
                     i++;

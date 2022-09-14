@@ -2,9 +2,6 @@
                             dlist.c
                              
 Constructs a display list string for outputting later.
-To optimize the triangle list, I utilize the Forsyth algorithm,
-heavily basing my code off the implementation by Martin Strosjo, 
-available here: http://www.martin.st/thesis/forsyth.cpp
 ***************************************************************/
 
 #include <stdio.h>
@@ -42,7 +39,7 @@ void construct_dl()
     if (fp == NULL)
         terminate("Error: Unable to open temporary file for writing\n");
     
-    // Now we've finished optimizing the model, lets export it
+    // Announce we're gonna construct the DL
     if (!global_quiet) printf("Constructing display lists\n");
     
     // Vertex data header
@@ -106,7 +103,7 @@ void construct_dl()
                     (int)round(vert->pos.x), (int)round(vert->pos.y), (int)round(vert->pos.z),
                     float_to_s10p5(vert->UV.x*texturew), float_to_s10p5(vert->UV.y*textureh),
                     (int)round(normorcol.x), (int)round(normorcol.y), (int)round(normorcol.z),
-                        vertindex++
+                    vertindex++
                 );
             }
         }

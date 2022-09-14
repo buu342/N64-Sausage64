@@ -9,7 +9,7 @@
     *********************************/
 
     #define PROGRAM_NAME    "Arabiki64"
-    #define PROGRAM_VERSION "1.2"
+    #define PROGRAM_VERSION "1.3"
     
     
     /*********************************
@@ -25,6 +25,7 @@
     extern bool global_binaryout;
     extern bool global_initialload;
     extern bool global_no2tri;
+    extern bool global_opengl;
     extern char* global_outputname;
     extern char* global_modelname;
     extern unsigned int global_cachesize;

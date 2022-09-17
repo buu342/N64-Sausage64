@@ -472,18 +472,22 @@ def writeFile(self, object, finalList, animList):
     return {'FINISHED'}
 
 def CleanUp(meshList, skeletonList, oldmodes, oldposes, oldactive):
+    if (isNewBlender()):
+        viewscene = bpy.context.view_layer
+    else:
+        viewscene = bpy.context.scene
     for v in meshList:
-        bpy.context.scene.objects.active = v
+        viewscene.objects.active = v
         bpy.ops.object.mode_set(mode=oldmodes[v])
     for v in skeletonList:
-        bpy.context.scene.objects.active = v
+        viewscene.objects.active = v
         bpy.ops.object.mode_set(mode=oldmodes[v])
         v.data.pose_position = oldposes[v]
         if (isNewBlender()):
             bpy.context.view_layer.update()
         else:
             bpy.context.scene.update()
-    bpy.context.scene.objects.active = oldactive
+    viewscene.objects.active = oldactive
 
 class ObjectExport(bpy.types.Operator):
     """Exports a sausage-link character with animations."""
@@ -551,16 +555,20 @@ class ObjectExport(bpy.types.Operator):
         # Next, organize the data further by splitting them into categories
         oldmodes = {}
         oldposes = {}
-        oldactive = bpy.context.scene.objects.active
+        if (isNewBlender()):
+            viewscene = bpy.context.view_layer
+        else:
+            viewscene = bpy.context.scene
+        oldactive = viewscene.objects.active
         try:
             # Force the objects in the scene to specific modes before export
             for v in meshList:
                 oldmodes[v] = v.mode
-                bpy.context.scene.objects.active = v
+                viewscene.objects.active = v
                 bpy.ops.object.mode_set(mode="OBJECT")
             for v in skeletonList:
                 oldmodes[v] = v.mode
-                bpy.context.scene.objects.active = v
+                viewscene.objects.active = v
                 bpy.ops.object.mode_set(mode="OBJECT")
                 oldposes[v] = v.data.pose_position
                 v.data.pose_position = "REST"
@@ -568,7 +576,7 @@ class ObjectExport(bpy.types.Operator):
                     bpy.context.view_layer.update()
                 else:
                     bpy.context.scene.update()
-            bpy.context.scene.objects.active = oldactive
+            viewscene.objects.active = oldactive
             
             # Perform the data parsing
             finalList, animList = setupData(self, context, skeletonList, meshList)

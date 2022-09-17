@@ -153,11 +153,16 @@ void write_output_text()
     // Finally, print the Sausage64 structs
     if (makestructs)
     {
+        bool ismultimesh = (list_meshes.size > 1);
+        
+        // Struct comment header
         fputs("\n\n\n", fp);
         fputs("/*********************************\n"
               "        Sausage64 Structs\n"
               "*********************************/\n", fp);
         fputs("\n", fp);
+        
+        // Mesh list
         fprintf(fp, "static s64Mesh meshes_%s[] = {\n", global_modelname);
         for (curnode = list_meshes.head; curnode != NULL; curnode = curnode->next)
         {
@@ -165,9 +170,14 @@ void write_output_text()
             s64Mesh* mesh = (s64Mesh*)curnode->data;
             
             // Write the model data line
-            fprintf(fp, "    {\"%s\", %d, gfx_%s_%s},\n", mesh->name, has_property(mesh, "Billboard"), global_modelname, mesh->name);
+            if (ismultimesh)
+                fprintf(fp, "    {\"%s\", %d, gfx_%s_%s},\n", mesh->name, has_property(mesh, "Billboard"), global_modelname, mesh->name);
+            else
+                fprintf(fp, "    {\"%s\", %d, gfx_%s},\n", mesh->name, has_property(mesh, "Billboard"), global_modelname);
         }
         fputs("};\n\n", fp);
+        
+        // Animation list
         fprintf(fp, "static s64Animation anims_%s[] = {\n", global_modelname);
         for (curnode = list_animations.head; curnode != NULL; curnode = curnode->next)
         {

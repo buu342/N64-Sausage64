@@ -400,6 +400,16 @@ def optimizeData(self, context, finalList, animList):
     # Sort meshes alphabetically
     finalList = collections.OrderedDict(sorted(finalList.items()))
     
+    # Remove empty keyframes and animations
+    for i in animList:
+        for f in list(animList[i].frames):
+            if (len(animList[i].frames[f]) == 0):
+                del animList[i].frames[f]
+    for i in list(animList):
+        if (len(animList[i].frames) == 0):
+            self.report({'WARNING'}, "Animation '"+animList[i].name+"' was deleted because it was empty.")
+            del animList[i]
+    
     # Print the model data for debugging purposes
     if (DebugS64Export):
         for i in finalList:

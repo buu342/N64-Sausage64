@@ -12,6 +12,7 @@ bl_info = {
     "category": "Import-Export"
 }
 
+import re
 import bpy
 import copy
 import math
@@ -72,7 +73,7 @@ class S64Mesh:
             if (not m in other.mats):
                 return False
         return True
-        
+
 class S64Anim:
     def __init__(self, name):
         self.name   = name # Animation name
@@ -84,7 +85,7 @@ class S64Anim:
             for j in self.frames[i]:
                 string = string+str(self.frames[i][j])+"\n"
         return string
-        
+
 class S64KeyFrame:
     def __init__(self, bone):
         self.bone  = bone # Affected bone name
@@ -105,6 +106,11 @@ def matmul(a, b):
     if (isNewBlender()):
         return operator.matmul(a, b)
     return a*b
+
+def validstring(a):
+    if (a[0].isdigit()):
+        a = "_" + a
+    return re.sub('\W|^(?=\d)','_', a)
 
 def setupData(self, object, skeletonList, meshList):
     finalList = collections.OrderedDict()
@@ -416,7 +422,7 @@ def writeFile(self, object, finalList, animList):
         for n, m in finalList.items():
         
             # Start a new mesh
-            file.write("BEGIN MESH "+n+"\n")
+            file.write("BEGIN MESH "+validstring(n)+"\n")
             if (self.setting_upaxis == 'Z'):
                 file.write("ROOT "+("%.4f " % (m.root.x*self.setting_scale))+("%.4f " % (m.root.y*self.setting_scale))+("%.4f\n" % (m.root.z*self.setting_scale)))
             else:
@@ -445,26 +451,26 @@ def writeFile(self, object, finalList, animList):
                 for v in f.verts:
                     file.write(str(v)+" ")
                 if (f.mat != "" and f.mat is not None):
-                    file.write(f.mat+"\n")
+                    file.write(validstring(f.mat)+"\n")
                 else:
                     file.write("None\n")
             file.write("END FACES\n")
             
             # End this mesh
-            file.write("END MESH "+n+"\n\n")
+            file.write("END MESH "+validstring(n)+"\n\n")
             
         # Write the animation data
         for n, a in animList.items():
         
             # Start a new Animation
-            file.write("BEGIN ANIMATION "+n+"\n")
+            file.write("BEGIN ANIMATION "+validstring(n)+"\n")
             
             # Write the list of keyframes
             for kf in a.frames:
                 file.write("BEGIN KEYFRAME "+str(int(kf))+"\n")
                 for b in a.frames[kf]:
                     frame = a.frames[kf][b]
-                    file.write(frame.bone)
+                    file.write(validstring(frame.bone))
                     if (self.setting_upaxis == 'Z'):
                         file.write((" %.4f " % (frame.pos.x*self.setting_scale))+("%.4f " % (frame.pos.y*self.setting_scale))+("%.4f" % (frame.pos.z*self.setting_scale)))
                         file.write((" %.4f " % frame.ang.w)+(" %.4f " % frame.ang.x)+("%.4f " % frame.ang.y)+("%.4f" % frame.ang.z))
@@ -475,7 +481,7 @@ def writeFile(self, object, finalList, animList):
                         file.write((" %.4f " % frame.scale.x)+("%.4f " % frame.scale.z)+("%.4f\n" % frame.scale.y))
                 file.write("END KEYFRAME "+str(int(kf))+"\n")
                 
-            file.write("END ANIMATION "+n+"\n\n")
+            file.write("END ANIMATION "+validstring(n)+"\n\n")
             
     self.report({'INFO'}, 'File exported sucessfully!')
     return {'FINISHED'}

@@ -121,7 +121,7 @@ def setupData(self, object, skeletonList, meshList):
             if b.use_deform: # Ignore non deformable bones
                 if (b.name == "None"):
                     self.report({'ERROR'}, 'You should not have a bone named "None"')
-                    return 'CANCELLED'
+                    return 'CANCELLED', None
                 
                 finalList[b.name] = S64Mesh(b.name)
                 finalList[b.name].root = mathutils.Vector((b.head_local.x, b.head_local.y, b.head_local.z))
@@ -144,13 +144,22 @@ def setupData(self, object, skeletonList, meshList):
         if (isNewBlender()):
             mcopy = self.duplicatemodel.evaluated_get(bpy.context.evaluated_depsgraph_get()).to_mesh()
         else:
-            mcopy = self.duplicatemodel.to_mesh(scene=bpy.context.scene, apply_modifiers=True, settings='PREVIEW', calc_undeformed=True)
+            mcopy = self.duplicatemodel.to_mesh(scene=bpy.context.scene, apply_modifiers=True, settings='PREVIEW')
+            
+        # Perform triangulation if necessary
+        if (self.setting_triangulate):
+            bm = bmesh.new()
+            bm.from_mesh(mcopy)
+            if (isNewBlender()):
+                bmesh.ops.triangulate(bm, faces=bm.faces[:])
+            else:
+                bmesh.ops.triangulate(bm, faces=bm.faces[:], quad_method=0, ngon_method=0)
+            bm.to_mesh(mcopy)
+            bm.free()
         
         # Setup a bmesh and validate the data
         bm = bmesh.new()
         bm.from_mesh(mcopy)
-        if (self.setting_triangulate):
-            bmesh.ops.triangulate(bm, faces=bm.faces[:])
         bm.verts.index_update()
         bm.verts.ensure_lookup_table()
         bm.edges.ensure_lookup_table()
@@ -172,7 +181,7 @@ def setupData(self, object, skeletonList, meshList):
             # Ensure we don't have too many verts in this face
             if (len(f.verts) > 4):
                 self.report({'ERROR'}, 'Faces should not have more than 4 vertices!')
-                return 'CANCELLED'
+                return 'CANCELLED', None
                 
             # Go through all the verts
             for i, v in enumerate(f.verts):
@@ -184,20 +193,20 @@ def setupData(self, object, skeletonList, meshList):
                 vert.coor = v.co[:]
                 
                 # Add the vertex normal
-                if (m.data.has_custom_normals):
-                    vert.norm = m.data.loops[loop_index].normal[:]
+                if (mcopy.has_custom_normals):
+                    vert.norm = mcopy.data.loops[loop_index].normal[:]
                 else:
                     vert.norm = v.normal[:]
                 
                 # Try to add the vertex color
                 try:
-                    vert.colr = m.data.vertex_colors[bm.loops.layers.color.active.name].data[loop_index].color
+                    vert.colr = mcopy.vertex_colors[bm.loops.layers.color.active.name].data[loop_index].color
                 except (IndexError, KeyError, AttributeError) as e:
                     vert.colr = (1.0, 1.0, 1.0)
                 
                 # Try to add the vertex UV
                 try:
-                    vert.uv = m.data.uv_layers[bm.loops.layers.uv.active.name].data[loop_index].uv
+                    vert.uv = mcopy.uv_layers[bm.loops.layers.uv.active.name].data[loop_index].uv
                     vert.uv = (vert.uv[0], 1-vert.uv[1])
                 except (IndexError, KeyError, AttributeError) as e:
                     vert.uv = (0.0, 0.0)

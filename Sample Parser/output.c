@@ -127,7 +127,7 @@ void write_output_text()
                         s64FrameData* fdata = (s64FrameData*)fdatanode->data;
                         if (meshnode->data == fdata->mesh)
                         {
-                            fprintf(fp, "    {%.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f},\n", 
+                            fprintf(fp, "    {%.4ff, %.4ff, %.4ff, %.4ff, %.4ff, %.4ff, %.4ff, %.4ff, %.4ff, %.4ff},\n", 
                                 fdata->translation.x, fdata->translation.y, fdata->translation.z,
                                 fdata->rotation.w, fdata->rotation.x, fdata->rotation.y, fdata->rotation.z,
                                 fdata->scale.x, fdata->scale.y, fdata->scale.z
@@ -170,10 +170,13 @@ void write_output_text()
             s64Mesh* mesh = (s64Mesh*)curnode->data;
             
             // Write the model data line
+            fprintf(fp, "    {\"%s\", %d, ", mesh->name, has_property(mesh, "Billboard"));
+            if (global_opengl)
+                fputs("&", fp);
             if (ismultimesh)
-                fprintf(fp, "    {\"%s\", %d, gfx_%s_%s},\n", mesh->name, has_property(mesh, "Billboard"), global_modelname, mesh->name);
+                fprintf(fp, "gfx_%s_%s},\n", global_modelname, mesh->name);
             else
-                fprintf(fp, "    {\"%s\", %d, gfx_%s},\n", mesh->name, has_property(mesh, "Billboard"), global_modelname);
+                fprintf(fp, "gfx_%s},\n", global_modelname);
         }
         fputs("};\n\n", fp);
         

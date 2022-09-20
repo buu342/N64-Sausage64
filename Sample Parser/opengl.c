@@ -13,6 +13,14 @@ later.
 #include "texture.h"
 #include "mesh.h"
 
+typedef struct {
+    int vertcount;
+    int vertoffset;
+    int facecount;
+    int faceoffset;
+    n64Texture* tex;
+} VCacheRenderBlock;
+
 
 /*********************************
               Macros
@@ -40,6 +48,54 @@ void construct_opengl()
     if (fp == NULL)
         terminate("Error: Unable to open temporary file for writing\n");
         
+    // Texture data header
+    fprintf(fp, "\n/*********************************\n"
+                "             Textures\n"
+                "*********************************/\n\n"
+    );
+    
+    // Generate the s64Material struct for each texture
+    for (listNode* texnode = list_textures.head; texnode != NULL; texnode = texnode->next)
+    {
+        n64Texture* tex = (n64Texture*)texnode->data;
+        
+        // Generate the material data
+        switch (tex->type)
+        {
+            case TYPE_OMIT:
+                break;
+            case TYPE_TEXTURE:
+                fprintf(fp, "static s64Texture matdata_%s = {&%s};\n", tex->name, tex->name);
+                break;
+            case TYPE_PRIMCOL:
+                fprintf(fp, "static s64Primcolor matdata_%s = {%d, %d, %d, %d};\n", tex->name, tex->data.color.r, tex->data.color.g, tex->data.color.b, tex->data.color.a);
+                break;
+        }
+        
+        // And then the material itself
+        fprintf(fp, "static s64Material mat_%s = {", tex->name);
+        switch (tex->type)
+        {
+            case TYPE_OMIT:
+                fprintf(fp, "TYPE_OMIT, NULL");
+                break;
+            case TYPE_TEXTURE:
+                fprintf(fp, "TYPE_TEXTURE, &matdata_%s, %d, %d, %d, %d, %d, %d", tex->name, 
+                    tex_hasgeoflag(tex, "G_LIGHTING"), tex_hasgeoflag(tex, "G_CULL_FRONT"), tex_hasgeoflag(tex, "G_CULL_BACK"),
+                    tex_hasgeoflag(tex, "G_SHADING_SMOOTH"), tex_hasgeoflag(tex, "G_ZBUFFER"), tex->dontload
+                );
+                break;
+            case TYPE_PRIMCOL:
+                fprintf(fp, "TYPE_PRIMCOL, &matdata_%s, %d, %d, %d, %d, %d, %d", tex->name, 
+                    tex_hasgeoflag(tex, "G_LIGHTING"), tex_hasgeoflag(tex, "G_CULL_FRONT"), tex_hasgeoflag(tex, "G_CULL_BACK"),
+                    tex_hasgeoflag(tex, "G_SHADING_SMOOTH"), tex_hasgeoflag(tex, "G_ZBUFFER"), tex->dontload
+                );
+                break;
+        }
+        fprintf(fp, "};\n\n");
+    }
+    
+        
     // Vertex data header
     fprintf(fp, "\n/*********************************\n"
                 "              Models\n"
@@ -49,10 +105,48 @@ void construct_opengl()
     // Iterate through all the meshes
     for (listNode* meshnode = list_meshes.head; meshnode != NULL; meshnode = meshnode->next)
     {
-        int vertindex = 0;
         s64Mesh* mesh = (s64Mesh*)meshnode->data;
+        int texcount = 0;
+        int faceindex = 0, vertindex = 0;
+        lastTexture = NULL;
+        VCacheRenderBlock* lastrenderblock = NULL;
+        linkedList list_vcacherender = EMPTY_LINKEDLIST;
+        
+        // First, cycle through the vertex cache list and register the texture switches
+        for (listNode* vcachenode = mesh->vertcache.head; vcachenode != NULL; vcachenode = vcachenode->next)
+        {
+            vertCache* vcache = (vertCache*)vcachenode->data;
+            for (listNode* vertnode = vcache->faces.head; vertnode != NULL; vertnode = vertnode->next)
+            {
+                s64Face* face = (s64Face*)vertnode->data;
+                if (face->texture != lastTexture)
+                {
+                    texcount++;
+                    lastTexture = face->texture;
+                    VCacheRenderBlock* vcrb = calloc(1, sizeof(VCacheRenderBlock));
+                    if (vcrb == NULL)
+                        terminate("Error: Unable to allocate memory for VCache Render Block\n");
+                    vcrb->tex = face->texture;
+                    if (lastrenderblock == NULL)
+                    {
+                        vcrb->vertoffset = 0;
+                        vcrb->faceoffset = 0;
+                    }
+                    else
+                    {
+                        vcrb->vertoffset = lastrenderblock->vertcount + lastrenderblock->vertoffset;
+                        vcrb->faceoffset = lastrenderblock->facecount + lastrenderblock->faceoffset;
+                    }
+                    lastrenderblock = vcrb;
+                    list_append(&list_vcacherender, vcrb);
+                }
+            }
+            lastrenderblock->facecount += vcache->faces.size;
+            lastrenderblock->vertcount += vcache->verts.size;
+        }
         
         // Cycle through the vertex cache list and dump the vertices
+        vertindex = 0;
         fprintf(fp, "static float vtx_%s", global_modelname);
         if (ismultimesh)
             fprintf(fp, "_%s", mesh->name);
@@ -67,7 +161,7 @@ void construct_opengl()
                 s64Vert* vert = (s64Vert*)vertnode->data;
                 
                 // Dump the vert data
-                fprintf(fp, "    {%f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f}, /* %d */\n", 
+                fprintf(fp, "    {%.4ff, %.4ff, %.4ff, %.4ff, %.4ff, %.4ff, %.4ff, %.4ff, %.4ff, %.4ff, %.4ff}, /* %d */\n", 
                     vert->pos.x, vert->pos.y, vert->pos.z,
                     vert->UV.x, vert->UV.y,
                     vert->normal.x, vert->normal.y, vert->normal.z,
@@ -84,6 +178,7 @@ void construct_opengl()
             fprintf(fp, "_%s", mesh->name);
         fprintf(fp, "[][3] = {\n");
         vertindex = 0;
+        faceindex = 0;
         for (listNode* vcachenode = mesh->vertcache.head; vcachenode != NULL; vcachenode = vcachenode->next)
         {
             vertCache* vcache = (vertCache*)vcachenode->data;
@@ -95,57 +190,48 @@ void construct_opengl()
                 
                 // Dump the face data
                 fprintf(fp, "    {%u, %u, %u}, /* %d */\n", 
-                    list_index_from_data(&vcache->verts, face->verts[0]), 
-                    list_index_from_data(&vcache->verts, face->verts[1]), 
-                    list_index_from_data(&vcache->verts, face->verts[2]),
-                    vertindex++
+                    vertindex + list_index_from_data(&vcache->verts, face->verts[0]), 
+                    vertindex + list_index_from_data(&vcache->verts, face->verts[1]), 
+                    vertindex + list_index_from_data(&vcache->verts, face->verts[2]),
+                    faceindex++
                 );
             }
+            vertindex += vcache->verts.size;
         }
         fprintf(fp, "};\n\n");
-    
-        // Finally, cycle through the vertex cache list again, but now create OpenGL commands
-        fprintf(fp, "static void gfx_%s", global_modelname);
+        
+        // Next, generate the render blocks
+        fprintf(fp, "static s64RenderBlock renb_%s", global_modelname);
         if (ismultimesh)
             fprintf(fp, "_%s", mesh->name);
-        fprintf(fp, "()\n{\n");
-        vertindex = 0;
-        //for (listNode* vcachenode = mesh->vertcache.head; vcachenode != NULL; vcachenode = vcachenode->next)
-        //{
-            //vertCache* vcache = (vertCache*)vcachenode->data;
-            //listNode* prevfacenode = vcache->faces.head;
-            
-            fprintf(fp, "    glGenBuffersARB(2, buffers);\n");
-            fprintf(fp, "    glBindBufferARB(GL_ARRAY_BUFFER_ARB, buffers[0]);\n");
-            fprintf(fp, "    glBufferDataARB(GL_ARRAY_BUFFER_ARB, sizeof(cube_vertices), cube_vertices, GL_STATIC_DRAW_ARB);\n");
-            fprintf(fp, "    glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER_ARB, buffers[1]);\n");
-            fprintf(fp, "    glBufferDataARB(GL_ELEMENT_ARRAY_BUFFER_ARB, sizeof(cube_indices), cube_indices, GL_STATIC_DRAW_ARB);\n");
-            
-            fprintf(fp, "    glEnable(GL_LIGHTING);\n");
-            fprintf(fp, "    glEnable(GL_DEPTH_TEST);\n");
-            fprintf(fp, "    glEnable(GL_CULL_FACE);\n");
-            fprintf(fp, "    glEnable(G_CULL_BACK);\n");
-            fprintf(fp, "    glEnable(G_SHADING_SMOOTH);\n");
-            fprintf(fp, "    glEnable(GL_COLOR_MATERIAL);\n");
-            fprintf(fp, "    glColorMaterial(GL_FRONT_AND_BACK, GL_DIFFUSE);\n");
-            
-            fprintf(fp, "    glEnableClientState(GL_VERTEX_ARRAY);\n");
-            fprintf(fp, "    glEnableClientState(GL_TEXTURE_COORD_ARRAY);\n");
-            fprintf(fp, "    glEnableClientState(GL_NORMAL_ARRAY);\n");
-            fprintf(fp, "    glEnableClientState(GL_COLOR_ARRAY);\n");
-
-            fprintf(fp, "    glVertexPointer(3, GL_FLOAT, 11, NULL + 0*sizeof(float));\n");
-            fprintf(fp, "    glTexCoordPointer(2, GL_FLOAT, 11, NULL + 3*sizeof(float));\n");
-            fprintf(fp, "    glNormalPointer(GL_FLOAT, 11, NULL + 5*sizeof(float));\n");
-            fprintf(fp, "    glColorPointer(3, GL_FLOAT, 11, NULL + 8*sizeof(float));\n");
-            
-            fprintf(fp, "    glDrawElements(GL_TRIANGLES, %d, GL_UNSIGNED_SHORT, 0);\n", mesh->faces.size);
-            
-            // Newline if we have another vertex block to load
-        //    if (vcachenode->next != NULL)
-        //        fprintf(fp, "\n");
-        //}
-        fprintf(fp, "}\n\n");
+        fprintf(fp, "[] = {\n");
+        for (listNode* vcachenode = list_vcacherender.head; vcachenode != NULL; vcachenode = vcachenode->next)
+        {
+            VCacheRenderBlock* vcacheb = (VCacheRenderBlock*)vcachenode->data;
+            fprintf(fp, "\t{");
+            fprintf(fp, "vtx_%s", global_modelname);
+            if (ismultimesh)
+                fprintf(fp, "_%s", mesh->name);
+            fprintf(fp, "+%d, %d, %d, ", vcacheb->vertoffset, vcacheb->vertcount, vcacheb->facecount);
+            fprintf(fp, "ind_%s", global_modelname);
+            if (ismultimesh)
+                fprintf(fp, "_%s", mesh->name);
+            fprintf(fp, "+%d, &mat_%s},\n", vcacheb->faceoffset, vcacheb->tex->name);
+        }
+        fprintf(fp, "};\n\n");
+        
+        // Finally, generate the "Display List"
+        fprintf(fp, "static s64Gfx gfx_%s", global_modelname);
+        if (ismultimesh)
+            fprintf(fp, "_%s", mesh->name);
+        fprintf(fp, " = {%d, ", list_vcacherender.size);
+        fprintf(fp, "renb_%s", global_modelname);
+        if (ismultimesh)
+            fprintf(fp, "_%s", mesh->name);
+        fprintf(fp, "};\n\n");
+        
+        // Cleanup
+        list_destroy_deep(&list_vcacherender);
     }
     
     // State we finished

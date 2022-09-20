@@ -7,6 +7,9 @@ https://github.com/buu342/Blender-Sausage64
 ***************************************************************/
 
 #include "sausage64.h"
+#ifdef LIBDRAGON
+    #include <math.h>
+#endif
 
 
 /*********************************
@@ -14,8 +17,12 @@ https://github.com/buu342/Blender-Sausage64
 *********************************/
 
 #ifdef LIBDRAGON
+    #ifndef TRUE
     #define TRUE 1
-    #define FALSE 1
+    #endif
+    #ifndef FALSE
+    #define FALSE 0
+    #endif
 #endif
 
 
@@ -43,6 +50,7 @@ typedef struct {
     static Mtx* s64_viewmat;
     static Mtx* s64_projmat;
 #endif
+
 
 /*********************************
       Helper Math Functions
@@ -91,7 +99,8 @@ static inline f32 s64lerp(f32 a, f32 b, f32 f)
     @return The dot product
 ==============================*/
 
-static inline float s64quat_dot(s64Quat q1, s64Quat q2) {
+static inline float s64quat_dot(s64Quat q1, s64Quat q2)
+{
     return q1.x*q2.x + q1.y*q2.y + q1.z*q2.z + q1.w*q2.w;
 }
 
@@ -102,7 +111,8 @@ static inline float s64quat_dot(s64Quat q1, s64Quat q2) {
     @param The quaternion to normalize
 ==============================*/
 
-static inline float s64quat_normalize(s64Quat q) {
+static inline float s64quat_normalize(s64Quat q)
+{
     return sqrtf(s64quat_dot(q, q));
 }
 
@@ -137,11 +147,11 @@ static inline s64Quat s64slerp(s64Quat a, s64Quat b, f32 f)
     result.z = s64lerp(a.z, result.z, f);
 
     // Normalize the quaternion
-    scale = s64quat_normalize(result);
-    result.x /= scale;
-    result.y /= scale;
-    result.z /= scale;
-    result.w /= scale;
+    scale = 1/s64quat_normalize(result);
+    result.x *= scale;
+    result.y *= scale;
+    result.z *= scale;
+    result.w *= scale;
     return result;
 }
 

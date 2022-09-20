@@ -11,7 +11,10 @@
 
     #ifdef LIBDRAGON
         #include <stdint.h>
-        #include <math.h>
+        #ifndef __GL_H__
+            #include <GL/gl.h>
+        #endif
+
         typedef uint8_t  u8;
         typedef uint16_t u16;
         typedef uint32_t u32;
@@ -34,17 +37,61 @@
 
         typedef float  f32;
         typedef double f64;
-        typedef float Mtx[4][4];
+        typedef float  Mtx[4][4];
     #else
         #ifndef _ULTRA64_H_
             #include <ultra64.h>
         #endif
+        #define s64Gfx Gfx
     #endif
 
 
     /*********************************
             Sausage64 Structs
     *********************************/
+
+    #ifdef LIBDRAGON
+        typedef enum {
+            TYPE_OMIT = 0,
+            TYPE_TEXTURE = 1,
+            TYPE_PRIMCOL = 2
+        } s64MaterialType;
+
+        typedef struct {
+            GLuint* identifier;
+        } s64Texture;
+
+        typedef struct {
+            u8 r;
+            u8 g;
+            u8 b;
+            u8 a;
+        } s64Primcolor;
+
+        typedef struct {
+            s64MaterialType type;
+            void* data;
+            u8 lighting;
+            u8 cullfront;
+            u8 cullback;
+            u8 smooth;
+            u8 depthtest;
+            u8 dontload;
+        } s64Material;
+
+        typedef struct {
+            float (*verts)[11];
+            u16 vertcount;
+            u16 facecount;
+            u16 (*faces)[3];
+            s64Material* texture;
+        } s64RenderBlock;
+
+        typedef struct {
+            u32 blockcount;
+            s64RenderBlock* renders;
+        } s64Gfx;
+    #endif
 
     typedef struct {
         f32 pos[3];
@@ -66,9 +113,7 @@
     typedef struct {
         const char* name;
         const u32 is_billboard;
-        #ifndef LIBDRAGON
-            Gfx* dl;
-        #endif
+        s64Gfx* dl;
     } s64Mesh;
 
     typedef struct {

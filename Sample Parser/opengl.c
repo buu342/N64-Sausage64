@@ -147,7 +147,7 @@ void construct_opengl()
         
         // Cycle through the vertex cache list and dump the vertices
         vertindex = 0;
-        fprintf(fp, "static float vtx_%s", global_modelname);
+        fprintf(fp, "static f32 vtx_%s", global_modelname);
         if (ismultimesh)
             fprintf(fp, "_%s", mesh->name);
         fprintf(fp, "[][11] = {\n");
@@ -173,7 +173,7 @@ void construct_opengl()
         fprintf(fp, "};\n\n");
         
         // Then cycle through the vertex cache list again, but now dump the faces
-        fprintf(fp, "static unsigned short ind_%s", global_modelname);
+        fprintf(fp, "static u16 ind_%s", global_modelname);
         if (ismultimesh)
             fprintf(fp, "_%s", mesh->name);
         fprintf(fp, "[][3] = {\n");
@@ -209,14 +209,14 @@ void construct_opengl()
         {
             VCacheRenderBlock* vcacheb = (VCacheRenderBlock*)vcachenode->data;
             fprintf(fp, "\t{");
-            fprintf(fp, "vtx_%s", global_modelname);
+            fprintf(fp, "&vtx_%s", global_modelname);
             if (ismultimesh)
                 fprintf(fp, "_%s", mesh->name);
-            fprintf(fp, "+%d, %d, %d, ", vcacheb->vertoffset, vcacheb->vertcount, vcacheb->facecount);
-            fprintf(fp, "ind_%s", global_modelname);
+            fprintf(fp, "[%d], %d, %d, ", vcacheb->vertoffset, vcacheb->vertcount, vcacheb->facecount);
+            fprintf(fp, "&ind_%s", global_modelname);
             if (ismultimesh)
                 fprintf(fp, "_%s", mesh->name);
-            fprintf(fp, "+%d, &mat_%s},\n", vcacheb->faceoffset, vcacheb->tex->name);
+            fprintf(fp, "[%d], &mat_%s},\n", vcacheb->faceoffset, vcacheb->tex->name);
         }
         fprintf(fp, "};\n\n");
         

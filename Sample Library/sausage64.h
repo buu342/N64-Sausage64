@@ -131,6 +131,9 @@
         float animtick;
         u32 curkeyframe;
         Mtx* matrix;
+        #ifdef LIBDRAGON
+            GLuint* glbuffers;
+        #endif
         void (*predraw)(u16);
         void (*postdraw)(u16);
         void (*animcallback)(u16);
@@ -148,10 +151,15 @@
         @param The model helper to initialize
         @param The model data 
         @param An array of matrices for each mesh part
+        @param (libdragon only) An array of GL buffers 
+               for each mesh's verticies and faces
     ==============================*/
     
-    
+    #ifndef LIBDRAGON
     extern void sausage64_initmodel(s64ModelHelper* mdl, s64ModelData* mdldata, Mtx* matrices);
+    #else
+    extern void sausage64_initmodel(s64ModelHelper* mdl, s64ModelData* mdldata, Mtx* matrices, GLuint* glbuffers);
+    #endif
     
     
     /*==============================
@@ -218,7 +226,7 @@
         sausage64_drawmodel
         Renders a Sausage64 model
         @param A pointer to a display list pointer
-        @param The model helper data
+        @param (libultra only) The model helper data
     ==============================*/
     
     #ifndef LIBDRAGON

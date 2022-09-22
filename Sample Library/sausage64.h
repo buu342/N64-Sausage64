@@ -2,7 +2,7 @@
 #define SAUSAGE64_H
 
     // UNCOMMENT THE #DEFINE IF USING LIBDRAGON
-    // #define LIBDRAGON
+    //#define LIBDRAGON
 
 
     /*********************************
@@ -227,7 +227,18 @@
     
     extern void sausage64_advance_anim(s64ModelHelper* mdl, float tickamount);
     
+
+    #ifdef LIBDRAGON
+         /*==============================
+            sausage64_loadmaterial
+            Loads a material for libdragon rendering
+            @param The material to load
+        ==============================*/
     
+        extern void sausage64_loadmaterial(s64Material* mat);
+    #endif
+
+
     /*==============================
         sausage64_drawmodel
         Renders a Sausage64 model

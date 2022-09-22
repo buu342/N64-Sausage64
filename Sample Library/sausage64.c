@@ -531,35 +531,35 @@ void sausage64_set_anim(s64ModelHelper* mdl, u16 anim)
     /*==============================
         sausage64_loadmaterial
         Loads a material for libdragon rendering
-        @param The texture to load
+        @param The material to load
     ==============================*/
-
-    static void sausage64_loadmaterial(s64Material* mat)
+    
+    void sausage64_loadmaterial(s64Material* mat)
     {
-        
         if (mat->type == TYPE_TEXTURE)
         {
-            s64Texture* tex = (s64Texture*) mat->data;
-            if (s64_lastmat->type != TYPE_TEXTURE)
+            s64Texture* tex = (s64Texture*)mat->data;
+            if (s64_lastmat == NULL || (s64_lastmat->type != TYPE_TEXTURE))
             {
+                const GLfloat diffuse[] = { 1.0f, 1.0f, 1.0f, 1.0f };
                 glEnable(GL_TEXTURE);
                 glEnable(GL_TEXTURE_2D);
-                glDisable(GL_COLOR_MATERIAL);
+                glEnable(GL_COLOR_MATERIAL);
+                glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, diffuse);
             }
             glBindTexture(GL_TEXTURE_2D, *tex->identifier);
         }
         else
         {
             s64PrimColor* col = (s64PrimColor*)mat->data;
-            if (s64_lastmat == NULL || (s64_lastmat->type != TYPE_TEXTURE))
+            if (s64_lastmat == NULL || (s64_lastmat->type != TYPE_PRIMCOL))
             {
-                GLfloat diffuse[] = { 1.0f, 0.0f, 0.0f, 1.0f };
                 glDisable(GL_TEXTURE);
                 glDisable(GL_TEXTURE_2D);
-                glEnable(GL_COLOR_MATERIAL);
-                //glColorMaterial(GL_FRONT_AND_BACK, GL_DIFFUSE);
-                //glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, diffuse);
+                glDisable(GL_COLOR_MATERIAL);
             }
+            const GLfloat diffuse[] = { (float)col->r / 255.0f, (float)col->g / 255.0f, (float)col->b / 255.0f, 1.0f };
+            glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, diffuse);
         }
 
         // Set other draw settings
@@ -575,21 +575,21 @@ void sausage64_set_anim(s64ModelHelper* mdl, u16 anim)
             else
                 glDisable(GL_CULL_FACE);
         }
-        if (s64_lastmat == NULL || (s64_lastmat->lighting != mat->lighting))
+        if (s64_lastmat == NULL || s64_lastmat->lighting != mat->lighting)
         {
             if (mat->lighting)
                 glEnable(GL_LIGHTING);
             else
                 glDisable(GL_LIGHTING);
         }
-        if (s64_lastmat == NULL || (s64_lastmat->depthtest != mat->depthtest))
+        if (s64_lastmat == NULL || s64_lastmat->depthtest != mat->depthtest)
         {
             if (mat->depthtest)
                 glEnable(GL_DEPTH_TEST);
             else
                 glDisable(GL_DEPTH_TEST);
         }
-        if (s64_lastmat == NULL || (s64_lastmat->smooth != mat->smooth))
+        if (s64_lastmat == NULL || s64_lastmat->smooth != mat->smooth)
         {
             if (mat->smooth)
                 glShadeModel(GL_SMOOTH);

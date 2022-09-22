@@ -2,7 +2,7 @@
 #define SAUSAGE64_H
 
     // UNCOMMENT THE #DEFINE IF USING LIBDRAGON
-    //#define LIBDRAGON
+    // #define LIBDRAGON
 
 
     /*********************************
@@ -59,6 +59,11 @@
 
         typedef struct {
             GLuint* identifier;
+            u32 w;
+            u32 h;
+            GLuint filter;
+            GLuint wraps;
+            GLuint wrapt;
         } s64Texture;
 
         typedef struct {
@@ -66,7 +71,7 @@
             u8 g;
             u8 b;
             u8 a;
-        } s64Primcolor;
+        } s64PrimColor;
 
         typedef struct {
             s64MaterialType type;
@@ -76,7 +81,6 @@
             u8 cullback;
             u8 smooth;
             u8 depthtest;
-            u8 dontload;
         } s64Material;
 
         typedef struct {
@@ -84,7 +88,7 @@
             u16 vertcount;
             u16 facecount;
             u16 (*faces)[3];
-            s64Material* texture;
+            s64Material* material;
         } s64RenderBlock;
 
         typedef struct {
@@ -130,8 +134,9 @@
         u32 curanimlen;
         float animtick;
         u32 curkeyframe;
-        Mtx* matrix;
-        #ifdef LIBDRAGON
+        #ifndef LIBDRAGON
+            Mtx* matrix;
+        #else
             GLuint* glbuffers;
         #endif
         void (*predraw)(u16);
@@ -149,16 +154,17 @@
         sausage64_initmodel
         Initialize a model helper struct
         @param The model helper to initialize
-        @param The model data 
-        @param An array of matrices for each mesh part
-        @param (libdragon only) An array of GL buffers 
-               for each mesh's verticies and faces
-    ==============================*/
+        @param The model data
+        @param (Libultra) An array of matrices for each mesh
+               part
+               (Libdragon) An array of GL buffers for each
+               mesh's verticies and faces
+        ==============================*/
     
     #ifndef LIBDRAGON
     extern void sausage64_initmodel(s64ModelHelper* mdl, s64ModelData* mdldata, Mtx* matrices);
     #else
-    extern void sausage64_initmodel(s64ModelHelper* mdl, s64ModelData* mdldata, Mtx* matrices, GLuint* glbuffers);
+    extern void sausage64_initmodel(s64ModelHelper* mdl, s64ModelData* mdldata, GLuint* glbuffers);
     #endif
     
     
@@ -225,8 +231,9 @@
     /*==============================
         sausage64_drawmodel
         Renders a Sausage64 model
-        @param A pointer to a display list pointer
-        @param (libultra only) The model helper data
+        @param (Libultra) A pointer to a display list pointer
+               (Libdragon) The model helper data
+        @param (Libultra) The model helper data
     ==============================*/
     
     #ifndef LIBDRAGON

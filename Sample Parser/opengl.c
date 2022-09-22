@@ -59,40 +59,54 @@ void construct_opengl()
     {
         n64Texture* tex = (n64Texture*)texnode->data;
         
-        // Generate the material data
-        switch (tex->type)
+        if (tex->type != TYPE_OMIT && !tex->dontload)
         {
-            case TYPE_OMIT:
-                break;
-            case TYPE_TEXTURE:
-                fprintf(fp, "static s64Texture matdata_%s = {&%s};\n", tex->name, tex->name);
-                break;
-            case TYPE_PRIMCOL:
-                fprintf(fp, "static s64Primcolor matdata_%s = {%d, %d, %d, %d};\n", tex->name, tex->data.color.r, tex->data.color.g, tex->data.color.b, tex->data.color.a);
-                break;
+            // Generate the material data
+            switch (tex->type)
+            {
+                case TYPE_TEXTURE:
+                    fprintf(fp, "static s64Texture matdata_%s = {&%s, %d, %d, ", tex->name, tex->name, tex->data.image.w, tex->data.image.h);
+                    if (!strcmp(tex->texfilter, "G_TF_POINT"))
+                        fputs("GL_NEAREST, ", fp);
+                    else
+                        fputs("GL_LINEAR, ", fp);
+                    if (!strcmp(tex->data.image.texmodes, "G_TX_MIRROR"))
+                        fputs("GL_MIRRORED_REPEAT, ", fp);
+                    else if (!strcmp(tex->data.image.texmodes, "G_TX_WRAP"))
+                        fputs("GL_REPEAT, ", fp);
+                    else
+                        fputs("GL_CLAMP, ", fp);
+                    if (!strcmp(tex->data.image.texmodet, "G_TX_MIRROR"))
+                        fputs("GL_MIRRORED_REPEAT};\n", fp);
+                    else if (!strcmp(tex->data.image.texmodet, "G_TX_WRAP"))
+                        fputs("GL_REPEAT};\n", fp);
+                    else
+                        fputs("GL_CLAMP};\n", fp);
+                    break;
+                case TYPE_PRIMCOL:
+                    fprintf(fp, "static s64PrimColor matdata_%s = {%d, %d, %d, %d};\n", tex->name, tex->data.color.r, tex->data.color.g, tex->data.color.b, 255/*tex->data.color.a*/);
+                    break;
+            }
+            
+            // And then the material itself
+            fprintf(fp, "static s64Material mat_%s = {", tex->name);
+            switch (tex->type)
+            {
+                case TYPE_TEXTURE:
+                    fprintf(fp, "TYPE_TEXTURE, &matdata_%s, %d, %d, %d, %d, %d", tex->name, 
+                        tex_hasgeoflag(tex, "G_LIGHTING"), tex_hasgeoflag(tex, "G_CULL_FRONT"), tex_hasgeoflag(tex, "G_CULL_BACK"),
+                        tex_hasgeoflag(tex, "G_SHADING_SMOOTH"), tex_hasgeoflag(tex, "G_ZBUFFER")
+                    );
+                    break;
+                case TYPE_PRIMCOL:
+                    fprintf(fp, "TYPE_PRIMCOL, &matdata_%s, %d, %d, %d, %d, %d", tex->name, 
+                        tex_hasgeoflag(tex, "G_LIGHTING"), tex_hasgeoflag(tex, "G_CULL_FRONT"), tex_hasgeoflag(tex, "G_CULL_BACK"),
+                        tex_hasgeoflag(tex, "G_SHADING_SMOOTH"), tex_hasgeoflag(tex, "G_ZBUFFER")
+                    );
+                    break;
+            }
+            fprintf(fp, "};\n\n");
         }
-        
-        // And then the material itself
-        fprintf(fp, "static s64Material mat_%s = {", tex->name);
-        switch (tex->type)
-        {
-            case TYPE_OMIT:
-                fprintf(fp, "TYPE_OMIT, NULL");
-                break;
-            case TYPE_TEXTURE:
-                fprintf(fp, "TYPE_TEXTURE, &matdata_%s, %d, %d, %d, %d, %d, %d", tex->name, 
-                    tex_hasgeoflag(tex, "G_LIGHTING"), tex_hasgeoflag(tex, "G_CULL_FRONT"), tex_hasgeoflag(tex, "G_CULL_BACK"),
-                    tex_hasgeoflag(tex, "G_SHADING_SMOOTH"), tex_hasgeoflag(tex, "G_ZBUFFER"), tex->dontload
-                );
-                break;
-            case TYPE_PRIMCOL:
-                fprintf(fp, "TYPE_PRIMCOL, &matdata_%s, %d, %d, %d, %d, %d, %d", tex->name, 
-                    tex_hasgeoflag(tex, "G_LIGHTING"), tex_hasgeoflag(tex, "G_CULL_FRONT"), tex_hasgeoflag(tex, "G_CULL_BACK"),
-                    tex_hasgeoflag(tex, "G_SHADING_SMOOTH"), tex_hasgeoflag(tex, "G_ZBUFFER"), tex->dontload
-                );
-                break;
-        }
-        fprintf(fp, "};\n\n");
     }
     
         
@@ -126,7 +140,10 @@ void construct_opengl()
                     VCacheRenderBlock* vcrb = calloc(1, sizeof(VCacheRenderBlock));
                     if (vcrb == NULL)
                         terminate("Error: Unable to allocate memory for VCache Render Block\n");
-                    vcrb->tex = face->texture;
+                    if (face->texture->type == TYPE_OMIT || face->texture->dontload)
+                        vcrb->tex = NULL;
+                    else
+                        vcrb->tex = face->texture;
                     if (lastrenderblock == NULL)
                     {
                         vcrb->vertoffset = 0;
@@ -216,7 +233,10 @@ void construct_opengl()
             fprintf(fp, "&ind_%s", global_modelname);
             if (ismultimesh)
                 fprintf(fp, "_%s", mesh->name);
-            fprintf(fp, "[%d], &mat_%s},\n", vcacheb->faceoffset, vcacheb->tex->name);
+            if (vcacheb->tex != NULL)
+                fprintf(fp, "[%d], &mat_%s},\n", vcacheb->faceoffset, vcacheb->tex->name);
+            else
+                fprintf(fp, "[%d], NULL},\n", vcacheb->faceoffset);
         }
         fprintf(fp, "};\n\n");
         

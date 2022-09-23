@@ -2,7 +2,7 @@
 #define SAUSAGE64_H
 
     // UNCOMMENT THE #DEFINE IF USING LIBDRAGON
-    #define LIBDRAGON
+    //#define LIBDRAGON
 
 
     /*********************************
@@ -159,12 +159,12 @@
                part
                (Libdragon) An array of GL buffers for each
                mesh's verticies and faces
-        ==============================*/
+    ==============================*/
     
     #ifndef LIBDRAGON
-    extern void sausage64_initmodel(s64ModelHelper* mdl, s64ModelData* mdldata, Mtx* matrices);
+        extern void sausage64_initmodel(s64ModelHelper* mdl, s64ModelData* mdldata, Mtx* matrices);
     #else
-    extern void sausage64_initmodel(s64ModelHelper* mdl, s64ModelData* mdldata, GLuint* glbuffers);
+        extern void sausage64_initmodel(s64ModelHelper* mdl, s64ModelData* mdldata, GLuint* glbuffers);
     #endif
     
     

@@ -388,7 +388,6 @@ static void sausage64_update_anim(s64ModelHelper* mdl)
     const u32 curkeyframe = mdl->curkeyframe;
     const u32 curframenum = anim->keyframes[curkeyframe].framenumber;
     const u32 nframes = anim->keyframecount;
-    const u32 animlen = mdl->curanimlen;
     u32 nextkeyframe = (curkeyframe+1)%nframes;
     
     // Check if we changed animation frame
@@ -541,7 +540,7 @@ void sausage64_set_anim(s64ModelHelper* mdl, u16 anim)
             s64Texture* tex = (s64Texture*)mat->data;
             if (s64_lastmat == NULL || (s64_lastmat->type != TYPE_TEXTURE))
             {
-                const GLfloat diffuse[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+                const GLfloat diffuse[] = {1.0f, 1.0f, 1.0f, 1.0f};
                 glEnable(GL_TEXTURE);
                 glEnable(GL_TEXTURE_2D);
                 glEnable(GL_COLOR_MATERIAL);
@@ -558,7 +557,7 @@ void sausage64_set_anim(s64ModelHelper* mdl, u16 anim)
                 glDisable(GL_TEXTURE_2D);
                 glDisable(GL_COLOR_MATERIAL);
             }
-            const GLfloat diffuse[] = { (float)col->r / 255.0f, (float)col->g / 255.0f, (float)col->b / 255.0f, 1.0f };
+            const GLfloat diffuse[] = {(float)col->r/255.0f, (float)col->g/255.0f, (float)col->b/255.0f, 1.0f};
             glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, diffuse);
         }
 
@@ -879,7 +878,7 @@ void sausage64_set_anim(s64ModelHelper* mdl, u16 anim)
 
                 // Draw this part of the model without animations
                 s64Gfx* dl = mdl->mdldata->meshes[i].dl;
-                glBindBufferARB(GL_ARRAY_BUFFER, mdl->glbuffers[i*2]);
+                glBindBufferARB(GL_ARRAY_BUFFER_ARB, mdl->glbuffers[i*2]);
                 glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER_ARB, mdl->glbuffers[i*2 + 1]);
                 sausage64_drawpart(dl, &mdata->meshes[i], cfdata, nfdata, mdl->interpolate, l);
             }
@@ -899,7 +898,7 @@ void sausage64_set_anim(s64ModelHelper* mdl, u16 anim)
 
                 // Draw this part of the model without animations
                 s64Gfx* dl = mdl->mdldata->meshes[i].dl;
-                glBindBufferARB(GL_ARRAY_BUFFER, mdl->glbuffers[i*2]);
+                glBindBufferARB(GL_ARRAY_BUFFER_ARB, mdl->glbuffers[i*2]);
                 glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER_ARB, mdl->glbuffers[i*2 + 1]);
                 for (u32 j=0; j<dl->blockcount; j++)
                 {

@@ -127,7 +127,7 @@ void write_output_text()
                         s64FrameData* fdata = (s64FrameData*)fdatanode->data;
                         if (meshnode->data == fdata->mesh)
                         {
-                            fprintf(fp, "    {%.4ff, %.4ff, %.4ff, %.4ff, %.4ff, %.4ff, %.4ff, %.4ff, %.4ff, %.4ff},\n", 
+                            fprintf(fp, "    {{%.4ff, %.4ff, %.4ff}, {%.4ff, %.4ff, %.4ff, %.4ff}, {%.4ff, %.4ff, %.4ff}},\n", 
                                 fdata->translation.x, fdata->translation.y, fdata->translation.z,
                                 fdata->rotation.w, fdata->rotation.x, fdata->rotation.y, fdata->rotation.z,
                                 fdata->scale.x, fdata->scale.y, fdata->scale.z

@@ -71,13 +71,13 @@ void construct_opengl()
                     else
                         fputs("GL_LINEAR, ", fp);
                     if (!strcmp(tex->data.image.texmodes, "G_TX_MIRROR"))
-                        fputs("GL_MIRRORED_REPEAT, ", fp);
+                        fputs("GL_REPEAT, ", fp);//fputs("GL_MIRRORED_REPEAT, ", fp);
                     else if (!strcmp(tex->data.image.texmodes, "G_TX_WRAP"))
                         fputs("GL_REPEAT, ", fp);
                     else
                         fputs("GL_CLAMP, ", fp);
                     if (!strcmp(tex->data.image.texmodet, "G_TX_MIRROR"))
-                        fputs("GL_MIRRORED_REPEAT};\n", fp);
+                        fputs("GL_REPEAT};\n", fp);//fputs("GL_MIRRORED_REPEAT};\n", fp);
                     else if (!strcmp(tex->data.image.texmodet, "G_TX_WRAP"))
                         fputs("GL_REPEAT};\n", fp);
                     else

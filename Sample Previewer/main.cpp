@@ -476,13 +476,17 @@ void Main::m_MenuItem_ImportTextureOnMenuSelection(wxCommandEvent& event)
 
         // If we did not find the given texture name, then skip
         if (tex == NULL)
+        {
+            line = file.GetNextLine();
             continue;
+        }
 
         // Get the texture type
         token = tkz.GetNextToken();
         if (token == "OMIT")
         {
             tex->CreateDefaultUnknown();
+            line = file.GetNextLine();
             continue;
         }
         else if (token == "PRIMCOL")

@@ -1,6 +1,8 @@
 #include <libdragon.h>
 #include <GL/gl.h>
 #include <GL/gl_integration.h>
+#include <time.h>
+#include <stdlib.h>
 #include <malloc.h>
 #include <math.h>
 
@@ -12,11 +14,12 @@
 
 /*================================================================ */
 
-void setup();
+void setup_scene();
 void setup_catherine();
 void catherine_predraw(u16 part);
 void generate_texture(s64Texture* tex, GLuint* store, sprite_t* texture);
-void render();
+void scene_tick();
+void scene_render();
 
 
 /*================================================================ */
@@ -25,13 +28,23 @@ static s64ModelHelper catherine;
 static GLuint catherine_buffers[MESHCOUNT_Catherine*2];
 static sprite_t* catherine_textures[CATHERINE_TETXURE_COUNT];
 
-static s64Texture matdata_FaceTex = { &FaceTex, 32, 64, GL_LINEAR, GL_REPEAT, GL_REPEAT };
-static s64Material mat_CatherineFace = { TYPE_TEXTURE, &matdata_FaceTex, 1, 0, 1, 1, 1 };
+// Catherine face textures
+static s64Texture matdata_FaceTex = {&FaceTex, 32, 64, GL_LINEAR, GL_MIRRORED_REPEAT_ARB, GL_MIRRORED_REPEAT_ARB};
+static s64Material mat_CatherineFace = {TYPE_TEXTURE, &matdata_FaceTex, 1, 0, 1, 1, 1};
+static s64Texture matdata_FaceBlink1Tex = {&FaceBlink1Tex, 32, 64, GL_LINEAR, GL_MIRRORED_REPEAT_ARB, GL_MIRRORED_REPEAT_ARB};
+static s64Material mat_CatherineBlink1Face = {TYPE_TEXTURE, &matdata_FaceBlink1Tex, 1, 0, 1, 1, 1};
+static s64Texture matdata_FaceBlink2Tex = {&FaceBlink2Tex, 32, 64, GL_LINEAR, GL_MIRRORED_REPEAT_ARB, GL_MIRRORED_REPEAT_ARB};
+static s64Material mat_CatherineBlink2Face = {TYPE_TEXTURE, &matdata_FaceBlink2Tex, 1, 0, 1, 1, 1};
+
+// Catherine face animations
+static uint32_t facetick;
+static s64Material* facemat;
+static long long facetime;
 
 // Default OpenGL lighting
-static const GLfloat default_ambient[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
-static const GLfloat default_diffuse[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
-static const GLfloat default_specular[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+static const GLfloat default_ambient[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+static const GLfloat default_diffuse[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+static const GLfloat default_specular[4] = {0.0f, 0.0f, 0.0f, 0.0f};
 
 
 /*================================================================ */
@@ -42,36 +55,34 @@ int main()
     debug_init_isviewer();
     debug_init_usblog();
     
+    // Initialize the timer subsystem
+    timer_init();
+    srand(time(NULL));
+
     // Initialize the screen    
     dfs_init(DFS_DEFAULT_LOCATION);
     display_init(RESOLUTION_320x240, DEPTH_16_BPP, 2, GAMMA_NONE, ANTIALIAS_RESAMPLE_FETCH_ALWAYS);
 
     // Initialize OpenGL
     gl_init();
-    setup();
+    setup_scene();
 
     // Initialize Catherine
     setup_catherine();
 
-    // Initialize the controller
-    controller_init();
-
     // Program loop
     while (1)
     {
-        // Get the controller state
-        controller_scan();
-
-        // Advance the sausage64 animation
-        sausage64_advance_anim(&catherine, 1.0f);
+        // Perform a game tick
+        scene_tick();
 
         // Render the scene
-        render();
+        scene_render();
         gl_swap_buffers();
     }
 }
 
-void setup()
+void setup_scene()
 {
     // Initial setup
     glEnable(GL_LIGHT0);
@@ -123,6 +134,13 @@ void setup_catherine()
     generate_texture((s64Texture*)mat_KnifeSheatheTex.data, &KnifeSheatheTex, catherine_textures[3]);
     generate_texture((s64Texture*)mat_PantsTex.data, &PantsTex, catherine_textures[4]);
     generate_texture((s64Texture*)mat_CatherineFace.data, &FaceTex, catherine_textures[5]);
+    generate_texture((s64Texture*)mat_CatherineBlink1Face.data, &FaceBlink1Tex, catherine_textures[6]);
+    generate_texture((s64Texture*)mat_CatherineBlink2Face.data, &FaceBlink2Tex, catherine_textures[7]);
+
+    // Initialize the face animation variables
+    facemat = &mat_CatherineFace;
+    facetick = 60;
+    facetime = timer_ticks() + TIMER_TICKS(22222);
 }
 
 void catherine_predraw(u16 part)
@@ -131,7 +149,7 @@ void catherine_predraw(u16 part)
     switch (part)
     {
         case MESH_Catherine_Head:
-            sausage64_loadmaterial(&mat_CatherineFace);
+            sausage64_loadmaterial(facemat);
             break;
     }
 }
@@ -158,7 +176,39 @@ void generate_texture(s64Texture* tex, GLuint* store, sprite_t* texture)
     }
 }
 
-void render()
+void scene_tick()
+{
+    long long curtick = timer_ticks();
+
+    // Advance Catherine's animation    
+    sausage64_advance_anim(&catherine, 1.0f);
+    
+    // If the frame time has elapsed
+    if (facetime < curtick)
+    {
+        // Advance the face animation tick
+        facetick--;
+        facetime = curtick + TIMER_TICKS(22222);
+        switch (facetick)
+        {
+            case 3:
+            case 1:
+                facemat = &mat_CatherineBlink1Face;
+                break;
+            case 2:
+                facemat = &mat_CatherineBlink2Face;
+                break;
+            case 0:
+                facemat = &mat_CatherineFace;
+                facetick = 60 + rand()%80;
+                break;
+            default:
+                break;
+        }
+    }
+}
+
+void scene_render()
 {
     // Initialize the buffer with a color
     glClearColor(0.3f, 0.1f, 0.6f, 1.f);

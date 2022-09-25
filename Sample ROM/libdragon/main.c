@@ -1,3 +1,9 @@
+/***************************************************************
+                            main.c
+                               
+Program entrypoint.
+***************************************************************/
+
 #include <libdragon.h>
 #include <GL/gl.h>
 #include <GL/gl_integration.h>
@@ -6,13 +12,15 @@
 #include <malloc.h>
 #include <math.h>
 
-// Load Sausage64 and the textures for our character
+// Load Sausage64, the model, and the textures for our character
 #include "sausage64.h"
 #include "catherineTex.h"
 #include "catherineMdl.h"
 
 
-/*================================================================ */
+/*********************************
+        Function Prototypes
+*********************************/
 
 void setup_scene();
 void setup_catherine();
@@ -22,13 +30,18 @@ void scene_tick();
 void scene_render();
 
 
-/*================================================================ */
+/*********************************
+         Global variables
+*********************************/
 
+// Catherine model buffers
 static s64ModelHelper catherine;
 static GLuint catherine_buffers[MESHCOUNT_Catherine*2];
 static sprite_t* catherine_textures[CATHERINE_TETXURE_COUNT];
 
 // Catherine face textures
+// Because the face texture was declared as DONTLOAD in Arabiki, we have
+// to declare these materials manually.
 static s64Texture matdata_FaceTex = {&FaceTex, 32, 64, GL_LINEAR, GL_MIRRORED_REPEAT_ARB, GL_MIRRORED_REPEAT_ARB};
 static s64Material mat_CatherineFace = {TYPE_TEXTURE, &matdata_FaceTex, 1, 0, 1, 1, 1};
 static s64Texture matdata_FaceBlink1Tex = {&FaceBlink1Tex, 32, 64, GL_LINEAR, GL_MIRRORED_REPEAT_ARB, GL_MIRRORED_REPEAT_ARB};
@@ -36,7 +49,7 @@ static s64Material mat_CatherineBlink1Face = {TYPE_TEXTURE, &matdata_FaceBlink1T
 static s64Texture matdata_FaceBlink2Tex = {&FaceBlink2Tex, 32, 64, GL_LINEAR, GL_MIRRORED_REPEAT_ARB, GL_MIRRORED_REPEAT_ARB};
 static s64Material mat_CatherineBlink2Face = {TYPE_TEXTURE, &matdata_FaceBlink2Tex, 1, 0, 1, 1, 1};
 
-// Catherine face animations
+// Catherine face animation variables
 static uint32_t facetick;
 static s64Material* facemat;
 static long long facetime;
@@ -47,7 +60,11 @@ static const GLfloat default_diffuse[4] = {1.0f, 1.0f, 1.0f, 1.0f};
 static const GLfloat default_specular[4] = {0.0f, 0.0f, 0.0f, 0.0f};
 
 
-/*================================================================ */
+/*==============================
+    main
+    Initializes the game and
+    performs the main loop
+==============================*/
 
 int main()
 {
@@ -70,7 +87,7 @@ int main()
     // Initialize Catherine
     setup_catherine();
 
-    // Program loop
+    // game loop
     while (1)
     {
         // Perform a game tick
@@ -81,6 +98,12 @@ int main()
         gl_swap_buffers();
     }
 }
+
+
+/*==============================
+    setup_scene
+    Initializes OpenGL
+==============================*/
 
 void setup_scene()
 {
@@ -112,13 +135,21 @@ void setup_scene()
     glLightfv(GL_LIGHT0, GL_DIFFUSE, light_diffuse);
 }
 
+
+/*==============================
+    setup_catherine
+    Initializes the catherine 
+    model and buffers
+==============================*/
+
 void setup_catherine()
 {
     // IMPORTANT! WE MUST SET THE GL BUFFERS TO 0xFF BEFORE USING THEM!!!
-    // Sausage64 will not initialize them unless they're 0xFFFFFFFF
-    memset(catherine_buffers, 0xFF, ANIMATIONCOUNT_Catherine*2*sizeof(GLuint));
+    // Sausage64 will not initialize correctly them unless they're 0xFFFFFFFF
+    // Since you can reuse these vertex+face buffers between multiple s64ModelHelpers, you only need to do this once.
+    memset(catherine_buffers, 0xFF, MESHCOUNT_Catherine*2*sizeof(GLuint));
 
-    // Load Catherine's textures into sprite structures   
+    // Load Catherine's textures into sprite structures
     for (uint32_t i=0; i<CATHERINE_TETXURE_COUNT; i++)
         catherine_textures[i] = sprite_load(catherine_texture_paths[i]);
     
@@ -143,6 +174,16 @@ void setup_catherine()
     facetime = timer_ticks() + TIMER_TICKS(22222);
 }
 
+
+/*==============================
+    catherine_predraw
+    Called before Catherine is drawn.
+    This is needed since the model's face texture is not loaded
+    automatically (due to the DONTLOAD flag). This instead allows
+    us to swap the face dynamically (in this case, to let her blink).
+    @param The model segment being drawn
+==============================*/
+
 void catherine_predraw(u16 part)
 {
     // Handle face drawing
@@ -153,6 +194,18 @@ void catherine_predraw(u16 part)
             break;
     }
 }
+
+
+/*==============================
+    generate_texture
+    Generates a texture for OpenGL.
+    Since the s64Texture struct contains a bunch of information,
+    this function lets us create these textures with the correct
+    attributes automatically.
+    @param The Sausage64 texture
+    @param The GLuint to store the texture in
+    @param The texture data itself, in a sprite struct
+==============================*/
 
 void generate_texture(s64Texture* tex, GLuint* store, sprite_t* texture)
 {
@@ -175,6 +228,13 @@ void generate_texture(s64Texture* tex, GLuint* store, sprite_t* texture)
         glTexImageN64(GL_TEXTURE_2D, i, &surf);
     }
 }
+
+
+/*==============================
+    scene_tick
+    Called once, before rendering 
+    anything
+==============================*/
 
 void scene_tick()
 {
@@ -207,6 +267,12 @@ void scene_tick()
         }
     }
 }
+
+
+/*==============================
+    scene_render
+    Renders the scene (and our model)
+==============================*/
 
 void scene_render()
 {

@@ -541,7 +541,6 @@ void sausage64_set_anim(s64ModelHelper* mdl, u16 anim)
             if (s64_lastmat == NULL || (s64_lastmat->type != TYPE_TEXTURE))
             {
                 const GLfloat diffuse[] = {1.0f, 1.0f, 1.0f, 1.0f};
-                glEnable(GL_TEXTURE);
                 glEnable(GL_TEXTURE_2D);
                 glEnable(GL_COLOR_MATERIAL);
                 glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, diffuse);
@@ -553,7 +552,6 @@ void sausage64_set_anim(s64ModelHelper* mdl, u16 anim)
             s64PrimColor* col = (s64PrimColor*)mat->data;
             if (s64_lastmat == NULL || (s64_lastmat->type != TYPE_PRIMCOL))
             {
-                glDisable(GL_TEXTURE);
                 glDisable(GL_TEXTURE_2D);
                 glDisable(GL_COLOR_MATERIAL);
             }

@@ -44,7 +44,7 @@ int main()
     
     // Initialize the screen    
     dfs_init(DFS_DEFAULT_LOCATION);
-    display_init(RESOLUTION_320x240, DEPTH_16_BPP, 1, GAMMA_NONE, ANTIALIAS_RESAMPLE_FETCH_ALWAYS);
+    display_init(RESOLUTION_320x240, DEPTH_16_BPP, 2, GAMMA_NONE, ANTIALIAS_RESAMPLE_FETCH_ALWAYS);
 
     // Initialize OpenGL
     gl_init();
@@ -78,9 +78,8 @@ void setup()
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
     glEnable(GL_LIGHTING);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+    glEnable(GL_ALPHA_TEST);
+    glAlphaFunc(GL_GREATER, 0.5f);
     glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, default_diffuse);
     glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, default_ambient);
     glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, default_specular);
@@ -95,19 +94,11 @@ void setup()
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 
-    // Light
-    GLfloat light_pos[] = { 0, 0, 0, 1 };
+    // Light (directional)
+    GLfloat light_pos[] = { 0, 0, 1, 0 };
     glLightfv(GL_LIGHT0, GL_POSITION, light_pos);
     GLfloat light_diffuse[] = { 1, 1, 1, 1 };
     glLightfv(GL_LIGHT0, GL_DIFFUSE, light_diffuse);
-    glLightf(GL_LIGHT0, GL_CONSTANT_ATTENUATION, 0.0f);
-    glLightf(GL_LIGHT0, GL_QUADRATIC_ATTENUATION, 1.0f/10.0f);
-
-    // Fog
-    GLfloat fog_color[] = { 1, 0, 0, 1 };
-    glFogfv(GL_FOG_COLOR, fog_color);
-    glFogf(GL_FOG_START, 1.0f);
-    glFogf(GL_FOG_END, 6.0f);
 }
 
 void setup_catherine()
@@ -172,7 +163,6 @@ void render()
     // Initialize the buffer with a color
     glClearColor(0.3f, 0.1f, 0.6f, 1.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glDepthMask(GL_TRUE);
     glColorMaterial(GL_FRONT_AND_BACK, GL_DIFFUSE);
 
     // Initialize our view
@@ -183,10 +173,8 @@ void render()
     // Apply a rotation to the scene
     glRotatef(45, 0, 1, 0);
     glRotatef(-90, 1, 0, 0);
-    glRotatef(0, 0, 0, 1);
     glPushMatrix();
 
     // Render our model
-    glDisable(GL_LIGHTING);
     sausage64_drawmodel(&catherine);
 }

@@ -53,7 +53,7 @@ static s64Material mat_BootTex = {TYPE_TEXTURE, &matdata_BootTex, 1, 0, 1, 1, 1}
 static s64Texture matdata_ChestTex = {&ChestTex, 32, 64, GL_LINEAR, GL_REPEAT, GL_REPEAT};
 static s64Material mat_ChestTex = {TYPE_TEXTURE, &matdata_ChestTex, 1, 0, 1, 1, 1};
 
-static s64Texture matdata_KnifeSheatheTex = {&KnifeSheatheTex, 8, 64, GL_LINEAR, GL_REPEAT, GL_REPEAT};
+static s64Texture matdata_KnifeSheatheTex = {&KnifeSheatheTex, 8, 64, GL_LINEAR, GL_MIRRORED_REPEAT_ARB, GL_REPEAT};
 static s64Material mat_KnifeSheatheTex = {TYPE_TEXTURE, &matdata_KnifeSheatheTex, 1, 0, 0, 1, 1};
 
 static s64Texture matdata_PantsTex = {&PantsTex, 32, 64, GL_LINEAR, GL_REPEAT, GL_REPEAT};

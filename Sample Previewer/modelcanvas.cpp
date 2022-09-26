@@ -4,6 +4,7 @@
 #include "sausage_texture.h"
 #include "Include/glm/glm/gtx/compatibility.hpp"
 #include "Include/glm/glm/gtc/type_ptr.hpp"
+#include "Include/glm/glm/gtx/euler_angles.hpp"
 
 
 /*********************************
@@ -281,7 +282,6 @@ void ModelCanvas::RenderOrigin(float x, float y, float z, float scale)
     glDepthRange(0.0f, 1.0f);
 }
 
-
 /*==============================
     ModelCanvas::RenderSausage64
     Renders a Sausage64 model, in an inefficient way
@@ -363,10 +363,12 @@ void ModelCanvas::RenderSausage64()
             }
             float l = ((float)(highlighted_anim_tick - curkeyf->keyframe)) / ((float)(nextkeyf->keyframe - curkeyf->keyframe));
             glm::mat4 mat = glm::mat4(1.0f);
-            mat = glm::translate(mat, glm::lerp(fdata->translation, nextfdata->translation, l) + mesh->root);
+            glm::vec3 translation = glm::lerp(fdata->translation, nextfdata->translation, l) + mesh->root;
+            mat = glm::translate(mat, translation);
             if (mesh->billboard)
             {
-                mat = mat * glm::lookAt(glm::vec3(0, 0, 0), this->m_campos, UPVECTORZ);
+                glm::vec3 direction = -glm::normalize(this->m_campos - translation);
+                mat = mat * glm::inverse(glm::lookAt(glm::vec3(0, 0, 0), direction, glm::cross(direction, glm::normalize(glm::cross(UPVECTORZ, direction)))));
             }
             else
                 mat = mat*glm::toMat4(glm::slerp(fdata->rotation, nextfdata->rotation, l));
@@ -374,7 +376,20 @@ void ModelCanvas::RenderSausage64()
             glMultMatrixf(&mat[0][0]);
         }
         else
-            glTranslatef(mesh->root.x, mesh->root.y, mesh->root.z);
+        {
+            glm::mat4 mat = glm::mat4(1.0f);
+            mat = glm::translate(mat, glm::vec3(mesh->root.x, mesh->root.y, mesh->root.z));
+            if (mesh->billboard)
+            {
+                glm::vec3 direction = -glm::normalize(this->m_campos - glm::vec3(mesh->root.x, mesh->root.y, mesh->root.z));
+                //glm::quat quaternion = glm::quat(glm::vec3(glm::radians(-90.0f), 0, 0));
+                mat = mat*glm::inverse(glm::lookAt(glm::vec3(0,0,0), direction, glm::cross(direction, glm::normalize(glm::cross(UPVECTORZ, direction)))));
+                //mat = mat*glm::mat4_cast(quaternion);
+            }
+            glMultMatrixf(&mat[0][0]);
+            if (mesh->billboard)
+                this->RenderOrigin(0.0f, 0.0f, 0.0f, 50.0f);
+        }
 
         // Render the mesh roots
         if (settings_showmeshroots)

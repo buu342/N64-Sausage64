@@ -135,8 +135,8 @@ void ModelCanvas::InitializeOpenGL()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 32, 32, 0, GL_RGB, GL_UNSIGNED_BYTE, texture_missing->GetTextureData()->wximg.GetData());
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_ALPHA_TEST);
+    glAlphaFunc(GL_GREATER, 0.5f);
     glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, default_diffuse);
     glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, default_ambient);
     glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, default_specular);

@@ -234,10 +234,11 @@ int list_index_from_data(linkedList* list, void* data)
     @return The replaced node
 ==============================*/
 
+#include <stdio.h>
 listNode* list_swapindex_withlist(linkedList* dest, int index, linkedList* list)
 {
     int cindex = 0;
-    listNode* curnode, *previous = NULL;
+    listNode* curnode = NULL, *previous = NULL;
     
     // Stop if the lists don't exist, the index is invalid, or the destination is empty
     if (dest == NULL || list == NULL || index < 0 || dest->size == 0 || list->size == 0)
@@ -246,6 +247,7 @@ listNode* list_swapindex_withlist(linkedList* dest, int index, linkedList* list)
     // If we want the first element, then replace the head
     if (index == 0)
     {
+        curnode = dest->head;
         list->tail->next = dest->head->next;
         dest->head = list->head;
         dest->size += list->size-1;

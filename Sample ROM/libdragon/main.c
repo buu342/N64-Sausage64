@@ -122,7 +122,7 @@ void setup_scene()
     float aspect_ratio = (float)display_get_width()/(float)display_get_height();
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    glFrustum(-1*aspect_ratio, 1*aspect_ratio, -1, 1, 1, 300);
+    glFrustum(-20*aspect_ratio, 20*aspect_ratio, -20, 20, 20, 300);
 
     // Modelview matrix
     glMatrixMode(GL_MODELVIEW);

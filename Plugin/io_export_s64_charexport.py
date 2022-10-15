@@ -200,7 +200,7 @@ def setupData(self, object, skeletonList, meshList):
                 
                 # Add the vertex normal
                 if (mcopy.has_custom_normals):
-                    vert.norm = mcopy.data.loops[loop_index].normal[:]
+                    vert.norm = mcopy.loops[loop_index].normal[:]
                 else:
                     vert.norm = v.normal[:]
                 

@@ -590,13 +590,13 @@ void Main::m_MenuItem_ExportTextureOnMenuSelection(wxCommandEvent& event)
                 file.Write(" TEXTURE");
                 file.Write(wxString::Format(wxT(" %zu %zu"), tex->GetTextureData()->w, tex->GetTextureData()->h));
                 if (tex->GetTextureData()->coltype != DEFAULT_IMAGEFORMAT)
-                    file.Write(tex->GetTextureData()->coltype);
+                    file.Write(" " + tex->GetTextureData()->coltype);
                 if (tex->GetTextureData()->colsize != DEFAULT_IMAGESIZE)
-                    file.Write(tex->GetTextureData()->colsize);
+                    file.Write(" " + tex->GetTextureData()->colsize);
                 if (tex->GetTextureData()->texmodes != DEFAULT_TEXFLAGS)
-                    file.Write(tex->GetTextureData()->texmodes);
+                    file.Write(" " + tex->GetTextureData()->texmodes);
                 if (tex->GetTextureData()->texmodet != DEFAULT_TEXFLAGT)
-                    file.Write(tex->GetTextureData()->texmodet);
+                    file.Write(" " + tex->GetTextureData()->texmodet);
                 break;
             case TYPE_PRIMCOL:
                 file.Write(" PRIMCOL");

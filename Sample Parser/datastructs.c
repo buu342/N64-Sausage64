@@ -234,7 +234,6 @@ int list_index_from_data(linkedList* list, void* data)
     @return The replaced node
 ==============================*/
 
-#include <stdio.h>
 listNode* list_swapindex_withlist(linkedList* dest, int index, linkedList* list)
 {
     int cindex = 0;

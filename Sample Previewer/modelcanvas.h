@@ -45,6 +45,7 @@ class ModelCanvas : public wxGLCanvas
         wxLongLong m_deltatime;
         wxLongLong m_lasttime;
         bool m_mouseheld;
+        bool m_mousemiddleheld;
         void* m_app;
         
     protected:
@@ -63,5 +64,6 @@ class ModelCanvas : public wxGLCanvas
         void      RenderSausage64();
         void      m_Canvas_OnMouse(wxMouseEvent& event);
         void      m_Canvas_OnPaint(wxPaintEvent& event);
+        void      OnKeyDown(wxKeyEvent& event);
         void      SetYUp(bool val);
 };

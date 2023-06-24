@@ -1,5 +1,6 @@
 CODEFILES   = app.cpp main.cpp modelcanvas.cpp sausage.cpp sausage_animation.cpp sausage_mesh.cpp sausage_texture.cpp
-CODEOBJECTS = $(CODEFILES:.cpp=.o)
+BUILDDIR = build
+CODEOBJECTS = $(CODEFILES:%.cpp=${BUILDDIR}/%.o)
 PROGNAME = Chorizo
 
 # -------------------------------------------------------------------------
@@ -74,18 +75,19 @@ install:
 uninstall: 
 
 clean: 
-	rm -f ./*.o
-	rm -f ./*.d
-	rm -f $(PROGNAME)
+	rm -f -r ${BUILDDIR}
 
 test_for_selected_wxbuild: 
 	@$(WX_CONFIG) $(WX_CONFIG_FLAGS)
 
 $(PROGNAME): $(CODEOBJECTS)
-	$(CXX) -o $@ $(CODEOBJECTS) $(LDFLAGS) `$(WX_CONFIG) $(WX_CONFIG_FLAGS) --libs gl,core,base` -no-pie
+	$(CXX) -o ${BUILDDIR}/$@ $(CODEOBJECTS) $(LDFLAGS) `$(WX_CONFIG) $(WX_CONFIG_FLAGS) --libs gl,core,base` -no-pie
 
-%.o: %.cpp
+build/%.o: %.cpp | ${BUILDDIR}
 	$(CXX) -c $(CFLAGS) -o $@ $(PROGRAM_CXXFLAGS) $(CPPDEPS) $<
+
+${BUILDDIR}:
+	mkdir -p $@
 
 .PHONY: all install uninstall clean
 

@@ -78,7 +78,10 @@ int main()
 
     // Initialize the screen    
     dfs_init(DFS_DEFAULT_LOCATION);
-    display_init(RESOLUTION_320x240, DEPTH_16_BPP, 2, GAMMA_NONE, ANTIALIAS_RESAMPLE_FETCH_ALWAYS);
+    display_init(RESOLUTION_320x240, DEPTH_16_BPP, 3, GAMMA_NONE, ANTIALIAS_RESAMPLE_FETCH_ALWAYS);
+
+    // Allocate a Z-Buffer
+    surface_t zbuffer = surface_alloc(FMT_RGBA16, 320, 240);
 
     // Initialize OpenGL
     gl_init();
@@ -93,9 +96,17 @@ int main()
         // Perform a game tick
         scene_tick();
 
+        // Get the next framebuffer
+        surface_t *fb = display_get();
+
+        // Attach RDP to the framebuffer and zbuffer
+        rdpq_attach(fb, &zbuffer);
+
         // Render the scene
         scene_render();
-        gl_swap_buffers();
+
+        // Detach RDP and show the framebuffer on screen
+        rdpq_detach_show();
     }
 }
 
@@ -219,14 +230,7 @@ void generate_texture(s64Texture* tex, GLuint* store, sprite_t* texture)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, tex->filter);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, tex->filter);
 
-    // Generate mipmaps
-    for (uint32_t i=0; i<4; i++)
-    {
-        surface_t surf = sprite_get_lod_pixels(texture, i);
-        if (!surf.buffer) break;
-        data_cache_hit_writeback(surf.buffer, surf.stride*surf.height);
-        glTexImageN64(GL_TEXTURE_2D, i, &surf);
-    }
+    glSpriteTextureN64(GL_TEXTURE_2D, texture, NULL);
 }
 
 
@@ -276,6 +280,8 @@ void scene_tick()
 
 void scene_render()
 {
+    gl_context_begin();
+
     // Initialize the buffer with a color
     glClearColor(0.3f, 0.1f, 0.6f, 1.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -289,8 +295,9 @@ void scene_render()
     // Apply a rotation to the scene
     glRotatef(45, 0, 1, 0);
     glRotatef(-90, 1, 0, 0);
-    glPushMatrix();
 
     // Render our model
     sausage64_drawmodel(&catherine);
+
+    gl_context_end();
 }

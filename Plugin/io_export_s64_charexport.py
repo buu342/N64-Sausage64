@@ -381,9 +381,13 @@ def setupData(self, object, skeletonList, meshList):
                 f.verts[k] = vertdict[f.verts[k]]
 
         # Then sort the vertex dictionary based on the lookup table made in the previous loop
-        for v in finalList[i].verts:
-            ordered[vertdict[v]] = finalList[i].verts[v]
-        finalList[i].verts = collections.OrderedDict(sorted(ordered.items()))
+        try:
+            for v in finalList[i].verts:
+                ordered[vertdict[v]] = finalList[i].verts[v]
+            finalList[i].verts = collections.OrderedDict(sorted(ordered.items()))
+        except:
+            self.report({'ERROR'}, 'Unable to resolve vertex weights. Is your model in Sausage format?')
+            return 'CANCELLED', None
 
     # Animation keyframes are also not in order, so sort them too
     for i in animList:

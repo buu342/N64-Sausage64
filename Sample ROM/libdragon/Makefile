@@ -13,7 +13,7 @@ all: sausage64.z64
 filesystem/%.sprite: assets/%.png
 	@mkdir -p $(dir $@)
 	@echo "    [SPRITE] $@"
-	@$(N64_MKSPRITE) -f RGBA16 -m BOX -o "$(dir $@)" "$<"
+	@$(N64_MKSPRITE) -v -m BOX -o "$(dir $@)" "$<"
 
 $(BUILD_DIR)/sausage64.dfs: $(assets_conv)
 $(BUILD_DIR)/sausage64.elf: $(src:%.c=$(BUILD_DIR)/%.o)

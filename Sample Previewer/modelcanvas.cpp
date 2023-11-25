@@ -13,7 +13,7 @@
 
 // Camera macros
 #define GRIDSIZE 10000.0
-#define CAMSPEED 300.0f
+#define CAMSPEED 700.0f
 #define CAMSENSITIVITY 0.1f
 #define UPVECTORZ glm::vec3(0.0f, 0.0f, 1.0f)
 #define UPVECTORY glm::vec3(0.0f, 1.0f, 0.0f)
@@ -64,6 +64,7 @@ static wxPoint lastmousepos;
 
 ModelCanvas::ModelCanvas(wxWindow* parent, const wxGLAttributes& attriblist, wxWindowID id, const wxPoint& pos, const wxSize& size, long style, const wxString& name) : wxGLCanvas(parent, attriblist, id, pos, size, style | wxFULL_REPAINT_ON_RESIZE, name)
 {
+    
     this->m_context = new wxGLContext(this);
     this->Connect(wxEVT_PAINT, wxPaintEventHandler(ModelCanvas::m_Canvas_OnPaint), NULL, this);
     if (settings_yaxisup)
@@ -81,14 +82,23 @@ ModelCanvas::ModelCanvas(wxWindow* parent, const wxGLAttributes& attriblist, wxW
     this->m_deltatime = 0;
     this->m_lasttime = 0;
     this->m_mouseheld = false;
+    this->m_mousemiddleheld = false;
     this->m_app = NULL;
+    this->forward_pressed = false;
+    this->backward_pressed = false;
+    this->left_pressed = false;
+    this->right_pressed = false;
     lastmousepos = wxGetMousePosition();
 
     SetCurrent(*this->m_context);
     this->InitializeOpenGL();
-
+    this->Bind(wxEVT_KEY_DOWN, &ModelCanvas::OnKeyDown, this);
+    this->Bind(wxEVT_KEY_UP, &ModelCanvas::OnKeyUp, this);
     this->Connect(wxEVT_RIGHT_DOWN, wxMouseEventHandler(ModelCanvas::m_Canvas_OnMouse), NULL, this);
     this->Connect(wxEVT_RIGHT_UP, wxMouseEventHandler(ModelCanvas::m_Canvas_OnMouse), NULL, this);
+    this->Connect(wxEVT_MIDDLE_DOWN, wxMouseEventHandler(ModelCanvas::m_Canvas_OnMouse), NULL, this);
+    this->Connect(wxEVT_MIDDLE_UP, wxMouseEventHandler(ModelCanvas::m_Canvas_OnMouse), NULL, this);
+    this->Connect(wxEVT_MOUSEWHEEL, wxMouseEventHandler(ModelCanvas::m_Canvas_OnMouse), NULL, this);
 }
 
 
@@ -102,6 +112,9 @@ ModelCanvas::~ModelCanvas()
     this->Disconnect(wxEVT_PAINT, wxPaintEventHandler(ModelCanvas::m_Canvas_OnPaint), NULL, this);
     this->Disconnect(wxEVT_RIGHT_DOWN, wxMouseEventHandler(ModelCanvas::m_Canvas_OnMouse), NULL, this);
     this->Disconnect(wxEVT_RIGHT_UP, wxMouseEventHandler(ModelCanvas::m_Canvas_OnMouse), NULL, this);
+    this->Disconnect(wxEVT_MIDDLE_DOWN, wxMouseEventHandler(ModelCanvas::m_Canvas_OnMouse), NULL, this);
+    this->Disconnect(wxEVT_MIDDLE_UP, wxMouseEventHandler(ModelCanvas::m_Canvas_OnMouse), NULL, this);
+    this->Disconnect(wxEVT_MOUSEWHEEL, wxMouseEventHandler(ModelCanvas::m_Canvas_OnMouse), NULL, this);
 }
 
 
@@ -114,6 +127,63 @@ ModelCanvas::~ModelCanvas()
 void ModelCanvas::SetApp(void* app)
 {
     this->m_app = app;
+}
+
+/*==============================
+    ModelCanvas::OnKeyUp
+    Checks Key Events
+    @param A key event
+==============================*/
+
+
+void ModelCanvas::OnKeyUp(wxKeyEvent& event) {
+
+    if (!this->HasFocus())
+        return;
+
+    if (event.GetKeyCode() == 'W') {
+        this->forward_pressed = false;
+    }
+    if (event.GetKeyCode() == 'S') {
+        this->backward_pressed = false;
+    }
+        if (event.GetKeyCode() == 'A') {
+        this->left_pressed = false;
+    }
+        if (event.GetKeyCode() == 'D') {
+        this->right_pressed = false;
+    }
+    // Skip the event to ensure that other handlers get it too
+    event.Skip();
+}
+
+/*==============================
+    ModelCanvas::OnKeyDown
+    Checks Key Events
+    @param A key event
+==============================*/
+
+
+void ModelCanvas::OnKeyDown(wxKeyEvent& event) {
+
+    if (!this->HasFocus())
+        return;
+
+    if (event.GetKeyCode() == 'W') {
+        this->forward_pressed = true;
+    }
+    if (event.GetKeyCode() == 'S') {
+        this->backward_pressed = true;
+    }
+        if (event.GetKeyCode() == 'A') {
+        this->left_pressed = true;
+    }
+        if (event.GetKeyCode() == 'D') {
+        this->right_pressed = true;
+    }
+
+    // Skip the event to ensure that other handlers get it too
+    event.Skip();
 }
 
 
@@ -549,21 +619,35 @@ void ModelCanvas::HandleControls()
         this->WarpPointer(center.x, center.y);
         lastmousepos = wxGetMousePosition();
     }
-
-    if (wxGetKeyState(WXK_SHIFT))
-        speed *= 5;
-
-    if (wxGetKeyState((wxKeyCode)'W') || wxGetKeyState((wxKeyCode)'w'))
+    else if(this->m_mousemiddleheld)
     {
+        glm::vec3 camright = glm::vec3(0.0f,0.0f,0.0f);
+        if (settings_yaxisup){
+            camright = glm::normalize(glm::cross(UPVECTORY, this->m_camdir));
+            
+            this->m_campos += camright * (float)(wxGetMousePosition().x - lastmousepos.x) + UPVECTORY * (float)(wxGetMousePosition().y - lastmousepos.y);
+        }
+        else{
+            camright = glm::normalize(glm::cross(UPVECTORZ, this->m_camdir));
+            this->m_campos += camright * (float)(wxGetMousePosition().x - lastmousepos.x) + UPVECTORZ * (float)(wxGetMousePosition().y - lastmousepos.y);
+        }
+        lastmousepos = wxGetMousePosition();
+    }
+
+    if (wxGetKeyState(WXK_SHIFT)){
+        speed *= 5;
+    }
+
+    if(this->forward_pressed){
         this->m_campos += this->m_camdir*speed;
     }
 
-    if (wxGetKeyState((wxKeyCode)'S') || wxGetKeyState((wxKeyCode)'s'))
+    if (this->backward_pressed)
     {
         this->m_campos -= this->m_camdir*speed;
     }
 
-    if (wxGetKeyState((wxKeyCode)'A') || wxGetKeyState((wxKeyCode)'a'))
+    if (this->left_pressed)
     {
         if (settings_yaxisup)
             this->m_campos -= glm::normalize(glm::cross(this->m_camdir, UPVECTORY)) * speed;
@@ -571,7 +655,7 @@ void ModelCanvas::HandleControls()
             this->m_campos -= glm::normalize(glm::cross(this->m_camdir, UPVECTORZ)) * speed;
     }
 
-    if (wxGetKeyState((wxKeyCode)'D') || wxGetKeyState((wxKeyCode)'d'))
+    if (this->right_pressed)
     {
         if (settings_yaxisup)
             this->m_campos += glm::normalize(glm::cross(this->m_camdir, UPVECTORY)) * speed;
@@ -653,6 +737,33 @@ void ModelCanvas::m_Canvas_OnMouse(wxMouseEvent& event)
         this->SetCursor(wxNullCursor);
         if (this->GetCapture() != NULL)
             this->ReleaseMouse();
+    }
+
+    if (event.MiddleDown() || event.MiddleIsDown())
+    {
+        wxSize center = this->GetClientSize() / 2;
+        this->SetCursor(wxNullCursor);
+        this->SetFocus();
+        this->m_mousemiddleheld = true;
+        this->WarpPointer(center.x, center.y);
+        lastmousepos = wxGetMousePosition();
+    }
+    else if (event.MiddleUp())
+    {
+        this->SetCursor(wxNullCursor);
+        this->m_mousemiddleheld = false;
+    }
+    int wheel_rotation = event.GetWheelRotation();
+
+        if (!this->HasFocus())
+        return;
+
+    float speed = CAMSPEED*((float)this->m_deltatime.ToDouble())/100000.0f;
+    if(wheel_rotation > 0){
+        this->m_campos += this->m_camdir*speed;
+    }
+    else if (wheel_rotation < 0){
+        this->m_campos -= this->m_camdir*speed;
     }
 }
 

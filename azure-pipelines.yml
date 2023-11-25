@@ -78,7 +78,7 @@ jobs:
   - task: PublishBuildArtifacts@1
     displayName: Publish Build Artifacts
     inputs:
-      pathtoPublish: '$(Build.SourcesDirectory)/Sample Previewer/Chorizo' 
+      pathtoPublish: '$(Build.SourcesDirectory)/Sample Previewer/build/Chorizo' 
       #pathtoPublish: '$(Build.ArtifactStagingDirectory)'
       artifactName: 'chorizo-linux' 
       publishLocation: 'Container' # Options: container, filePath
@@ -122,7 +122,7 @@ jobs:
   - task: PublishBuildArtifacts@1
     displayName: Publish Build Artifacts
     inputs:
-      pathtoPublish: '$(Build.SourcesDirectory)/Sample Parser/arabiki64' 
+      pathtoPublish: '$(Build.SourcesDirectory)/Sample Parser/build/arabiki64' 
       #pathtoPublish: '$(Build.ArtifactStagingDirectory)'
       artifactName: 'arabiki-linux' 
       publishLocation: 'Container' # Options: container, filePath

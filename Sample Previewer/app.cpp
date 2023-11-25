@@ -27,7 +27,7 @@ wxIcon   icon_program = wxNullIcon;
 
 App::App()
 {
-
+    
 }
 
 

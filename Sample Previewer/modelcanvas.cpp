@@ -84,11 +84,16 @@ ModelCanvas::ModelCanvas(wxWindow* parent, const wxGLAttributes& attriblist, wxW
     this->m_mouseheld = false;
     this->m_mousemiddleheld = false;
     this->m_app = NULL;
+    this->forward_pressed = false;
+    this->backward_pressed = false;
+    this->left_pressed = false;
+    this->right_pressed = false;
     lastmousepos = wxGetMousePosition();
 
     SetCurrent(*this->m_context);
     this->InitializeOpenGL();
     this->Bind(wxEVT_KEY_DOWN, &ModelCanvas::OnKeyDown, this);
+    this->Bind(wxEVT_KEY_UP, &ModelCanvas::OnKeyUp, this);
     this->Connect(wxEVT_RIGHT_DOWN, wxMouseEventHandler(ModelCanvas::m_Canvas_OnMouse), NULL, this);
     this->Connect(wxEVT_RIGHT_UP, wxMouseEventHandler(ModelCanvas::m_Canvas_OnMouse), NULL, this);
     this->Connect(wxEVT_MIDDLE_DOWN, wxMouseEventHandler(ModelCanvas::m_Canvas_OnMouse), NULL, this);
@@ -125,35 +130,56 @@ void ModelCanvas::SetApp(void* app)
 }
 
 /*==============================
+    ModelCanvas::OnKeyUp
+    Checks Key Events
+    @param A key event
+==============================*/
+
+
+void ModelCanvas::OnKeyUp(wxKeyEvent& event) {
+
+    if (!this->HasFocus())
+        return;
+
+    if (event.GetKeyCode() == 'W') {
+        this->forward_pressed = false;
+    }
+    if (event.GetKeyCode() == 'S') {
+        this->backward_pressed = false;
+    }
+        if (event.GetKeyCode() == 'A') {
+        this->left_pressed = false;
+    }
+        if (event.GetKeyCode() == 'D') {
+        this->right_pressed = false;
+    }
+    // Skip the event to ensure that other handlers get it too
+    event.Skip();
+}
+
+/*==============================
     ModelCanvas::OnKeyDown
     Checks Key Events
     @param A key event
 ==============================*/
+
 
 void ModelCanvas::OnKeyDown(wxKeyEvent& event) {
 
     if (!this->HasFocus())
         return;
 
-    float speed = CAMSPEED*((float)this->m_deltatime.ToDouble())/700000.0f;
-
     if (event.GetKeyCode() == 'W') {
-        this->m_campos += this->m_camdir*speed;
+        this->forward_pressed = true;
     }
     if (event.GetKeyCode() == 'S') {
-        this->m_campos -= this->m_camdir*speed;
+        this->backward_pressed = true;
     }
-    if (event.GetKeyCode() == 'A') {
-        if (settings_yaxisup)
-            this->m_campos -= glm::normalize(glm::cross(this->m_camdir, UPVECTORY)) * speed;
-        else
-            this->m_campos -= glm::normalize(glm::cross(this->m_camdir, UPVECTORZ)) * speed;
+        if (event.GetKeyCode() == 'A') {
+        this->left_pressed = true;
     }
-    if (event.GetKeyCode() == 'D') {
-        if (settings_yaxisup)
-            this->m_campos += glm::normalize(glm::cross(this->m_camdir, UPVECTORY)) * speed;
-        else
-            this->m_campos += glm::normalize(glm::cross(this->m_camdir, UPVECTORZ)) * speed;
+        if (event.GetKeyCode() == 'D') {
+        this->right_pressed = true;
     }
 
     // Skip the event to ensure that other handlers get it too
@@ -611,33 +637,31 @@ void ModelCanvas::HandleControls()
     if (wxGetKeyState(WXK_SHIFT)){
         speed *= 5;
     }
-        
 
-    // if (wxGetKeyState((wxKeyCode)'W') || wxGetKeyState((wxKeyCode)'w'))
-    // {
-    //     this->m_campos += this->m_camdir*speed;
-    // }
+    if(this->forward_pressed){
+        this->m_campos += this->m_camdir*speed;
+    }
 
-    // if (wxGetKeyState((wxKeyCode)'S') || wxGetKeyState((wxKeyCode)'s'))
-    // {
-    //     this->m_campos -= this->m_camdir*speed;
-    // }
+    if (this->backward_pressed)
+    {
+        this->m_campos -= this->m_camdir*speed;
+    }
 
-    // if (wxGetKeyState((wxKeyCode)'A') || wxGetKeyState((wxKeyCode)'a'))
-    // {
-    //     if (settings_yaxisup)
-    //         this->m_campos -= glm::normalize(glm::cross(this->m_camdir, UPVECTORY)) * speed;
-    //     else
-    //         this->m_campos -= glm::normalize(glm::cross(this->m_camdir, UPVECTORZ)) * speed;
-    // }
+    if (this->left_pressed)
+    {
+        if (settings_yaxisup)
+            this->m_campos -= glm::normalize(glm::cross(this->m_camdir, UPVECTORY)) * speed;
+        else
+            this->m_campos -= glm::normalize(glm::cross(this->m_camdir, UPVECTORZ)) * speed;
+    }
 
-    // if (wxGetKeyState((wxKeyCode)'D') || wxGetKeyState((wxKeyCode)'d'))
-    // {
-    //     if (settings_yaxisup)
-    //         this->m_campos += glm::normalize(glm::cross(this->m_camdir, UPVECTORY)) * speed;
-    //     else
-    //         this->m_campos += glm::normalize(glm::cross(this->m_camdir, UPVECTORZ)) * speed;
-    // }
+    if (this->right_pressed)
+    {
+        if (settings_yaxisup)
+            this->m_campos += glm::normalize(glm::cross(this->m_camdir, UPVECTORY)) * speed;
+        else
+            this->m_campos += glm::normalize(glm::cross(this->m_camdir, UPVECTORZ)) * speed;
+    }
 }
 
 

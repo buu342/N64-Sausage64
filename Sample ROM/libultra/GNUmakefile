@@ -8,19 +8,20 @@
 #                    Code files and ROM name                   #
 ################################################################
 
+BUILDDIR    = build
 ASMFILES    = asm/entry.s asm/rom_header.s
-ASMOBJECTS  =	$(ASMFILES:.s=.o)
+ASMOBJECTS  = $(ASMFILES:%.s=${BUILDDIR}/%.o)
 CODECFILES  = main.c graphic.c helper.c stage00.c sausage64.c
 CODEHFILES  =
 
 DEBUGFILES = debug.c usb.c
 
-ELF		= sausage.elf
-TARGETS	= sausage.z64
-MAP		= sausage.map
+ELF		= ${BUILDDIR}/sausage.elf
+TARGETS	= ${BUILDDIR}/sausage.z64
+MAP		= ${BUILDDIR}/sausage.map
 
 LD_SCRIPT	 = sausage.ld
-CP_LD_SCRIPT = sausage_cp.ld
+CP_LD_SCRIPT = ${BUILDDIR}/sausage_cp.ld
 
 
 ################################################################
@@ -31,11 +32,17 @@ NUSYSINC  = /usr/include/n64/nusys
 NUSYSLIB  = /usr/lib/n64/nusys
 NUOBJ	  = $(NUSYSLIB)/nusys.o
 
+
 ################################################################
 #                         Make Commands                        #
 ################################################################
 
 default: $(TARGETS)
+
+clean: extraclean
+
+extraclean:
+	rm -rf $(BUILDDIR)
 
 
 ################################################################
@@ -45,8 +52,8 @@ default: $(TARGETS)
 include $(ROOT)/usr/include/make/PRdefs
 
 BOOT		= /usr/lib/n64/PR/bootcode/boot.6102
-BOOT_OBJ	= boot.6102.o
-CODESEGMENT = codesegment.o
+BOOT_OBJ	= ${BUILDDIR}/boot.6102.o
+CODESEGMENT = ${BUILDDIR}/codesegment.o
 OBJECTS     = $(ASMOBJECTS) $(BOOT_OBJ) $(CODESEGMENT)
 
 
@@ -55,13 +62,13 @@ OBJECTS     = $(ASMOBJECTS) $(BOOT_OBJ) $(CODESEGMENT)
 ################################################################
 
 ifeq ($(DEBUG_MODE), 0)
-    CODEOBJECTS     = $(CODECFILES:.c=.o) $(NUOBJ)
+    CODEOBJECTS     = $(CODECFILES:%.c=${BUILDDIR}/%.o) $(NUOBJ)
     OPTIMIZER       = -O2
     LCDEFS          = -D_FINALROM -DNDEBUG -DF3DEX_GBI_2
     N64LIB          = -lnusys -lultra_rom
     MAKEROMFLAGS    = 
 else
-    CODEOBJECTS     = $(CODECFILES:.c=.o) $(NUOBJ) $(DEBUGFILES:.c=.o)
+    CODEOBJECTS     = $(CODECFILES:%.c=${BUILDDIR}/%.o) $(NUOBJ) $(DEBUGFILES:%.c=${BUILDDIR}/%.o)
     OPTIMIZER       = -g -O0
     LCDEFS          = -DDEBUG  -DF3DEX_GBI_2
     N64LIB          = -lnusys_d -lultra_d
@@ -73,10 +80,10 @@ endif
 #                        Linker Settings                       #
 ################################################################
 
-LCINCS =	-I. -I$(ROOT)/usr/include/PR -I $(ROOT)/usr/include -I$(NUSYSINC) -I $(ROOT)/usr/include/nustd
-LCOPTS =	-G 0
-LDIRT  =	$(ELF) $(CP_LD_SCRIPT) $(TARGETS) $(MAP) $(ASMOBJECTS)
-LDFLAGS=	$(MKDEPOPT) -L$(ROOT)/usr/lib -L$(ROOT)/usr/lib/PR -L$(NUSYSLIB) $(N64LIB) -L$(N64_LIBGCCDIR) -lgcc -lnustd -g
+LCINCS  = -I. -I$(ROOT)/usr/include/PR -I $(ROOT)/usr/include -I$(NUSYSINC) -I $(ROOT)/usr/include/nustd
+LCOPTS  = -G 0
+LDIRT   = $(ELF) $(CP_LD_SCRIPT) $(TARGETS) $(MAP) $(ASMOBJECTS)
+LDFLAGS = $(MKDEPOPT) -L$(ROOT)/usr/lib -L$(ROOT)/usr/lib/PR -L$(NUSYSLIB) $(N64LIB) -L$(N64_LIBGCCDIR) -lgcc -lnustd -g
 
 
 ################################################################
@@ -87,6 +94,12 @@ include $(COMMONRULES)
 
 .s.o:
 	$(AS) -Wa,-Iasm -o $@ $<
+
+${BUILDDIR}/asm/%.o: asm/%.s | ${BUILDDIR}
+	$(AS) -Wa,-Iasm -o $@ $<
+
+$(BUILDDIR)/%.o: %.c | $(BUILDDIR)
+	$(CC) $(CFLAGS) -o $@ $<
 
 $(CODESEGMENT):	$(CODEOBJECTS)
 	$(LD) -o $(CODESEGMENT) -r $(CODEOBJECTS) $(LDFLAGS)
@@ -101,3 +114,7 @@ $(TARGETS): $(OBJECTS) $(CP_LD_SCRIPT)
 	$(LD) -L. -T $(CP_LD_SCRIPT) -Map $(MAP) -o $(ELF) 
 	$(OBJCOPY) --pad-to=0x100000 --gap-fill=0xFF $(ELF) $(TARGETS) -O binary
 	makemask $(TARGETS)
+
+$(BUILDDIR):
+	mkdir -p $@
+	mkdir -p $@/asm

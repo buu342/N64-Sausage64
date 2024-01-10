@@ -40,16 +40,16 @@ SECTIONS
 
    BEGIN_SEG(boot, 0x04000000)
    {
-      build/asm/rom_header.o(.text);
-      build/boot.6102.o(.data);
+      asm/rom_header.o(.text);
+      boot.6102.o(.data);
    }
    END_SEG(boot)
 
    BEGIN_SEG(code, NU_SPEC_BOOT_ADDR) SUBALIGN(16)
    {
       /* text */
-      build/asm/entry.o(.text);
-      build/codesegment.o(.text);
+      asm/entry.o(.text);
+      codesegment.o(.text);
       /usr/lib/n64/PR/rspboot.o(.text);
       /usr/lib/n64/PR/gspF3DEX2.fifo.o(.text);
       /usr/lib/n64/PR/gspL3DEX2.fifo.o(.text);
@@ -59,7 +59,7 @@ SECTIONS
       /usr/lib/n64/PR/gspS2DEX2.fifo.o(.text);
 
       /* data */
-      build/codesegment.o(.data*);
+      codesegment.o(.data*);
       /usr/lib/n64/PR/rspboot.o(.data*);
       /usr/lib/n64/PR/gspF3DEX2.fifo.o(.data*);
       /usr/lib/n64/PR/gspL3DEX2.fifo.o(.data*);
@@ -69,14 +69,14 @@ SECTIONS
       /usr/lib/n64/PR/gspS2DEX2.fifo.o(.data*);
 
       /* rodata */
-      build/codesegment.o(.rodata*);
+      codesegment.o(.rodata*);
    }
    END_SEG(code)
    BEGIN_NOLOAD(code)
    {
-      build/codesegment.o(COMMON);
-      build/codesegment.o(.scommon*);
-      build/codesegment.o(.bss*);
+      codesegment.o(COMMON);
+      codesegment.o(.scommon*);
+      codesegment.o(.bss*);
       . = ALIGN(0x8);
    }
    END_NOLOAD(code)

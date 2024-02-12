@@ -10,7 +10,7 @@ jobs:
     vmImage: 'windows-2019'
   steps:
   - script: |
-      echo Download wxWidgets
+      echo Downloading wxWidgets
       pip install gdown
       gdown --fuzzy https://drive.google.com/u/0/uc?id=1Dg5BZtatClyEX0zPYXjYKiNGHGMkbQ4G&export=download
       ren *.zip wxWidgets.zip

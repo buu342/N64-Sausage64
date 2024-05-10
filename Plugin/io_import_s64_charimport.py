@@ -1,0 +1,341 @@
+bl_info = {
+    "name": "Sausage64 Character Import",
+    "description": "Imports a sausage-link character with animations.",
+    "author": "Buu342",
+    "version": (1, 0),
+    "blender": (2, 80, 0),
+    "location": "File > Import > Sausage64 Character (.S64)",
+    "warning": "",
+    "wiki_url": "https://github.com/buu342/Blender-Sausage64",
+    "tracker_url": "",
+    "support": 'COMMUNITY',
+    "category": "Import-Export"
+}
+
+import bpy
+import mathutils
+
+DebugS64Export = True
+
+class S64Vertex:
+    def __init__(self):
+        self.coor = None # Vertex X Y Z
+        self.norm = None # Vertex Normal X Y Z
+        self.colr = None # Vertex Color R G B
+        self.uv   = None # Vertex U V
+    def __str__(self):
+        return ("S64Vert: [%.4f, %.4f, %.4f]" % self.coor[:])
+
+class S64Face:
+    def __init__(self):
+        self.verts = [] # List of vertex indices
+        self.mat = ""   # Material name for this face
+    def __str__(self):
+        string = "S64Face:"
+        for i in self.verts:
+            string = string+" "+str(i)
+        string = string+" "+self.mat
+        return string
+
+class S64Mesh:
+    def __init__(self, name):
+        self.name  = name # Skeleton name
+        self.verts = []   # List of vertices
+        self.faces = []   # List of faces
+        self.mats  = []   # List of materials used by this mesh
+        self.props = []   # List of custom properties
+        self.root  = None # Bone root location
+    def __str__(self):
+        string = "S64Mesh: '"+self.name+"'\n"
+        string = string+"Root: "+str(self.root)+"\n"
+        string = string+"Materials: "+str(self.mats)+"\n"
+        string = string + "Verts:\n"
+        for k, v in enumerate(self.verts):
+            string = string + "\t"+str(k)+" -> "+str(v)+"\n"
+        string = string + "Faces:\n"
+        for i in self.faces:
+            string = string + "\t"+str(i)+"\n"
+        return string
+    def sharesMats(self, other):
+        if (len(self.mats) != len(other.mats)):
+           return False
+        for m in self.mats:
+            if (not m in other.mats):
+                return False
+        return True
+
+class S64Anim:
+    def __init__(self, name):
+        self.name   = name # Animation name
+        self.frames = {}   # Dict of animation frames
+    def __str__(self):
+        string = "S64Anim: '"+self.name+"'\n"
+        for i in self.frames:
+            string = string + "\tFrame "+str(i)+"\n"
+            for j in self.frames[i]:
+                string = string+str(j)+"\n"
+        return string
+
+class S64KeyFrame:
+    def __init__(self, bone):
+        self.bone  = bone # Affected bone name
+        self.pos   = None # Bone position
+        self.ang   = None # Bone rotation
+        self.scale = None # Bone scale
+    def __str__(self):
+        string = "\t\tS64Keyframe: '"+self.bone+"'\n"
+        string = string+"\t\t Pos = "+str(self.pos)+"\n"
+        string = string+"\t\t Ang = "+str(self.ang)+"\n"
+        string = string+"\t\t Scale = "+str(self.scale)
+        return string
+
+def isNewBlender():
+    return bpy.app.version >= (2, 80)
+
+def CreateMesh():
+    if (isNewBlender()):
+        mesh = bpy.data.meshes.new("myBeautifulMesh")  # add the new mesh
+        obj = bpy.data.objects.new(mesh.name, mesh)
+        col = bpy.data.collections["Collection"]
+        col.objects.link(obj)
+        bpy.context.view_layer.objects.active = obj
+
+        verts = [( 1.0,  1.0,  0.0), 
+                 ( 1.0, -1.0,  0.0),
+                 (-1.0, -1.0,  0.0),
+                 (-1.0,  1.0,  0.0),
+                 ]  # 4 verts made with XYZ coords
+        edges = []
+        faces = [[0, 1, 2, 3]]
+
+        mesh.from_pydata(verts, edges, faces)
+    else:
+        verts = [(1, 1, 1), (0, 0, 0)]  # 2 verts made with XYZ coords
+        mesh = bpy.data.meshes.new("mesh")  # add a new mesh
+        obj = bpy.data.objects.new("MyObject", mesh)  # add a new object using the mesh
+
+        scene = bpy.context.scene
+        scene.objects.link(obj)  # put the object into the scene (link)
+        scene.objects.active = obj  # set as the active object in the scene
+        obj.select = True  # select object
+
+        mesh = bpy.context.object.data
+        bm = bmesh.new()
+
+        for v in verts:
+            bm.verts.new(v)  # add a new vert
+
+        # make the bmesh the object's mesh
+        bm.to_mesh(mesh)  
+        bm.free()  # always do this when finished
+
+def ParseS64(path):
+    LEXSTATE_NONE = 0
+    LEXSTATE_COMMENTBLOCK = 1
+    LEXSTATE_MESH = 2
+    LEXSTATE_VERTICES = 3
+    LEXSTATE_FACES = 4
+    LEXSTATE_ANIMATION = 5
+    LEXSTATE_KEYFRAME = 6
+
+    meshes = []
+    anims = []
+    materials = []
+
+    curmesh = -1
+    curvert = -1
+    prevface = -1
+    curface = -1
+    curanim = -1
+    curkeyframe = -1
+    curframedata = -1
+    curmat = -1
+
+    state = [LEXSTATE_NONE]
+    with open(path, "r") as fs:
+        for l in fs:
+            line = l.split()
+            lineit = iter(line)
+            while True:
+                try:
+                    chunk = next(lineit).rstrip()
+
+                    if ("//" in chunk):
+                        break
+
+                    if ("/*" in chunk):
+                        state.append(LEXSTATE_COMMENTBLOCK)
+                        break
+                        
+                    if (state[-1] == LEXSTATE_COMMENTBLOCK):
+                        if ("*/" in chunk):
+                            state.pop()
+                        continue
+
+                    if (chunk == "BEGIN"):
+                        chunk = next(lineit).rstrip()
+                        if (state[-1] == LEXSTATE_MESH):
+                            if (chunk == "VERTICES"):
+                                state.append(LEXSTATE_VERTICES)
+                            elif (chunk == "FACES"):
+                                state.append(LEXSTATE_FACES)
+                        elif (state[-1] == LEXSTATE_ANIMATION):
+                            if (chunk == "KEYFRAME"):
+                                state.append(LEXSTATE_KEYFRAME)
+                                chunk = next(lineit).rstrip()
+
+                                curkeyframe = int(chunk)
+                                anims[curanim].frames[curkeyframe] = []
+                        elif (state[-1] == LEXSTATE_NONE):
+                            if (chunk == "MESH"):
+                                state.append(LEXSTATE_MESH)
+                                chunk = next(lineit).rstrip()
+
+                                curmesh = S64Mesh(chunk)
+                                meshes.append(curmesh)
+                                curmesh = len(meshes)-1
+                            elif (chunk == "ANIMATION"):
+                                state.append(LEXSTATE_ANIMATION)
+                                chunk = next(lineit).rstrip()
+
+                                curanim = S64Anim(chunk)
+                                anims.append(curanim)
+                                curanim = len(anims)-1
+
+                    elif (chunk == "END"):
+                        state.pop()
+                        break
+                    else:
+                        if (state[-1] == LEXSTATE_MESH):
+                            if (chunk == "ROOT"):
+                                x = float(next(lineit).rstrip())
+                                y = float(next(lineit).rstrip())
+                                z = float(next(lineit).rstrip())
+                                meshes[curmesh].root = mathutils.Vector((x, y, z))
+                            elif (chunk == "PROPERTIES"):
+                                try:
+                                    while True:
+                                        prop = next(lineit).rstrip()
+                                        meshes[curmesh].props.append(prop)
+                                except StopIteration:
+                                    break
+                        elif (state[-1] == LEXSTATE_VERTICES):
+                            x = float(chunk)
+                            y = float(next(lineit).rstrip())
+                            z = float(next(lineit).rstrip())
+                            nx = float(next(lineit).rstrip())
+                            ny = float(next(lineit).rstrip())
+                            nz = float(next(lineit).rstrip())
+                            cr = float(next(lineit).rstrip())
+                            cg = float(next(lineit).rstrip())
+                            cb = float(next(lineit).rstrip())
+                            ux = float(next(lineit).rstrip())
+                            uy = float(next(lineit).rstrip())
+
+                            curvert = S64Vertex()
+                            curvert.coor = mathutils.Vector((x, y, z))
+                            curvert.norm = mathutils.Vector((nx, ny, nz))
+                            curvert.colr = mathutils.Vector((cr, cg, cb))
+                            curvert.uv = mathutils.Vector((ux, uy))
+                            meshes[curmesh].verts.append(curvert)
+                            curvert = len(meshes[curmesh].verts)-1
+                        elif (state[-1] == LEXSTATE_FACES):
+                            count = int(chunk)
+                            indices = []
+                            for i in range(count):
+                                indices.append(int(next(lineit).rstrip()))
+                            curmat = next(lineit).rstrip()
+                            curface = S64Face()
+                            curface.verts = indices
+                            curface.mat = curmat
+                            meshes[curmesh].faces.append(curface)
+                            curface = len(meshes[curmesh].faces)-1
+                            if not curmat in meshes[curmesh].mats:
+                                meshes[curmesh].mats.append(curmat)
+                            if not curmat in materials:
+                                materials.append(curmat)
+                        elif (state[-1] == LEXSTATE_KEYFRAME):
+                            bone = chunk
+                            px = float(next(lineit).rstrip())
+                            py = float(next(lineit).rstrip())
+                            pz = float(next(lineit).rstrip())
+                            rw = float(next(lineit).rstrip())
+                            rx = float(next(lineit).rstrip())
+                            ry = float(next(lineit).rstrip())
+                            rz = float(next(lineit).rstrip())
+                            sx = float(next(lineit).rstrip())
+                            sy = float(next(lineit).rstrip())
+                            sz = float(next(lineit).rstrip())
+
+                            curframedata = S64KeyFrame(bone)
+                            curframedata.pos = mathutils.Vector((px, py, pz))
+                            curframedata.ang = mathutils.Quaternion((rw, rx, ry, rz))
+                            curframedata.scale = mathutils.Vector((sx, sy, sz))
+                            anims[curanim].frames[curkeyframe].append(curframedata)
+                            curframedata = len(anims[curanim].frames[curkeyframe])-1
+
+                except StopIteration:
+                    break
+
+    return meshes, anims, materials
+
+
+
+class ObjectImport(bpy.types.Operator):
+    """Import a sausage-link character with animations."""
+    bl_idname    = "object.import_sausage64"
+    bl_label     = "Sausage64 Character Import" # The text on the import button
+    bl_options   = {'REGISTER', 'UNDO'}
+    filename_ext = ".S64"
+
+    filter_glob = bpy.props.StringProperty(default="*.S64", options={'HIDDEN'}, maxlen=255)
+    #setting_triangulate  = bpy.props.BoolProperty(name="Triangulate", description="Triangulate objects.", default=False)
+    filepath = bpy.props.StringProperty(subtype='FILE_PATH')
+
+    # If we are running on Blender 2.9.3 or newer, it will expect the new "annotation"
+    # syntax on these parameters. In order to make newer versions of blender happy
+    # we will hack these parameters into the annotation dictionary
+    if isNewBlender():
+        __annotations__ = {"filter_glob" : filter_glob,
+                           #"setting_triangulate" : setting_triangulate,
+                           "filepath" : filepath}
+
+    def execute(self, context):
+        meshes, anims, materials = ParseS64(self.filepath)
+
+        if DebugS64Export:
+            for k, v in enumerate(meshes):
+                print(v)
+            for k, v in enumerate(anims):
+                print(v)
+            for k, v in enumerate(materials):
+                print(v)
+        #GenMaterialsFromS64(materials)
+        #GenMeshesFromS64(meshes)
+        #GenAnimsFromS64(meshes)
+        return {'FINISHED'}
+
+    def invoke(self, context, event):
+        context.window_manager.fileselect_add(self)
+        return {'RUNNING_MODAL'}
+
+# Blender Script registration
+def menu_func_import(self, context):
+    self.layout.operator(ObjectImport.bl_idname, text="Sausage64 Character (.S64)")
+
+def register():
+    bpy.utils.register_class(ObjectImport)
+    if (isNewBlender()):
+        bpy.types.TOPBAR_MT_file_import.append(menu_func_import)
+    else:
+        bpy.types.INFO_MT_file_import.append(menu_func_import)
+
+def unregister():
+    bpy.utils.unregister_class(ObjectImport)
+    if (isNewBlender()):
+        bpy.types.TOPBAR_MT_file_import.remove(menu_func_import)
+    else:
+        bpy.types.INFO_MT_file_import.remove(menu_func_import)
+
+if __name__ == "__main__":
+    register()

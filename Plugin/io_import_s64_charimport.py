@@ -12,7 +12,10 @@ bl_info = {
     "category": "Import-Export"
 }
 
+import os
 import bpy
+import bmesh
+import random
 import mathutils
 
 DebugS64Export = True
@@ -91,43 +94,6 @@ class S64KeyFrame:
 
 def isNewBlender():
     return bpy.app.version >= (2, 80)
-
-def CreateMesh():
-    if (isNewBlender()):
-        mesh = bpy.data.meshes.new("myBeautifulMesh")  # add the new mesh
-        obj = bpy.data.objects.new(mesh.name, mesh)
-        col = bpy.data.collections["Collection"]
-        col.objects.link(obj)
-        bpy.context.view_layer.objects.active = obj
-
-        verts = [( 1.0,  1.0,  0.0), 
-                 ( 1.0, -1.0,  0.0),
-                 (-1.0, -1.0,  0.0),
-                 (-1.0,  1.0,  0.0),
-                 ]  # 4 verts made with XYZ coords
-        edges = []
-        faces = [[0, 1, 2, 3]]
-
-        mesh.from_pydata(verts, edges, faces)
-    else:
-        verts = [(1, 1, 1), (0, 0, 0)]  # 2 verts made with XYZ coords
-        mesh = bpy.data.meshes.new("mesh")  # add a new mesh
-        obj = bpy.data.objects.new("MyObject", mesh)  # add a new object using the mesh
-
-        scene = bpy.context.scene
-        scene.objects.link(obj)  # put the object into the scene (link)
-        scene.objects.active = obj  # set as the active object in the scene
-        obj.select = True  # select object
-
-        mesh = bpy.context.object.data
-        bm = bmesh.new()
-
-        for v in verts:
-            bm.verts.new(v)  # add a new vert
-
-        # make the bmesh the object's mesh
-        bm.to_mesh(mesh)  
-        bm.free()  # always do this when finished
 
 def ParseS64(path):
     LEXSTATE_NONE = 0
@@ -279,7 +245,61 @@ def ParseS64(path):
 
     return meshes, anims, materials
 
+def GenMaterialsFromS64(materials):
+    materials_blender = {}
+    for n in materials:
+        mat = bpy.data.materials.get(n)
+        if mat is None:
+            mat = bpy.data.materials.new(name=n)
+            col = []
+            for i in range(3):
+                col.append(random.uniform(.4,1))
+            col.append(1)
+            mat.diffuse_color = col
+        materials_blender[n] = mat
+    return materials_blender
 
+def GenMeshesFromS64(name, meshes, materials):
+    for m in meshes:
+        mesh = bpy.data.meshes.new(m.name)  # add the new mesh
+        obj = bpy.data.objects.new(mesh.name, mesh)
+
+        if (isNewBlender()):
+            if not name in bpy.data.collections:
+                col = bpy.data.collections.new(name)
+                bpy.context.scene.collection.children.link(col)
+            else:
+                col = bpy.data.collections[name]
+            col.objects.link(obj)
+        else:
+            bpy.context.scene.objects.link(obj)
+
+        bm = bmesh.new()
+        bm.from_mesh(mesh)
+
+        addedv = []
+        for v in m.verts:
+            addedv.append(bm.verts.new(v.coor))
+        bm.verts.index_update()
+        bm.verts.ensure_lookup_table()
+
+        addedm = {}
+        for t in m.mats:
+            obj.data.materials.append(materials[t])
+            addedm[t] = len(obj.data.materials) - 1
+
+        findex = 0
+        for f in m.faces:
+            indices = []
+            for i in f.verts:
+                indices.append(addedv[i])
+            bm.faces.new(indices)
+            bm.faces.ensure_lookup_table()
+            bm.faces[findex].material_index = addedm[f.mat]
+
+            findex = findex + 1
+
+        bm.to_mesh(mesh)
 
 class ObjectImport(bpy.types.Operator):
     """Import a sausage-link character with animations."""
@@ -301,6 +321,7 @@ class ObjectImport(bpy.types.Operator):
                            "filepath" : filepath}
 
     def execute(self, context):
+        filename = os.path.splitext(os.path.basename(self.filepath))[0]
         meshes, anims, materials = ParseS64(self.filepath)
 
         if DebugS64Export:
@@ -310,8 +331,9 @@ class ObjectImport(bpy.types.Operator):
                 print(v)
             for k, v in enumerate(materials):
                 print(v)
-        #GenMaterialsFromS64(materials)
-        #GenMeshesFromS64(meshes)
+
+        materials_blender = GenMaterialsFromS64(materials)
+        meshes_blender = GenMeshesFromS64(filename, meshes, materials_blender)
         #GenAnimsFromS64(meshes)
         return {'FINISHED'}
 

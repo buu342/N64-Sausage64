@@ -490,11 +490,11 @@ def writeFile(self, object, finalList, animList):
                         file.write(validstring(frame.bone))
                         if (self.setting_upaxis == 'Z'):
                             file.write((" %.4f " % (frame.pos.x*self.setting_scale))+("%.4f " % (frame.pos.y*self.setting_scale))+("%.4f" % (frame.pos.z*self.setting_scale)))
-                            file.write((" %.4f " % frame.ang.w)+(" %.4f " % frame.ang.x)+("%.4f " % frame.ang.y)+("%.4f" % frame.ang.z))
+                            file.write((" %.4f " % frame.ang.w)+("%.4f " % frame.ang.x)+("%.4f " % frame.ang.y)+("%.4f" % frame.ang.z))
                             file.write((" %.4f " % frame.scale.x)+("%.4f " % frame.scale.y)+("%.4f\n" % frame.scale.z))
                         else:
                             file.write((" %.4f " % (frame.pos.x*self.setting_scale))+("%.4f " % (frame.pos.z*self.setting_scale))+("%.4f" % (-frame.pos.y*self.setting_scale)))
-                            file.write((" %.4f " % (frame.ang.w))+(" %.4f " % frame.ang.x)+("%.4f " % frame.ang.z)+("%.4f" % (-frame.ang.y)))
+                            file.write((" %.4f " % (frame.ang.w))+("%.4f " % frame.ang.x)+("%.4f " % frame.ang.z)+("%.4f" % (-frame.ang.y)))
                             file.write((" %.4f " % frame.scale.x)+("%.4f " % frame.scale.z)+("%.4f\n" % frame.scale.y))
                     file.write("END KEYFRAME "+str(curframe)+"\n")
                     prevframe = curframe

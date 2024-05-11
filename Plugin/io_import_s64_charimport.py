@@ -201,8 +201,8 @@ def ParseS64(path):
                             curvert = S64Vertex()
                             curvert.coor = mathutils.Vector((x, y, z))
                             curvert.norm = mathutils.Vector((nx, ny, nz))
-                            curvert.colr = mathutils.Vector((cr, cg, cb))
-                            curvert.uv = mathutils.Vector((ux, uy))
+                            curvert.colr = mathutils.Vector((cr, cg, cb, 1))
+                            curvert.uv = mathutils.Vector((ux, -uy))
                             meshes[curmesh].verts.append(curvert)
                             curvert = len(meshes[curmesh].verts)-1
                         elif (state[-1] == LEXSTATE_FACES):
@@ -264,6 +264,7 @@ def GenMeshesFromS64(name, meshes, materials):
         mesh = bpy.data.meshes.new(m.name)  # add the new mesh
         obj = bpy.data.objects.new(mesh.name, mesh)
 
+        # Create the collection
         if (isNewBlender()):
             if not name in bpy.data.collections:
                 col = bpy.data.collections.new(name)
@@ -274,20 +275,24 @@ def GenMeshesFromS64(name, meshes, materials):
         else:
             bpy.context.scene.objects.link(obj)
 
+        # Initialize the bmesh
         bm = bmesh.new()
         bm.from_mesh(mesh)
 
+        # Add vertices to the bmesh
         addedv = []
         for v in m.verts:
             addedv.append(bm.verts.new(v.coor))
         bm.verts.index_update()
         bm.verts.ensure_lookup_table()
 
+        # Add materials to the bmesh
         addedm = {}
         for t in m.mats:
             obj.data.materials.append(materials[t])
             addedm[t] = len(obj.data.materials) - 1
 
+        # Add faces to the bmesh, and assign materials to them
         findex = 0
         for f in m.faces:
             indices = []
@@ -299,7 +304,29 @@ def GenMeshesFromS64(name, meshes, materials):
 
             findex = findex + 1
 
+        # Update the lists to make sure all's good
+        bm.verts.index_update()
+        bm.verts.ensure_lookup_table()
+        bm.faces.index_update()
+        bm.faces.ensure_lookup_table()
+
+        # Set the UVs and vertex colors by iterating through the face loops.
+        uv_layer = bm.loops.layers.uv.new("UVMap")
+        color_layer = bm.loops.layers.color.new("Color")
+        for face in bm.faces:
+            for loop in face.loops:
+                loop[uv_layer].uv = m.verts[loop.vert.index].uv
+                loop[color_layer] = m.verts[loop.vert.index].colr
+
+        # Generate the mesh object from the bmesh
         bm.to_mesh(mesh)
+
+        # Add normals to the mesh
+        normals = []
+        for l in mesh.loops:
+            normals.append(m.verts[l.vertex_index].norm)
+        mesh.normals_split_custom_set(normals)
+        mesh.use_auto_smooth = True
 
 class ObjectImport(bpy.types.Operator):
     """Import a sausage-link character with animations."""

@@ -10,9 +10,11 @@ jobs:
     vmImage: 'windows-2019'
   steps:
   - script: |
-      echo Downloading wxWidgets
+      echo Downloading GDown
       pip install gdown
+      echo Downloading wxWidgets
       gdown --fuzzy https://drive.google.com/u/0/uc?id=1Dg5BZtatClyEX0zPYXjYKiNGHGMkbQ4G&export=download
+      echo Extracting wxWidgets
       ren *.zip wxWidgets.zip
       7z x wxWidgets.zip -oD:/
       dir
@@ -46,6 +48,7 @@ jobs:
   steps:
   - script: |
       echo Add Linux dependencies
+      sudo apt update
       sudo apt install build-essential
       sudo apt install libgtk-3-dev
       sudo apt install freeglut3-dev
@@ -61,7 +64,7 @@ jobs:
       mkdir gtk-build
       cd gtk-build
       ../configure --with-opengl --disable-shared
-      make -j 2
+      make -j$(nproc)
       sudo make install
       sudo ldconfig
       

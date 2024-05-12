@@ -32,7 +32,6 @@ bool settings_animatingreverse = false;
             Main Class
 *********************************/
 
-
 /*==============================
     Main (Constructor)
     Initializes the class
@@ -239,9 +238,12 @@ Main::Main() : wxFrame(nullptr, wxID_ANY, PROGRAM_NAME, wxPoint(0, 0), wxSize(64
     this->m_Panel_PrimCol->SetMinSize(wxSize(64, 64));
     this->m_Panel_PrimCol->SetMaxSize(wxSize(64, 64));
     m_Sizer_Bottom_PrimCol_Image->Add(this->m_Panel_PrimCol, 1, wxALIGN_CENTER_HORIZONTAL | wxALL, 5);
-    this->m_Label_PrimCol = new wxStaticText(this->m_Panel_Bottom, wxID_ANY, wxT("0, 255, 0"), wxDefaultPosition, wxDefaultSize, 0);
-    this->m_Label_PrimCol->Wrap(-1);
-    m_Sizer_Bottom_PrimCol_Image->Add(this->m_Label_PrimCol, 0, wxALIGN_CENTER_HORIZONTAL | wxALL, 5);
+    this->m_Label_PrimColRGB = new wxStaticText(this->m_Panel_Bottom, wxID_ANY, wxT("0, 255, 0"), wxDefaultPosition, wxDefaultSize, 0);
+    this->m_Label_PrimColRGB->Wrap(-1);
+    this->m_Label_PrimColHex = new wxStaticText(this->m_Panel_Bottom, wxID_ANY, wxT("00FF00"), wxDefaultPosition, wxDefaultSize, 0);
+    this->m_Label_PrimColHex->Wrap(-1);
+    m_Sizer_Bottom_PrimCol_Image->Add(this->m_Label_PrimColRGB, 0, wxALIGN_CENTER_HORIZONTAL, 5);
+    m_Sizer_Bottom_PrimCol_Image->Add(this->m_Label_PrimColHex, 0, wxALIGN_CENTER_HORIZONTAL, 5);
     this->m_Sizer_Bottom_PrimCol_Setup->Add(m_Sizer_Bottom_PrimCol_Image, 0, 0, 5);
     wxGridSizer* m_Sizer_Bottom_PrimCol_Settings;
     m_Sizer_Bottom_PrimCol_Settings = new wxGridSizer(0, 1, 0, 0);
@@ -339,6 +341,8 @@ Main::Main() : wxFrame(nullptr, wxID_ANY, PROGRAM_NAME, wxPoint(0, 0), wxSize(64
     this->m_CheckBox_PrimCol_LoadFirst->Connect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(Main::m_CheckBox_LoadFirstOnCheckBox), NULL, this);
     this->m_CheckBox_PrimCol_DontLoad->Connect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(Main::m_CheckBox_DontLoadOnCheckBox), NULL, this);
     this->m_TreeCtrl_ModelData->Connect(wxEVT_COMMAND_TREE_SEL_CHANGED, wxTreeEventHandler(Main::m_TreeCtrl_ModelDataOnTreeSelChanged), NULL, this);
+    this->m_Label_PrimColRGB->Connect(wxEVT_LEFT_DOWN, wxMouseEventHandler(Main::m_Label_PrimColOnLeftDown), NULL, this);
+    this->m_Label_PrimColHex->Connect(wxEVT_LEFT_DOWN, wxMouseEventHandler(Main::m_Label_PrimColOnLeftDown), NULL, this);
 }
 
 
@@ -1218,6 +1222,27 @@ void Main::m_Timer_MainLoopOnTimer(wxTimerEvent& event)
 
 
 /*==============================
+    Main::m_Label_PrimColOnLeftDown
+    Handles clicking on the primcolor color labels
+    @param The wxWidgets timer event
+==============================*/
+
+void Main::m_Label_PrimColOnLeftDown(wxMouseEvent& event)
+{
+    // Create the dialogue
+    texCol* col = highlighted_texture->GetPrimColorData();
+    ColorPickerHelper* dialog = new ColorPickerHelper(this);
+    dialog->SetRGB(col->r, col->g, col->b);
+    if (dialog->ShowModal() == wxID_OK)
+    {
+        wxColourDialogEvent ev;
+        ev.SetColour(wxColor(dialog->GetRed(), dialog->GetGreen(), dialog->GetBlue()));
+        this->OnPrimColChanged(ev);
+    }
+}
+
+
+/*==============================
     Main::GetLoadedModel
     Gets the currently loaded Sausage64 model
     @returns A pointer to the S64 model
@@ -1254,7 +1279,8 @@ void Main::OnPrimColChanged(wxColourDialogEvent& event)
 void Main::RefreshPrimColPanel()
 {
     texCol* col = highlighted_texture->GetPrimColorData();
-    this->m_Label_PrimCol->SetLabel(wxString::Format(wxT("%d, %d, %d"), col->r, col->g, col->b));
+    this->m_Label_PrimColRGB->SetLabel(wxString::Format(wxT("%d, %d, %d"), col->r, col->g, col->b));
+    this->m_Label_PrimColHex->SetLabel(wxString::Format(wxT("%02X%02X%02X"), col->r, col->g, col->b));
     this->m_Panel_PrimCol->SetForegroundColour(wxColour(col->r, col->g, col->b));
     this->m_Panel_PrimCol->SetBackgroundColour(wxColour(col->r, col->g, col->b));
     this->m_CheckBox_PrimCol_LoadFirst->SetValue(highlighted_texture->loadfirst);
@@ -1549,4 +1575,250 @@ void AdvancedRenderSettings::m_Checklist_GeoFlagsOnToggled(wxCommandEvent& event
 void AdvancedRenderSettings::m_Button_CloseOnClick(wxCommandEvent& event)
 {
     delete this;
+}
+
+
+/*********************************
+     ColorPickerHelper Class
+*********************************/
+
+/*==============================
+    ColorPickerHelper (Constructor)
+    Initializes the class
+==============================*/
+
+ColorPickerHelper::ColorPickerHelper( wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style ) : wxDialog( parent, id, title, pos, size, style )
+{
+    this->SetSizeHints( wxDefaultSize, wxDefaultSize );
+
+    // Create the main sizer
+    this->m_Sizer_Main = new wxFlexGridSizer(0, 1, 0, 0);
+    this->m_Sizer_Main->AddGrowableCol(0);
+    this->m_Sizer_Main->AddGrowableRow(0);
+    this->m_Sizer_Main->SetFlexibleDirection(wxBOTH);
+    this->m_Sizer_Main->SetNonFlexibleGrowMode(wxFLEX_GROWMODE_SPECIFIED);
+
+    // Create the color sizer
+    this->m_Sizer_Colors = new wxFlexGridSizer(0, 3, 0, 0);
+    this->m_Sizer_Colors->AddGrowableCol(1);
+    this->m_Sizer_Colors->AddGrowableCol(2);
+    this->m_Sizer_Colors->AddGrowableRow(0);
+    this->m_Sizer_Colors->AddGrowableRow(1);
+    this->m_Sizer_Colors->AddGrowableRow(2);
+    this->m_Sizer_Colors->SetFlexibleDirection(wxBOTH);
+    this->m_Sizer_Colors->SetNonFlexibleGrowMode(wxFLEX_GROWMODE_NONE);
+
+    // Add the red row
+    this->m_Label_Red = new wxStaticText(this, wxID_ANY, wxT("Red:"), wxDefaultPosition, wxDefaultSize, 0);
+    this->m_Label_Red->Wrap(-1);
+    this->m_Sizer_Colors->Add(this->m_Label_Red, 0, wxALIGN_CENTER_VERTICAL|wxALL, 5);
+    this->m_TextCtrl_RGB_Red = new wxTextCtrl(this, wxID_ANY, wxT("0"), wxDefaultPosition, wxDefaultSize, 0);
+    this->m_TextCtrl_RGB_Red->SetMinSize(wxSize(32, -1));
+    this->m_Sizer_Colors->Add(this->m_TextCtrl_RGB_Red, 0, wxALL|wxEXPAND, 5);
+    this->m_TextCtrl_Hex_Red = new wxTextCtrl(this, wxID_ANY, wxT("00"), wxDefaultPosition, wxDefaultSize, 0);
+    this->m_TextCtrl_Hex_Red->SetMinSize(wxSize(32, -1));
+    this->m_Sizer_Colors->Add(m_TextCtrl_Hex_Red, 0, wxALL|wxEXPAND, 5);
+
+    // Add the green row
+    this->m_Label_Green = new wxStaticText(this, wxID_ANY, wxT("Green:"), wxDefaultPosition, wxDefaultSize, 0);
+    this->m_Label_Green->Wrap(-1);
+    this->m_Sizer_Colors->Add(this->m_Label_Green, 0, wxALIGN_CENTER_VERTICAL|wxALL, 5);
+    this->m_TextCtrl_RGB_Green = new wxTextCtrl( this, wxID_ANY, wxT("255"), wxDefaultPosition, wxDefaultSize, 0);
+    this->m_TextCtrl_RGB_Green->SetMinSize( wxSize( 32,-1 ) );
+    this->m_Sizer_Colors->Add(this->m_TextCtrl_RGB_Green, 0, wxALL|wxEXPAND, 5);
+    this->m_TextCtrl_Hex_Green = new wxTextCtrl( this, wxID_ANY, wxT("FF"), wxDefaultPosition, wxDefaultSize, 0);
+    this->m_TextCtrl_Hex_Green->SetMinSize( wxSize( 32,-1 ) );
+    this->m_Sizer_Colors->Add(this->m_TextCtrl_Hex_Green, 0, wxALL|wxEXPAND, 5);
+
+    // Add the blue row
+    this->m_Label_Blue = new wxStaticText(this, wxID_ANY, wxT("Blue:"), wxDefaultPosition, wxDefaultSize, 0);
+    this->m_Label_Blue->Wrap(-1);
+    this->m_Sizer_Colors->Add(this->m_Label_Blue, 0, wxALIGN_CENTER_VERTICAL|wxALL, 5);
+    this->m_TextCtrl_RGB_Blue = new wxTextCtrl(this, wxID_ANY, wxT("0"), wxDefaultPosition, wxDefaultSize, 0);
+    this->m_TextCtrl_RGB_Blue->SetMinSize(wxSize(32, -1));
+    this->m_Sizer_Colors->Add(this->m_TextCtrl_RGB_Blue, 0, wxALL|wxEXPAND, 5);
+    this->m_TextCtrl_Hex_Blue = new wxTextCtrl(this, wxID_ANY, wxT("00"), wxDefaultPosition, wxDefaultSize, 0);
+    this->m_TextCtrl_Hex_Blue->SetMinSize(wxSize(32, -1));
+    this->m_Sizer_Colors->Add(this->m_TextCtrl_Hex_Blue, 0, wxALL|wxEXPAND, 5);
+
+    // Add the color sizer to the main sizer
+    this->m_Sizer_Main->Add(this->m_Sizer_Colors, 1, wxEXPAND, 5);
+
+    // Add the buttons
+    this->m_Sizer_Buttons = new wxGridSizer(0, 2, 0, 0);
+    this->m_Button_Apply = new wxButton(this, wxID_ANY, wxT("Apply"), wxDefaultPosition, wxDefaultSize, 0);
+    this->m_Sizer_Buttons->Add(this->m_Button_Apply, 0, wxALIGN_RIGHT|wxALL, 5);
+    this->m_Button_Cancel = new wxButton(this, wxID_ANY, wxT("Cancel"), wxDefaultPosition, wxDefaultSize, 0);
+    this->m_Sizer_Buttons->Add(this->m_Button_Cancel, 0, wxALIGN_LEFT|wxALL, 5);
+    this->m_Sizer_Main->Add(this->m_Sizer_Buttons, 1, wxEXPAND, 5);
+
+    // Set the layout
+    this->SetSizer(this->m_Sizer_Main);
+    this->Layout();
+    this->Centre(wxBOTH);
+
+    // Connect Events
+    this->m_TextCtrl_RGB_Red->Connect(wxEVT_KILL_FOCUS, wxCommandEventHandler(ColorPickerHelper::m_TextCtrl_OnTextChanged), NULL, this);
+    this->m_TextCtrl_Hex_Red->Connect(wxEVT_KILL_FOCUS, wxCommandEventHandler(ColorPickerHelper::m_TextCtrl_OnTextChanged), NULL, this);
+    this->m_TextCtrl_RGB_Green->Connect(wxEVT_KILL_FOCUS, wxCommandEventHandler(ColorPickerHelper::m_TextCtrl_OnTextChanged), NULL, this);
+    this->m_TextCtrl_Hex_Green->Connect(wxEVT_KILL_FOCUS, wxCommandEventHandler(ColorPickerHelper::m_TextCtrl_OnTextChanged), NULL, this);
+    this->m_TextCtrl_RGB_Blue->Connect(wxEVT_KILL_FOCUS, wxCommandEventHandler(ColorPickerHelper::m_TextCtrl_OnTextChanged), NULL, this);
+    this->m_TextCtrl_Hex_Blue->Connect(wxEVT_KILL_FOCUS, wxCommandEventHandler(ColorPickerHelper::m_TextCtrl_OnTextChanged), NULL, this);
+    this->m_Button_Apply->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(ColorPickerHelper::m_Button_OnApplyPressed), NULL, this);
+    this->m_Button_Cancel->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(ColorPickerHelper::m_Button_OnCancelPressed), NULL, this);
+}
+
+
+/*==============================
+    ColorPickerHelper (Destructor)
+    Cleans up the class before deletion
+==============================*/
+
+ColorPickerHelper::~ColorPickerHelper()
+{
+    // Disconnect Events
+    this->m_TextCtrl_RGB_Red->Disconnect(wxEVT_KILL_FOCUS, wxCommandEventHandler(ColorPickerHelper::m_TextCtrl_OnTextChanged), NULL, this);
+    this->m_TextCtrl_Hex_Red->Disconnect(wxEVT_KILL_FOCUS, wxCommandEventHandler(ColorPickerHelper::m_TextCtrl_OnTextChanged), NULL, this);
+    this->m_TextCtrl_RGB_Green->Connect(wxEVT_KILL_FOCUS, wxCommandEventHandler(ColorPickerHelper::m_TextCtrl_OnTextChanged), NULL, this);
+    this->m_TextCtrl_Hex_Green->Disconnect(wxEVT_KILL_FOCUS, wxCommandEventHandler(ColorPickerHelper::m_TextCtrl_OnTextChanged), NULL, this);
+    this->m_TextCtrl_RGB_Blue->Disconnect(wxEVT_KILL_FOCUS, wxCommandEventHandler(ColorPickerHelper::m_TextCtrl_OnTextChanged), NULL, this);
+    this->m_TextCtrl_Hex_Blue->Disconnect(wxEVT_KILL_FOCUS, wxCommandEventHandler(ColorPickerHelper::m_TextCtrl_OnTextChanged), NULL, this);
+    this->m_Button_Apply->Disconnect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(ColorPickerHelper::m_Button_OnApplyPressed), NULL, this);
+    this->m_Button_Cancel->Disconnect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(ColorPickerHelper::m_Button_OnCancelPressed), NULL, this);
+}
+
+
+/*==============================
+    ColorPickerHelper::m_TextCtrl_OnTextChanged
+    Handles text control changing and validation
+    @param The wxWidgets command event
+==============================*/
+
+void ColorPickerHelper::m_TextCtrl_OnTextChanged(wxCommandEvent& event)
+{
+    long int val;
+    wxTextCtrl* rgb;
+    wxTextCtrl* hex;
+    if (event.GetId() == this->m_TextCtrl_RGB_Red->GetId())
+    {
+        rgb = this->m_TextCtrl_RGB_Red;
+        hex = this->m_TextCtrl_Hex_Red;
+        rgb->GetValue().ToLong(&val);
+    }
+    else if (event.GetId() == this->m_TextCtrl_Hex_Red->GetId())
+    {
+        rgb = this->m_TextCtrl_RGB_Red;
+        hex = this->m_TextCtrl_Hex_Red;
+        hex->GetValue().ToLong(&val, 16);
+    }
+    else if (event.GetId() == this->m_TextCtrl_RGB_Green->GetId())
+    {
+        rgb = this->m_TextCtrl_RGB_Green;
+        hex = this->m_TextCtrl_Hex_Green;
+        rgb->GetValue().ToLong(&val);
+    }
+    else if (event.GetId() == this->m_TextCtrl_Hex_Green->GetId())
+    {
+        rgb = this->m_TextCtrl_RGB_Green;
+        hex = this->m_TextCtrl_Hex_Green;
+        hex->GetValue().ToLong(&val, 16);
+    }
+    else if (event.GetId() == this->m_TextCtrl_RGB_Blue->GetId())
+    {
+        rgb = this->m_TextCtrl_RGB_Blue;
+        hex = this->m_TextCtrl_Hex_Blue;
+        rgb->GetValue().ToLong(&val);
+    }
+    else
+    {
+        rgb = this->m_TextCtrl_RGB_Blue;
+        hex = this->m_TextCtrl_Hex_Blue;
+        hex->GetValue().ToLong(&val, 16);
+    }
+
+    if (val < 0)
+        val = 0;
+    if (val > 255)
+        val = 255;
+    rgb->ChangeValue(wxString::Format("%d", (int)val));
+    hex->ChangeValue(wxString::Format("%02X", (int)val));
+}
+
+
+/*==============================
+    ColorPickerHelper::m_Button_OnApplyPressed
+    Handles apply button pressing
+    @param The wxWidgets command event
+==============================*/
+
+void ColorPickerHelper::m_Button_OnApplyPressed(wxCommandEvent& event)
+{
+    this->EndModal(wxID_OK);
+}
+
+
+/*==============================
+    ColorPickerHelper::m_Button_OnCancelPressed
+    Handles cancel button pressing
+    @param The wxWidgets command event
+==============================*/
+
+void ColorPickerHelper::m_Button_OnCancelPressed(wxCommandEvent& event)
+{
+    this->EndModal(wxID_CANCEL);
+}
+
+
+/*==============================
+    ColorPickerHelper::SetRGB
+    Sets the RGB value to initialize the helper with
+    @param The red value
+    @param The green value
+    @param The blue value
+==============================*/
+
+void ColorPickerHelper::SetRGB(uint8_t r, uint8_t g, uint8_t b)
+{
+    this->m_TextCtrl_RGB_Red->ChangeValue(wxString::Format("%d", r));
+    this->m_TextCtrl_RGB_Green->ChangeValue(wxString::Format("%d", g));
+    this->m_TextCtrl_RGB_Blue->ChangeValue(wxString::Format("%d", b));
+    this->m_TextCtrl_Hex_Red->ChangeValue(wxString::Format("%02X", r));
+    this->m_TextCtrl_Hex_Green->ChangeValue(wxString::Format("%02X", g));
+    this->m_TextCtrl_Hex_Blue->ChangeValue(wxString::Format("%02X", b));
+}
+
+
+/*==============================
+    ColorPickerHelper::GetRed
+    Gets the red value created in the color picker
+    @returns The red value
+==============================*/
+
+uint8_t ColorPickerHelper::GetRed()
+{
+    return wxAtoi(this->m_TextCtrl_RGB_Red->GetValue());
+}
+
+
+/*==============================
+    ColorPickerHelper::GetGreen
+    Gets the green value created in the color picker
+    @returns The green value
+==============================*/
+
+uint8_t ColorPickerHelper::GetGreen()
+{
+    return wxAtoi(this->m_TextCtrl_RGB_Green->GetValue());
+}
+
+
+/*==============================
+    ColorPickerHelper::GetBlue
+    Gets the blue value created in the color picker
+    @returns The blue value
+==============================*/
+
+uint8_t ColorPickerHelper::GetBlue()
+{
+    return wxAtoi(this->m_TextCtrl_RGB_Blue->GetValue());
 }

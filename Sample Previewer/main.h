@@ -110,7 +110,8 @@ class Main : public wxFrame
         wxChoice* m_Choice_Texture_TFlag;
         wxBoxSizer* m_Sizer_Bottom_PrimCol_Setup;
         wxPanel* m_Panel_PrimCol;
-        wxStaticText* m_Label_PrimCol;
+        wxStaticText* m_Label_PrimColRGB;
+        wxStaticText* m_Label_PrimColHex;
         wxButton* m_Button_Texture_Advanced;
         wxCheckBox* m_CheckBox_Texture_LoadFirst;
         wxCheckBox* m_CheckBox_Texture_DontLoad;
@@ -156,8 +157,9 @@ class Main : public wxFrame
         void m_CheckBox_LoadFirstOnCheckBox(wxCommandEvent& event);
         void m_CheckBox_DontLoadOnCheckBox(wxCommandEvent& event);
         void m_TreeCtrl_ModelDataOnTreeSelChanged(wxTreeEvent& event);
-        s64Model* GetLoadedModel();
+        void m_Label_PrimColOnLeftDown(wxMouseEvent& event);
         void OnPrimColChanged(wxColourDialogEvent& event);
+        s64Model* GetLoadedModel();
         void RefreshPrimColPanel();
         void RefreshTextureImage();
 };
@@ -190,5 +192,36 @@ class AdvancedRenderSettings : public wxDialog
         void m_Choice_Render2OnChoice(wxCommandEvent& event);
         void m_Checklist_GeoFlagsOnToggled(wxCommandEvent& event);
         void m_Button_CloseOnClick(wxCommandEvent& event);
+};
 
+class ColorPickerHelper : public wxDialog
+{
+    private:
+
+    protected:
+        wxFlexGridSizer* m_Sizer_Main;
+        wxFlexGridSizer* m_Sizer_Colors;
+        wxGridSizer* m_Sizer_Buttons;
+        wxStaticText* m_Label_Red;
+        wxTextCtrl* m_TextCtrl_RGB_Red;
+        wxTextCtrl* m_TextCtrl_Hex_Red;
+        wxStaticText* m_Label_Green;
+        wxTextCtrl* m_TextCtrl_RGB_Green;
+        wxTextCtrl* m_TextCtrl_Hex_Green;
+        wxStaticText* m_Label_Blue;
+        wxTextCtrl* m_TextCtrl_RGB_Blue;
+        wxTextCtrl* m_TextCtrl_Hex_Blue;
+        wxButton* m_Button_Apply;
+        wxButton* m_Button_Cancel;
+
+    public:
+        ColorPickerHelper(wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = wxT("Manual Color Input"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize(200, 210), long style = wxDEFAULT_DIALOG_STYLE );
+        ~ColorPickerHelper();
+        void m_TextCtrl_OnTextChanged(wxCommandEvent& event);
+        void m_Button_OnApplyPressed(wxCommandEvent& event);
+        void m_Button_OnCancelPressed(wxCommandEvent& event);
+        void SetRGB(uint8_t r, uint8_t g, uint8_t b);
+        uint8_t GetRed();
+        uint8_t GetGreen();
+        uint8_t GetBlue();
 };

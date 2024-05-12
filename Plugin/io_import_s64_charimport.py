@@ -42,12 +42,13 @@ class S64Face:
 
 class S64Mesh:
     def __init__(self, name):
-        self.name  = name # Skeleton name
-        self.verts = []   # List of vertices
-        self.faces = []   # List of faces
-        self.mats  = []   # List of materials used by this mesh
-        self.props = []   # List of custom properties
-        self.root  = None # Bone root location
+        self.name   = name # Skeleton name
+        self.verts  = []   # List of vertices
+        self.faces  = []   # List of faces
+        self.mats   = []   # List of materials used by this mesh
+        self.props  = []   # List of custom properties
+        self.root   = None # Bone root location
+        self.parent = None # Parent mesh
     def __str__(self):
         string = "S64Mesh: '"+self.name+"'\n"
         string = string+"Root: "+str(self.root)+"\n"
@@ -260,6 +261,7 @@ def GenMaterialsFromS64(materials):
     return materials_blender
 
 def GenMeshesFromS64(name, meshes, materials):
+    meshes_blender = {}
     for m in meshes:
         mesh = bpy.data.meshes.new(m.name)  # add the new mesh
         obj = bpy.data.objects.new(mesh.name, mesh)
@@ -328,6 +330,59 @@ def GenMeshesFromS64(name, meshes, materials):
         mesh.normals_split_custom_set(normals)
         mesh.use_auto_smooth = True
 
+        meshes_blender[m.name] = obj
+    return meshes_blender
+
+def GenBonesFromS64(filename, meshes, meshes_blender):
+    bones_blender = {}
+
+    # Create the armature
+    if bpy.context.active_object:
+        bpy.ops.object.mode_set(mode='OBJECT',toggle=False)
+    arm = bpy.data.objects.new(filename, bpy.data.armatures.new(filename))
+    arm.show_in_front = True
+    arm.data.display_type = 'STICK'
+    if isNewBlender():
+        bpy.data.collections[filename].objects.link(arm)
+    else:
+        bpy.context.scene.objects.link(arm)
+    for i in bpy.context.selected_objects: 
+        i.select_set(False)
+    arm.select_set(True)
+    bpy.context.view_layer.objects.active = arm
+    bpy.ops.object.mode_set(mode='EDIT')
+
+    # Create the bones, give them bone properties if it exists, and parent the meshes to the armature
+    for k, v in meshes_blender.items():
+        if not k in bones_blender:
+            bones_blender[k] = arm.data.edit_bones.new(k)
+        bone = bones_blender[k]
+        ind = 0
+        for m in meshes:
+            if m.name == k:
+                break
+            ind = ind + 1
+        bone.matrix = mathutils.Matrix.Translation(meshes[ind].root)
+        bone.tail = meshes[ind].root + mathutils.Vector((0, 5, 0))
+        v.parent = arm
+        for p in meshes[ind].props:
+            bone[p] = 1
+    bpy.ops.object.mode_set(mode='OBJECT')
+
+    # Assign the armature modifier to each mesh, and weight the verts
+    for k, v in meshes_blender.items():
+        armmod = v.modifiers.new(name="Armature", type='ARMATURE')
+        armmod.object = arm
+        armmod.use_bone_envelopes = False
+        v.vertex_groups.new(name=k)
+        group = v.vertex_groups[k]
+        verts = []
+        for i in range(len(v.data.vertices)):
+            verts.append(i)
+        group.add(verts, 1, 'REPLACE')
+
+    # Assign bone properties
+
 class ObjectImport(bpy.types.Operator):
     """Import a sausage-link character with animations."""
     bl_idname    = "object.import_sausage64"
@@ -361,6 +416,7 @@ class ObjectImport(bpy.types.Operator):
 
         materials_blender = GenMaterialsFromS64(materials)
         meshes_blender = GenMeshesFromS64(filename, meshes, materials_blender)
+        bones_blender = GenBonesFromS64(filename, meshes, meshes_blender)
         #GenAnimsFromS64(meshes)
         return {'FINISHED'}
 

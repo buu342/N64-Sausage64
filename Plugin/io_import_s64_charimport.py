@@ -203,7 +203,10 @@ def ParseS64(path):
                             curvert = S64Vertex()
                             curvert.coor = mathutils.Vector((x, y, z))
                             curvert.norm = mathutils.Vector((nx, ny, nz))
-                            curvert.colr = mathutils.Vector((cr, cg, cb, 1))
+                            if (isNewBlender()):
+                                curvert.colr = mathutils.Vector((cr, cg, cb, 1))
+                            else:
+                                curvert.colr = mathutils.Vector((cr, cg, cb))
                             curvert.uv = mathutils.Vector((ux, -uy))
                             meshes[curmesh].verts.append(curvert)
                             curvert = len(meshes[curmesh].verts)-1
@@ -256,7 +259,8 @@ def GenMaterialsFromS64(materials):
             col = []
             for i in range(3):
                 col.append(random.uniform(.4,1))
-            col.append(1)
+            if (isNewBlender()):
+                col.append(1)
             mat.diffuse_color = col
         materials_blender[n] = mat
     return materials_blender
@@ -341,15 +345,25 @@ def GenBonesFromS64(filename, meshes, meshes_blender):
     if bpy.context.active_object:
         bpy.ops.object.mode_set(mode='OBJECT',toggle=False)
     arm = bpy.data.objects.new(filename, bpy.data.armatures.new(filename))
-    arm.show_in_front = True
-    arm.data.display_type = 'STICK'
+    if (isNewBlender()):
+        arm.show_in_front = True
+        arm.data.display_type = 'STICK'
+    else:
+        arm.show_x_ray = True
+        arm.data.draw_type = 'STICK'
     if isNewBlender():
         bpy.data.collections[filename].objects.link(arm)
     else:
         bpy.context.scene.objects.link(arm)
-    for i in bpy.context.selected_objects: 
-        i.select_set(False)
-    arm.select_set(True)
+    for i in bpy.context.selected_objects:
+        if (isNewBlender()):
+            i.select_set(False)
+        else:
+            i.select = False
+    if (isNewBlender()):
+        arm.select_set(True)
+    else:
+        arm.select = True
     viewscene = None
     if (isNewBlender()):
         viewscene = bpy.context.view_layer
@@ -433,9 +447,15 @@ def CleanUp(oldactive, oldselected, oldmode):
     else:
         viewscene = bpy.context.scene
     for obj in bpy.context.selected_objects:
-        obj.select_set(False)
+        if (isNewBlender()):
+            obj.select_set(False)
+        else:
+            obj.select = False
     for obj in oldselected:
-        obj.select_set(True)
+        if (isNewBlender()):        
+            obj.select_set(True)
+        else:
+            obj.select = True
     viewscene.objects.active = oldactive
     if (not oldmode == None):
         bpy.ops.object.mode_set(mode=oldmode)

@@ -90,7 +90,7 @@ ModelCanvas::ModelCanvas(wxWindow* parent, const wxGLAttributes& attriblist, wxW
     this->right_pressed = false;
     lastmousepos = wxGetMousePosition();
 
-    SetCurrent(*this->m_context);
+    //SetCurrent(*this->m_context);
     this->InitializeOpenGL();
     this->Bind(wxEVT_KEY_DOWN, &ModelCanvas::OnKeyDown, this);
     this->Bind(wxEVT_KEY_UP, &ModelCanvas::OnKeyUp, this);
@@ -503,6 +503,8 @@ void ModelCanvas::RenderSausage64()
                         glDisable(GL_TEXTURE);
                         glDisable(GL_TEXTURE_2D);
                         glEnable(GL_COLOR_MATERIAL);
+                        glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, default_diffuse);
+                        glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, default_ambient);
                         glColorMaterial(GL_FRONT_AND_BACK, GL_DIFFUSE);
                         break;
                     case TYPE_TEXTURE:

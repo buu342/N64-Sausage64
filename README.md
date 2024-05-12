@@ -4,7 +4,7 @@
 
 <img src=".github/Catherine.gif" width="179" height="281"/>
 
-Sausage64 is a plugin for Blender 2.7 onwards, which allows you to export "sausage link" style character models with animations.
+Sausage64 is a plugin for Blender 2.7 onwards, which allows you to export (as well as import) "sausage link" style character models with animations.
 
 The plugin exports the data as an easily parsable text file. This file should be simple to convert to other formats, more suitable for your target platform. 
 
@@ -28,12 +28,13 @@ Sausage link characters are made out of different unconnected segments. This is 
 This method of character design was highly popular in the N64 and PS1 era, where animating vertex skinned characters was considered a very heavy operation. Instead, these models leverage the fact that each segment can easily be transformed via a matrix.
 
 ### Installation 
-1. Grab the python file that is inside the `Plugin` folder.
+1. Grab the python files that are inside the `Plugin` folder.
 2. Open Blender, and go to your user preferences.
 3. Go to the addons tab, and select `Install...` or `Install from File` button (the name depends on your version of Blender).
 4. Find the python script in the file browser and open it. 
 5. The script `Sausage64 Character Export` should appear. Tick the checkbox to enable it. 
-6. If you are on Blender 2.8 onwards, you're all set! If you are on an earlier version of Blender, you will get a warning that the script is for a newer version of Blender. You can safely ignore this warning. Don't forget to press the `Save User Preferences` button. 
+6. The script `Sausage64 Character Import` should also be there. Tick the checkbox to enable it if you want it. 
+7. If you are on Blender 2.8 onwards, you're all set! If you are on an earlier version of Blender, you will get a warning that the script is for a newer version of Blender. You can safely ignore this warning. Don't forget to press the `Save User Preferences` button. 
 
 ### S64 file format, Usage Instructions, FAQ, and More
 For more information, please check the [wiki](../../wiki). Please note that the Wiki is only updated every release, therefore the information might not match what is in the current repository.

@@ -19,7 +19,7 @@ import random
 import mathutils
 import traceback
 
-DebugS64Export = False
+DebugS64Import = False
 
 class S64Vertex:
     def __init__(self):
@@ -98,6 +98,7 @@ def isNewBlender():
     return bpy.app.version >= (2, 80)
 
 def ParseS64(path):
+    # Lexer state constants
     LEXSTATE_NONE = 0
     LEXSTATE_COMMENTBLOCK = 1
     LEXSTATE_MESH = 2
@@ -106,19 +107,21 @@ def ParseS64(path):
     LEXSTATE_ANIMATION = 5
     LEXSTATE_KEYFRAME = 6
 
+    # The output arrays
     meshes = []
     anims = []
     materials = []
 
+    # Useful index variables
     curmesh = -1
     curvert = -1
-    prevface = -1
     curface = -1
     curanim = -1
     curkeyframe = -1
     curframedata = -1
     curmat = -1
 
+    # Parse the file. This is basically a copy paste of Arabiki's parser
     state = [LEXSTATE_NONE]
     with open(path, "r") as fs:
         for l in fs:
@@ -128,18 +131,20 @@ def ParseS64(path):
                 try:
                     chunk = next(lineit).rstrip()
 
+                    # Handle comment lines
                     if ("//" in chunk):
                         break
 
+                    # Handle coment blocks
                     if ("/*" in chunk):
                         state.append(LEXSTATE_COMMENTBLOCK)
                         break
-                        
                     if (state[-1] == LEXSTATE_COMMENTBLOCK):
                         if ("*/" in chunk):
                             state.pop()
                         continue
 
+                    # Handle everything else
                     if (chunk == "BEGIN"):
                         chunk = next(lineit).rstrip()
                         if (state[-1] == LEXSTATE_MESH):
@@ -151,7 +156,6 @@ def ParseS64(path):
                             if (chunk == "KEYFRAME"):
                                 state.append(LEXSTATE_KEYFRAME)
                                 chunk = next(lineit).rstrip()
-
                                 curkeyframe = int(chunk)
                                 anims[curanim].frames[curkeyframe] = []
                         elif (state[-1] == LEXSTATE_NONE):
@@ -216,6 +220,7 @@ def ParseS64(path):
                             for i in range(count):
                                 indices.append(int(next(lineit).rstrip()))
                             curmat = next(lineit).rstrip()
+
                             curface = S64Face()
                             curface.verts = indices
                             curface.mat = curmat
@@ -252,8 +257,12 @@ def ParseS64(path):
 
 def GenMaterialsFromS64(materials):
     materials_blender = {}
+
+    # Iterate through all the parsed materials
     for n in materials:
         mat = bpy.data.materials.get(n)
+
+        # If the material doesn't exist, create it with a random diffuse color
         if mat is None:
             mat = bpy.data.materials.new(name=n)
             col = []
@@ -262,16 +271,22 @@ def GenMaterialsFromS64(materials):
             if (isNewBlender()):
                 col.append(1)
             mat.diffuse_color = col
+
+        # Store this material with its name as a key
         materials_blender[n] = mat
+
+    # Return the dictionary that points material names to the created materials
     return materials_blender
 
 def GenMeshesFromS64(name, meshes, materials):
     meshes_blender = {}
+
+    # Iterate through all the parsed meshes
     for m in meshes:
         mesh = bpy.data.meshes.new(m.name)  # add the new mesh
         obj = bpy.data.objects.new(mesh.name, mesh)
 
-        # Create the collection
+        # Create the collection we will put everything inside of
         if (isNewBlender()):
             if not name in bpy.data.collections:
                 col = bpy.data.collections.new(name)
@@ -335,11 +350,19 @@ def GenMeshesFromS64(name, meshes, materials):
         mesh.normals_split_custom_set(normals)
         mesh.use_auto_smooth = True
 
+        # Store this mesh object with its name as a key
         meshes_blender[m.name] = obj
+
+    # Return the dictionary that points mesh names to the created objects
     return meshes_blender
 
 def GenBonesFromS64(filename, meshes, meshes_blender):
     bones_blender = {}
+    viewscene = None
+    if (isNewBlender()):
+        viewscene = bpy.context.view_layer
+    else:
+        viewscene = bpy.context.scene
 
     # Create the armature
     if bpy.context.active_object:
@@ -348,49 +371,51 @@ def GenBonesFromS64(filename, meshes, meshes_blender):
     if (isNewBlender()):
         arm.show_in_front = True
         arm.data.display_type = 'STICK'
+        bpy.data.collections[filename].objects.link(arm)
+        for i in bpy.context.selected_objects:
+            i.select_set(False)
+        arm.select_set(True)
     else:
         arm.show_x_ray = True
         arm.data.draw_type = 'STICK'
-    if isNewBlender():
-        bpy.data.collections[filename].objects.link(arm)
-    else:
         bpy.context.scene.objects.link(arm)
-    for i in bpy.context.selected_objects:
-        if (isNewBlender()):
-            i.select_set(False)
-        else:
+        for i in bpy.context.selected_objects:
             i.select = False
-    if (isNewBlender()):
-        arm.select_set(True)
-    else:
         arm.select = True
-    viewscene = None
-    if (isNewBlender()):
-        viewscene = bpy.context.view_layer
-    else:
-        viewscene = bpy.context.scene
     viewscene.objects.active = arm
     bpy.ops.object.mode_set(mode='EDIT')
+
+    # Store the armature at the key zero
     bones_blender[0] = arm
 
-    # Create the bones, give them bone properties if it exists, and parent the meshes to the armature
+    # Handle bone creation
     for k, v in meshes_blender.items():
+
+        # Create the bone if it doesn't exist, placing it in the bone dictionary with the mesh name as the key.
         if not k in bones_blender:
             bones_blender[k] = arm.data.edit_bones.new(k)
         bone = bones_blender[k]
+
+        # Find the mesh index in the array
         ind = 0
         for m in meshes:
             if m.name == k:
                 break
             ind = ind + 1
+
+        # Place the bone and its tail
         bone.matrix = mathutils.Matrix.Translation(meshes[ind].root)
         bone.tail = meshes[ind].root + mathutils.Vector((0, 5, 0))
+
+        # Parent the mesh to the armature
         v.parent = arm
+
+        # Add bone properties
         for p in meshes[ind].props:
             bone[p] = 1
     bpy.ops.object.mode_set(mode='OBJECT')
 
-    # Assign the armature modifier to each mesh, and weight the verts
+    # Assign the armature modifier to each mesh, and weight the verts to their respective bone
     for k, v in meshes_blender.items():
         armmod = v.modifiers.new(name="Armature", type='ARMATURE')
         armmod.object = arm
@@ -402,6 +427,7 @@ def GenBonesFromS64(filename, meshes, meshes_blender):
             verts.append(i)
         group.add(verts, 1, 'REPLACE')
 
+    # Return the dictionary that points mesh names to the created bones
     return bones_blender
 
 def GenAnimsFromS64(anims, meshes_blender, bones_blender):
@@ -439,22 +465,22 @@ def GenAnimsFromS64(anims, meshes_blender, bones_blender):
         new_track = tracks.new()
         new_track.name = a.name
         strip = new_track.strips.new(a.name, start_frame, act)
+
+    # Set the current animation to the zero (rest) animation
     bones_blender[0].animation_data.action = zeroaction
 
 def CleanUp(oldactive, oldselected, oldmode):
     if (isNewBlender()):
         viewscene = bpy.context.view_layer
+        for obj in bpy.context.selected_objects:
+            obj.select_set(False)
+        for obj in oldselected:
+                obj.select_set(True)
     else:
         viewscene = bpy.context.scene
-    for obj in bpy.context.selected_objects:
-        if (isNewBlender()):
-            obj.select_set(False)
-        else:
+        for obj in bpy.context.selected_objects:
             obj.select = False
-    for obj in oldselected:
-        if (isNewBlender()):        
-            obj.select_set(True)
-        else:
+        for obj in oldselected:
             obj.select = True
     viewscene.objects.active = oldactive
     if (not oldmode == None):
@@ -480,6 +506,8 @@ class ObjectImport(bpy.types.Operator):
                            "filepath" : filepath}
 
     def execute(self, context):
+
+        # First, get the scene state so that we can return back to it when the import finishes
         if (isNewBlender()):
             viewscene = bpy.context.view_layer
         else:
@@ -490,11 +518,15 @@ class ObjectImport(bpy.types.Operator):
         if (not bpy.context.object == None):
             oldmode = bpy.context.object.mode
 
+        # Do the import
         try:
+
+            # Parse the S64 file and generate data structures we can parse
             filename = os.path.splitext(os.path.basename(self.filepath))[0]
             meshes, anims, materials = ParseS64(self.filepath)
 
-            if DebugS64Export:
+            # Debug print the generated structures
+            if DebugS64Import:
                 for k, v in enumerate(meshes):
                     print(v)
                 for k, v in enumerate(anims):
@@ -502,15 +534,20 @@ class ObjectImport(bpy.types.Operator):
                 for k, v in enumerate(materials):
                     print(v)
 
+            # Generate everything
             materials_blender = GenMaterialsFromS64(materials)
             meshes_blender = GenMeshesFromS64(filename, meshes, materials_blender)
             bones_blender = GenBonesFromS64(filename, meshes, meshes_blender)
             GenAnimsFromS64(anims, meshes_blender, bones_blender)
+
         except Exception:
+
+            # If we ran into some problem, cleanup and cancel the import
             self.report({'ERROR'}, traceback.format_exc())
             CleanUp(oldactive, oldselected, oldmode)
             return {'CANCELLED'}
 
+        # Success, report the successful import, and cleanup
         CleanUp(oldactive, oldselected, oldmode)
         self.report({'INFO'}, 'File imported sucessfully!')
         return {'FINISHED'}

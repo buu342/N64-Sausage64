@@ -17,8 +17,9 @@ import bpy
 import bmesh
 import random
 import mathutils
+import traceback
 
-DebugS64Export = True
+DebugS64Export = False
 
 class S64Vertex:
     def __init__(self):
@@ -349,8 +350,14 @@ def GenBonesFromS64(filename, meshes, meshes_blender):
     for i in bpy.context.selected_objects: 
         i.select_set(False)
     arm.select_set(True)
-    bpy.context.view_layer.objects.active = arm
+    viewscene = None
+    if (isNewBlender()):
+        viewscene = bpy.context.view_layer
+    else:
+        viewscene = bpy.context.scene
+    viewscene.objects.active = arm
     bpy.ops.object.mode_set(mode='EDIT')
+    bones_blender[0] = arm
 
     # Create the bones, give them bone properties if it exists, and parent the meshes to the armature
     for k, v in meshes_blender.items():
@@ -381,7 +388,57 @@ def GenBonesFromS64(filename, meshes, meshes_blender):
             verts.append(i)
         group.add(verts, 1, 'REPLACE')
 
-    # Assign bone properties
+    return bones_blender
+
+def GenAnimsFromS64(anims, meshes_blender, bones_blender):
+    bones_blender[0].animation_data_create()
+
+    # Set the rest pose
+    zeroaction = bpy.data.actions.new("None")
+    bones_blender[0].animation_data.action = zeroaction
+    for name, bone in bones_blender.items():
+        if (bone == bones_blender[0]):
+            continue
+        bones_blender[0].pose.bones[name].keyframe_insert('location', frame=0)
+        bones_blender[0].pose.bones[name].keyframe_insert('rotation_quaternion', frame=0)
+        bones_blender[0].pose.bones[name].keyframe_insert('scale', frame=0)
+    zeroaction.use_fake_user = True
+
+    # Load the animations
+    for a in anims:
+        act = bpy.data.actions.new(a.name)
+        bones_blender[0].animation_data.action = act
+        start_frame = float("inf")
+        for keyf, data in a.frames.items():
+            if (keyf < start_frame):
+                start_frame = keyf
+            for fdata in data:
+                bones_blender[0].pose.bones[fdata.bone].location = fdata.pos
+                bones_blender[0].pose.bones[fdata.bone].keyframe_insert('location', frame=keyf)
+                bones_blender[0].pose.bones[fdata.bone].rotation_quaternion = fdata.ang
+                bones_blender[0].pose.bones[fdata.bone].keyframe_insert('rotation_quaternion', frame=keyf)
+                bones_blender[0].pose.bones[fdata.bone].scale = fdata.scale
+                bones_blender[0].pose.bones[fdata.bone].keyframe_insert('scale', frame=keyf)
+
+        # Push to the NLA stack so the animation isn't lost
+        tracks =  bones_blender[0].animation_data.nla_tracks
+        new_track = tracks.new()
+        new_track.name = a.name
+        strip = new_track.strips.new(a.name, start_frame, act)
+    bones_blender[0].animation_data.action = zeroaction
+
+def CleanUp(oldactive, oldselected, oldmode):
+    if (isNewBlender()):
+        viewscene = bpy.context.view_layer
+    else:
+        viewscene = bpy.context.scene
+    for obj in bpy.context.selected_objects:
+        obj.select_set(False)
+    for obj in oldselected:
+        obj.select_set(True)
+    viewscene.objects.active = oldactive
+    if (not oldmode == None):
+        bpy.ops.object.mode_set(mode=oldmode)
 
 class ObjectImport(bpy.types.Operator):
     """Import a sausage-link character with animations."""
@@ -403,21 +460,39 @@ class ObjectImport(bpy.types.Operator):
                            "filepath" : filepath}
 
     def execute(self, context):
-        filename = os.path.splitext(os.path.basename(self.filepath))[0]
-        meshes, anims, materials = ParseS64(self.filepath)
+        if (isNewBlender()):
+            viewscene = bpy.context.view_layer
+        else:
+            viewscene = bpy.context.scene
+        oldselected = bpy.context.selected_objects
+        oldactive = viewscene.objects.active
+        oldmode = None
+        if (not bpy.context.object == None):
+            oldmode = bpy.context.object.mode
 
-        if DebugS64Export:
-            for k, v in enumerate(meshes):
-                print(v)
-            for k, v in enumerate(anims):
-                print(v)
-            for k, v in enumerate(materials):
-                print(v)
+        try:
+            filename = os.path.splitext(os.path.basename(self.filepath))[0]
+            meshes, anims, materials = ParseS64(self.filepath)
 
-        materials_blender = GenMaterialsFromS64(materials)
-        meshes_blender = GenMeshesFromS64(filename, meshes, materials_blender)
-        bones_blender = GenBonesFromS64(filename, meshes, meshes_blender)
-        #GenAnimsFromS64(meshes)
+            if DebugS64Export:
+                for k, v in enumerate(meshes):
+                    print(v)
+                for k, v in enumerate(anims):
+                    print(v)
+                for k, v in enumerate(materials):
+                    print(v)
+
+            materials_blender = GenMaterialsFromS64(materials)
+            meshes_blender = GenMeshesFromS64(filename, meshes, materials_blender)
+            bones_blender = GenBonesFromS64(filename, meshes, meshes_blender)
+            GenAnimsFromS64(anims, meshes_blender, bones_blender)
+        except Exception:
+            self.report({'ERROR'}, traceback.format_exc())
+            CleanUp(oldactive, oldselected, oldmode)
+            return {'CANCELLED'}
+
+        CleanUp(oldactive, oldselected, oldmode)
+        self.report({'INFO'}, 'File imported sucessfully!')
         return {'FINISHED'}
 
     def invoke(self, context, event):

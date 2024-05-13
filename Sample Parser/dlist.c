@@ -119,13 +119,7 @@ void construct_dl()
         {
             vertCache* vcache = (vertCache*)vcachenode->data;
             listNode* prevfacenode = vcache->faces.head;
-            
-            // Load a new vertex block
-            fprintf(fp, "    gsSPVertex(vtx_%s", global_modelname);
-            if (ismultimesh)
-                fprintf(fp, "_%s", mesh->name);
-            fprintf(fp, "+%d, %d, 0),\n", vertindex, vcache->verts.size);
-            vertindex += vcache->verts.size;
+            bool loadedverts = FALSE;
             
             // Cycle through all the faces
             for (listNode* facenode = vcache->faces.head; facenode != NULL; facenode = facenode->next)
@@ -270,6 +264,17 @@ void construct_dl()
 
                     // Update the last texture
                     lastTexture = tex;
+                }
+
+                // Load a new vertex block if iut hasn't been
+                if (!loadedverts)
+                {
+                    fprintf(fp, "    gsSPVertex(vtx_%s", global_modelname);
+                    if (ismultimesh)
+                        fprintf(fp, "_%s", mesh->name);
+                    fprintf(fp, "+%d, %d, 0),\n", vertindex, vcache->verts.size);
+                    vertindex += vcache->verts.size;
+                    loadedverts = TRUE;
                 }
                 
                 // If we can, dump a 2Tri, otherwise dump a single triangle

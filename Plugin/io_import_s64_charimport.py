@@ -357,6 +357,7 @@ def GenMeshesFromS64(name, meshes, materials):
     return meshes_blender
 
 def GenBonesFromS64(filename, meshes, meshes_blender):
+    arm_name = filename + "_Armature"
     bones_blender = {}
     viewscene = None
     if (isNewBlender()):
@@ -367,7 +368,7 @@ def GenBonesFromS64(filename, meshes, meshes_blender):
     # Create the armature
     if bpy.context.active_object:
         bpy.ops.object.mode_set(mode='OBJECT',toggle=False)
-    arm = bpy.data.objects.new(filename, bpy.data.armatures.new(filename))
+    arm = bpy.data.objects.new(arm_name, bpy.data.armatures.new(arm_name))
     if (isNewBlender()):
         arm.show_in_front = True
         arm.data.display_type = 'STICK'
@@ -494,7 +495,7 @@ class ObjectImport(bpy.types.Operator):
     filename_ext = ".S64"
 
     filter_glob = bpy.props.StringProperty(default="*.S64", options={'HIDDEN'}, maxlen=255)
-    #setting_triangulate  = bpy.props.BoolProperty(name="Triangulate", description="Triangulate objects.", default=False)
+    setting_groupmeshes  = bpy.props.BoolProperty(name="Group meshes", description="Keep all meshes grouped together during import.", default=True)
     filepath = bpy.props.StringProperty(subtype='FILE_PATH')
 
     # If we are running on Blender 2.9.3 or newer, it will expect the new "annotation"
@@ -502,7 +503,7 @@ class ObjectImport(bpy.types.Operator):
     # we will hack these parameters into the annotation dictionary
     if isNewBlender():
         __annotations__ = {"filter_glob" : filter_glob,
-                           #"setting_triangulate" : setting_triangulate,
+                           "setting_groupmeshes" : setting_groupmeshes,
                            "filepath" : filepath}
 
     def execute(self, context):
@@ -539,6 +540,26 @@ class ObjectImport(bpy.types.Operator):
             meshes_blender = GenMeshesFromS64(filename, meshes, materials_blender)
             bones_blender = GenBonesFromS64(filename, meshes, meshes_blender)
             GenAnimsFromS64(anims, meshes_blender, bones_blender)
+
+            # Group the meshes
+            if (self.setting_groupmeshes):
+                for obj in bpy.context.selected_objects:
+                    if (isNewBlender()):
+                        obj.select_set(False)
+                    else:
+                        obj.select = False
+                viewscene.objects.active = None
+                last = None
+                for k, v in meshes_blender.items():
+                    if (isNewBlender()):
+                       v.select_set(True)
+                    else:
+                       v.select = True
+                    last = v
+                viewscene.objects.active = v
+                bpy.ops.object.join()
+                last.name = filename
+                last.data.name = filename
 
         except Exception:
 

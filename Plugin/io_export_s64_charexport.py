@@ -597,7 +597,7 @@ class ObjectExport(bpy.types.Operator):
                 skeletoncount = skeletoncount + 1
             elif (v.type == 'MESH'):
                 meshcount = meshcount + 1
-        if (meshcount > 0 and not meshList):
+        if (meshcount > 0 or not meshList):
             self.report({'WARNING'}, 'No mesh was exported with the selected options. Did you mean to do this?')
             return {'CANCELLED'}
         if (self.setting_onlyselected and skeletoncount > 0 and not skeletonList):

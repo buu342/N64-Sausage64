@@ -144,6 +144,12 @@ def setupData(self, object, skeletonList, meshList):
         if (m.data.has_custom_normals):
             m.data.calc_normals_split()
 
+        # Get the mesh's world matrix
+        mtx = mathutils.Matrix.Identity(4)
+        if (self.setting_applytransforms):
+            mtx = m.matrix_world
+        mtx_norm = mathutils.Matrix.inverted(mathutils.Matrix.transposed(mathutils.Matrix.to_3x3(mtx)))
+
         # Create a copy of the mesh
         self.duplicatemodel = m
         mcopy = None
@@ -196,13 +202,19 @@ def setupData(self, object, skeletonList, meshList):
 
                 # Create the vertex
                 vert = S64Vertex()
-                vert.coor = v.co[:]
+                if (isNewBlender()):
+                    vert.coor = (mtx @ v.co)[:]
+                else:
+                    vert.coor = (mtx * v.co)[:]
 
                 # Add the vertex normal
                 #if (mcopy.has_custom_normals):
                 #    vert.norm = mcopy.loops[loop_index].normal[:]
                 #else:
-                vert.norm = v.normal[:]
+                if (isNewBlender()):
+                    vert.norm = (mtx_norm @ v.normal).normalized()[:]
+                else:
+                    vert.norm = (mtx_norm * v.normal).normalized()[:]
 
                 # Try to add the vertex color
                 try:
@@ -290,6 +302,10 @@ def setupData(self, object, skeletonList, meshList):
 
                 # Go through all skeletons and add the bone's data
                 for s in skeletonList:
+
+                    mtx = mathutils.Matrix.Identity(4)
+                    if (self.setting_applytransforms):
+                        mtx = s.matrix_world
 
                     # Get the action before we mess with it, and then mess with it
                     actionbefore = s.animation_data.action
@@ -529,20 +545,22 @@ class ObjectExport(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
     filename_ext = ".S64"
 
-    filter_glob          = bpy.props.StringProperty(default="*.S64", options={'HIDDEN'}, maxlen=255)
-    setting_triangulate  = bpy.props.BoolProperty(name="Triangulate", description="Triangulate objects.", default=False)
-    setting_onlyselected = bpy.props.BoolProperty(name="Selected only", description="Export selected objects only.", default=False)
-    setting_onlyvisible  = bpy.props.BoolProperty(name="Visible only", description="Export visible objects only.", default=True)
-    setting_animfps      = bpy.props.FloatProperty(name="Animation FPS", description="By default, Sausage64 assumes animations are 30FPS. Changing this value will scale the animation to match this framerate.", min=0.0, max=1000.0, default=30.0)
-    setting_scale        = bpy.props.FloatProperty(name="Export Scale", description="The size of the exported model", min=0.0, max=1000.0, default=1.0)
-    setting_upaxis       = bpy.props.EnumProperty(name="Up Axis", description="The selected axis points upward", items=(('Z', "Z", "The Z axis points up"), ('Y', "Y", "The Y axis points up")), default='Z')
-    filepath             = bpy.props.StringProperty(subtype='FILE_PATH')
+    filter_glob             = bpy.props.StringProperty(default="*.S64", options={'HIDDEN'}, maxlen=255)
+    setting_triangulate     = bpy.props.BoolProperty(name="Triangulate", description="Triangulate objects.", default=False)
+    setting_onlyselected    = bpy.props.BoolProperty(name="Selected only", description="Export selected objects only.", default=False)
+    setting_onlyvisible     = bpy.props.BoolProperty(name="Visible only", description="Export visible objects only.", default=True)
+    setting_animfps         = bpy.props.FloatProperty(name="Animation FPS", description="By default, Sausage64 assumes animations are 30FPS. Changing this value will scale the animation to match this framerate.", min=0.0, max=1000.0, default=30.0)
+    setting_scale           = bpy.props.FloatProperty(name="Export Scale", description="The size of the exported model", min=0.0, max=1000.0, default=1.0)
+    setting_applytransforms = bpy.props.BoolProperty(name="Apply transforms ⚠", description="Apply all object transforms (position, rotation, scale) before exporting.\nWARNING! Known to break armatures/animations", default=False)
+    setting_upaxis          = bpy.props.EnumProperty(name="Up Axis", description="The selected axis points upward", items=(('Z', "Z", "The Z axis points up"), ('Y', "Y", "The Y axis points up")), default='Z')
+    filepath                = bpy.props.StringProperty(subtype='FILE_PATH')
 
     # If we are running on Blender 2.9.3 or newer, it will expect the new "annotation"
     # syntax on these parameters. In order to make newer versions of blender happy
     # we will hack these parameters into the annotation dictionary
     if isNewBlender():
         __annotations__ = {"filter_glob" : filter_glob,
+                           "setting_applytransforms" : setting_applytransforms,
                            "setting_triangulate" : setting_triangulate,
                            "setting_onlyselected" : setting_onlyselected,
                            "setting_onlyvisible" : setting_onlyvisible,

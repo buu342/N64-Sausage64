@@ -64,7 +64,6 @@ typedef struct {
     @param The value to clamp
     @param The minimum value
     @param The maximum value
-    @param The fraction
     @return The clamped value
 ==============================*/
 

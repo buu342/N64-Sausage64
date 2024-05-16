@@ -169,42 +169,49 @@ void construct_dl()
                     // Check for different geometry mode
                     if (lastTexture != NULL)
                     {
-                        int flagcountold = 0, flagcountnew = 0;
+                        int flagcount_old = 0;
+                        int flagcount_new = 0;
+                        char* flags_old[MAXGEOFLAGS];
+                        char* flags_new[MAXGEOFLAGS];
+
+                        // Store the pointer to the flags somewhere to make the iteration easier
                         for (i=0; i<MAXGEOFLAGS; i++)
+                        {
+                            if (tex->geomode[i][0] != '\0')
+                            {
+                                flags_new[flagcount_new] = tex->geomode[i];
+                                flagcount_new++;
+                            }
+                            if (lastTexture->geomode[i][0] != '\0')
+                            {
+                                flags_old[flagcount_old] = lastTexture->geomode[i];
+                                flagcount_old++;
+                            }
+                        }
+
+                        // Check if all the flags exist in this other texture
+                        if (flagcount_new == flagcount_old)
                         {
                             int j;
                             bool hasthisflag = FALSE;
-                            
-                            // Skip empty flags
-                            if (tex->geomode[i][0] == '\0')
-                                continue;
-                                
-                            flagcountnew++;
-                            flagcountold = 0;
-                                
-                            // Look through all the old texture's flags
-                            for (j=0; j<MAXGEOFLAGS; j++)
+                            for (i=0; i<flagcount_new; i++)
                             {
-                                if (lastTexture->geomode[j][0] == '\0')
-                                    continue;
-                                flagcountold++;
-                                if (!strcmp(tex->geomode[i], lastTexture->geomode[j]))
+                                for (j=0; j<flagcount_old; j++)
                                 {
-                                    hasthisflag = TRUE;
+                                    if (!strcmp(flags_new[i], flags_old[j]))
+                                    {
+                                        hasthisflag = TRUE;
+                                        break;
+                                    }
+                                }
+                                if (!hasthisflag)
+                                {
+                                    changedgeo = TRUE;
                                     break;
                                 }
                             }
-                            
-                            // If a flagchange was detected, the display list must be updated
-                            if (!hasthisflag)
-                            {
-                                changedgeo = TRUE;
-                                break;
-                            }
                         }
-                        
-                        // If the number of flags changed, then we need to update the display list
-                        if (flagcountold != flagcountnew)
+                        else
                             changedgeo = TRUE;
                     }
                     else

@@ -385,65 +385,29 @@ static void sausage64_update_anim(s64ModelHelper* mdl)
 {
     const s64Animation* anim = mdl->curanim;
     const float curtick = mdl->animtick;
-    const u32 curkeyframe = mdl->curkeyframe;
-    const u32 curframenum = anim->keyframes[curkeyframe].framenumber;
-    const u32 nframes = anim->keyframecount;
-    u32 nextkeyframe = (curkeyframe+1)%nframes;
+    u32 curkf_index = mdl->curkeyframe;
+    u32 nextkf_index = (curkf_index+1)%(anim->keyframecount);
+    const u32 curkf_value = anim->keyframes[curkf_index].framenumber;
     
     // Check if we changed animation frame
-    if (curtick >= anim->keyframes[nextkeyframe].framenumber || curtick < curframenum)
+    if (curtick < curkf_value || curtick >= anim->keyframes[nextkf_index].framenumber)
     {
-        if (curtick > curframenum) // Animation advanced to next frame
-        {
-            u32 i=0;
+        int advance = 1;
+        if (curtick < curkf_value)
+            advance = -1;
             
-            // Cycle through all frames, starting at the one after the current frame
-            do
-            {
-                // Update the keyframe if we've passed this keyframe's number
-                if (curtick >= anim->keyframes[nextkeyframe].framenumber)
-                {
-                    // Go to the next keyframe, and stop
-                    mdl->curkeyframe = nextkeyframe;
-                    return;
-                }
-                
-                // If that was a failure, go to the next frame
-                nextkeyframe = (nextkeyframe+1)%nframes;
-                i++;
-            }
-            while (i<nframes);
-        }
-        else if (curkeyframe > 0 && curtick < anim->keyframes[1].framenumber) // Animation rolled over to the first frame (special case for speedup reasons)
+        // Cycle through all remaining, starting at the one after the current frame
+        do
         {
-            mdl->curkeyframe = 0;
-        }
-        else // Animation is potentially going backwards
-        {
-            u32 i=0;
-            s32 prevkeyframe = curkeyframe-1;
-            if (prevkeyframe < 0)
-                prevkeyframe = nframes-1;
-            
-            // Cycle through all frames (backwards), starting at the one before the current frame
-            do
+            curkf_index += advance;
+            nextkf_index += advance;
+            if (curtick >= anim->keyframes[curkf_index].framenumber && curtick < anim->keyframes[nextkf_index].framenumber)
             {
-                // Update the keyframe if we've passed this keyframe's number
-                if (curtick >= anim->keyframes[prevkeyframe].framenumber)
-                {
-                    // Go to the next keyframe, and stop
-                    mdl->curkeyframe = prevkeyframe;
-                    return;
-                }
-                
-                // If that was a failure, go to the previous frame
-                prevkeyframe--;
-                if (prevkeyframe < 0)
-                    prevkeyframe = nframes-1;
-                i++;
+                mdl->curkeyframe = curkf_index;
+                return;
             }
-            while (i<nframes);    
         }
+        while (1);
     }
 }
 

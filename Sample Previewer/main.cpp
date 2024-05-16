@@ -549,6 +549,7 @@ void Main::m_MenuItem_ImportTextureOnMenuSelection(wxCommandEvent& event)
                 this->m_Sizer_Bottom_Texture_Setup->Show(false);
                 this->m_Sizer_Bottom_PrimCol_Setup->Show(true);
                 this->RefreshPrimColPanel();
+                break;
             case TYPE_TEXTURE:
                 this->m_Radio_Image->SetValue(true);
                 this->m_Sizer_Bottom_Texture_Setup->Show(true);
@@ -1298,8 +1299,6 @@ void Main::RefreshPrimColPanel()
 
 void Main::RefreshTextureImage()
 {
-    if (highlighted_texture == NULL)
-        return;
     texImage* img = highlighted_texture->GetTextureData();
     this->m_Image_Texture->SetBitmap(img->wxbmp);
     this->m_Label_Texture->SetLabel(wxString::Format(wxT("%zux%zu"), img->w, img->h));

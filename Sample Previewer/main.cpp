@@ -1298,6 +1298,8 @@ void Main::RefreshPrimColPanel()
 
 void Main::RefreshTextureImage()
 {
+    if (highlighted_texture == NULL)
+        return;
     texImage* img = highlighted_texture->GetTextureData();
     this->m_Image_Texture->SetBitmap(img->wxbmp);
     this->m_Label_Texture->SetLabel(wxString::Format(wxT("%zux%zu"), img->w, img->h));

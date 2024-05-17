@@ -29,7 +29,7 @@ void write_output_text()
     char strbuff[STRBUF_SIZE];
     int longestmeshname = 0, longestanimname = 0;
     char makestructs = (list_animations.size > 0 || list_meshes.size > 1);
-    
+
     // Open the file
     fp = fopen(global_outputname, "w+");
     if (fp == NULL)
@@ -174,9 +174,29 @@ void write_output_text()
             if (global_opengl)
                 fputs("&", fp);
             if (ismultimesh)
-                fprintf(fp, "gfx_%s_%s},\n", global_modelname, mesh->name);
+                fprintf(fp, "gfx_%s_%s, ", global_modelname, mesh->name);
             else
-                fprintf(fp, "gfx_%s},\n", global_modelname);
+                fprintf(fp, "gfx_%s, ", global_modelname);
+            if (mesh->parent != NULL)
+            {
+                int index = 0;
+                listNode* pnode;
+
+                for (pnode = list_meshes.head; pnode != NULL; pnode = pnode->next)
+                {
+                    s64Mesh* parent = (s64Mesh*)pnode->data;
+                    if (!strcmp(parent->name, mesh->parent))
+                    {
+                        fprintf(fp, "%d", index);
+                        break;
+                    }
+                    index++;
+                }
+            }
+            else
+                fprintf(fp, "-1");
+
+            fprintf(fp, "},\n");
         }
         fputs("};\n\n", fp);
         

@@ -10,6 +10,7 @@
     // Mesh struct
     typedef struct {
         char* name;
+        char* parent;
         Vector3D root;
         linkedList verts;
         linkedList faces;

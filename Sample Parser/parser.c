@@ -183,6 +183,13 @@ void parse_sausage(FILE* fp)
                             tempvec.z = atof(strtok(NULL, " "));
                             curmesh->root = tempvec;
                         }
+                        if (!strcmp(strdata, "PARENT"))
+                        {
+                            strdata = strtok(NULL, " ");
+                            strdata[strcspn(strdata, "\r\n")] = 0;
+                            curmesh->parent = (char*)calloc(strlen(strdata)+1, 1);
+                            strcpy(curmesh->parent, strdata);
+                        }
                         if (!strcmp(strdata, "PROPERTIES"))
                         {
                             while ((strdata = strtok(NULL, " ")) != NULL)

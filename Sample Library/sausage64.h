@@ -96,7 +96,7 @@
             s64RenderBlock* renders;
         } s64Gfx;
     #endif
-
+    
     typedef struct {
         f32 pos[3];
         f32 rot[4];
@@ -118,6 +118,7 @@
         const char* name;
         const u32 is_billboard;
         s64Gfx* dl;
+        int parent;
     } s64Mesh;
 
     typedef struct {

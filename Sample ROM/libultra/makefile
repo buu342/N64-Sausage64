@@ -20,6 +20,8 @@ N64KITDIR	= c:/nintendo/n64kit
 NUSYSDIR	= $(N64KITDIR)/nusys
 NUSYSINC	= $(NUSYSDIR)/include
 NUSYSLIB	= $(NUSYSDIR)/lib
+NUSTDINC    = $(N64KITDIR)/nustd/include
+NUSTDLIB    = $(N64KITDIR)/nustd/lib
 NUOBJ		= $(NUSYSLIB)/nusys.o
 
 
@@ -58,13 +60,13 @@ ifeq ($(DEBUG_MODE), 0)
     CODEOBJECTS     = $(CODECFILES:.c=.o) $(NUOBJ)
     OPTIMIZER       = -O2
     LCDEFS          = -D_FINALROM -DNDEBUG -DF3DEX_GBI_2 -DNOT_SPEC
-    N64LIB          = -lnusys -lgultra_rom
+    N64LIB          = -lnusys -lnustd -lgultra_rom
     MAKEROMFLAGS    = 
 else
     CODEOBJECTS     = $(CODECFILES:.c=.o) $(NUOBJ) $(DEBUGFILES:.c=.o)
     OPTIMIZER       = -g
     LCDEFS          = -DDEBUG  -DF3DEX_GBI_2 -DNOT_SPEC
-    N64LIB          = -lnusys_d -lgultra_d 
+    N64LIB          = -lnusys_d -lnustd_d -lgultra_d
     MAKEROMFLAGS    = -d
 endif
 
@@ -73,10 +75,10 @@ endif
 #                        Linker Settings                       #
 ################################################################
 
-LCINCS =	-I. -I$(ROOT)/usr/include/PR -I $(ROOT)/usr/include -I$(NUSYSINC)
+LCINCS =	-nostdinc -I- -I$(NUSTDINC) -I. -I$(ROOT)/usr/include/PR -I $(ROOT)/usr/include -I$(NUSYSINC)
 LCOPTS =	-G 0
 LDIRT  =	$(APP)
-LDFLAGS=	$(MKDEPOPT) -L$(ROOT)/usr/lib -L$(ROOT)/usr/lib/PR -L$(NUSYSLIB) $(N64LIB) -L$(GCCDIR)/mipse/lib -lkmc
+LDFLAGS=	$(MKDEPOPT) -L$(ROOT)/usr/lib -L$(ROOT)/usr/lib/PR -L$(NUSYSLIB) -L$(NUSTDLIB) $(N64LIB) -L$(GCCDIR)/mipse/lib -lkmc
 
 
 ################################################################

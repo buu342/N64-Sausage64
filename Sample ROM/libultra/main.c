@@ -5,6 +5,7 @@ Program entrypoint.
 ***************************************************************/
 
 #include <nusys.h>
+#include <malloc.h>
 #include "config.h"
 #include "stages.h"
 #include "debug.h"
@@ -19,6 +20,9 @@ static void callback_vsync(int tasksleft);
 
 // Controller data
 NUContData contdata[1];
+
+// Half a megabyte of heap memory
+char heapmem[1024*512];     
 
 
 /*==============================
@@ -59,6 +63,9 @@ void mainproc(void)
     debug_addcommand("ToggleLoop", "Toggle animation looping", command_toggleloop);
     debug_addcommand("ToggleAxis", "Toggle floor axis", command_toggleaxis);
     debug_printcommands();
+
+    // Initialize the heap
+    debug_assert(InitHeap(heapmem, sizeof(heapmem)) != -1);
         
     // Initialize stage 0
     stage00_init();

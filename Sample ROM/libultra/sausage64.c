@@ -7,6 +7,7 @@ https://github.com/buu342/Blender-Sausage64
 ***************************************************************/
 
 #include "sausage64.h"
+#include <malloc.h>
 #ifdef LIBDRAGON
     #include <math.h>
 #endif
@@ -109,6 +110,7 @@ static inline float s64quat_dot(s64Quat q1, s64Quat q2)
     s64quat_normalize
     Normalizes a quaternion
     @param The quaternion to normalize
+    @return The normalized quaternion
 ==============================*/
 
 static inline float s64quat_normalize(s64Quat q)
@@ -215,6 +217,7 @@ static inline void s64quat_to_mtx(s64Quat q, float dest[][4])
     @param The euler yaw (in radians)
     @param The euler pitch (in radians)
     @param The euler roll (in radians)
+    @return The calculated quaternion
 ==============================*/
 
 static inline s64Quat s64quat_fromeuler(float yaw, float pitch, float roll)
@@ -241,25 +244,30 @@ static inline s64Quat s64quat_fromeuler(float yaw, float pitch, float roll)
 *********************************/
 
 /*==============================
-    sausage64_initmodel
-    Initialize a model helper struct
-    @param The model helper to initialize
-    @param The model data 
-    @param (Libultra) An array of matrices for each mesh
-           part
-           (Libdragon) An array of GL buffers for each 
-           mesh's verticies and faces
-    ==============================*/
+    sausage64_inithelper
+    Allocate a new model helper struct
+    @param  The model data
+    @return A newly allocated model helper, or
+            NULL if it failed to allocate
+==============================*/
 
-#ifndef LIBDRAGON
-void sausage64_initmodel(s64ModelHelper* mdl, s64ModelData* mdldata, Mtx* matrices)
-#else
-void sausage64_initmodel(s64ModelHelper* mdl, s64ModelData* mdldata, GLuint* glbuffers)
-#endif
+s64ModelHelper* sausage64_inithelper(s64ModelData* mdldata)
 {
+    // Start by allocating a model helper struct
+    s64ModelHelper* mdl = (s64ModelHelper*)malloc(sizeof(s64ModelHelper));
+    if (mdl == NULL)
+        return NULL;
+
+    // Initialize the newly allocated structure
     mdl->interpolate = TRUE;
     mdl->loop = TRUE;
     mdl->curkeyframe = 0;
+    mdl->animtick = 0;
+    mdl->rendercount = 0;
+    mdl->predraw = NULL;
+    mdl->postdraw = NULL;
+    mdl->animcallback = NULL;
+    mdl->mdldata = mdldata;
 
     // Set the the first animation if it exists, otherwise set the animation to NULL
     if (mdldata->animcount > 0)
@@ -274,24 +282,32 @@ void sausage64_initmodel(s64ModelHelper* mdl, s64ModelData* mdldata, GLuint* glb
         mdl->curanimlen = 0;
     }
 
-    // Initialize the rest of the data
-    mdl->animtick = 0;
-    mdl->predraw = NULL;
-    mdl->postdraw = NULL;
-    mdl->animcallback = NULL;
-    mdl->mdldata = mdldata;
-    #ifndef LIBDRAGON
-        mdl->matrix = matrices;
-    #else
-        mdl->glbuffers = glbuffers;
+    // Allocate space for the transform helper
+    mdl->transforms = (s64FrameTransform*)malloc(sizeof(s64FrameTransform)*mdldata->meshcount);
+    if (mdl->transforms == NULL)
+    {
+        free(mdl);
+        return NULL;
+    }
+    mdl->transforms->rendercount = 0;
 
+    // Allocate space for the model matrices (or GLBuffers in Libdragon's case)
+    #ifndef LIBDRAGON
+        mdl->matrix = (Mtx*)malloc(sizeof(Mtx)*1); // TODO: Handle frame buffering properly. Will require a better API
+        if (mdl->matrix == NULL)
+        {
+            free(mdl->transforms);
+            free(mdl);
+            return NULL;
+        }
+    #else
         // If the GL buffers haven't been initialized
-        if (glbuffers[0] == 0xFFFFFFFF)
+        if (mdldata->glbuffers[0] == 0xFFFFFFFF)
         {
             int meshcount = mdldata->meshcount;
 
             // Generate the buffers, and then loop through and assign them to the vert+face arrays
-            glGenBuffersARB(meshcount*2, glbuffers);
+            glGenBuffersARB(meshcount*2, mdldata->glbuffers);
             for (int i=0; i<meshcount; i++)
             {
                 s64Gfx* dl = mdldata->meshes[i].dl;
@@ -305,13 +321,14 @@ void sausage64_initmodel(s64ModelHelper* mdl, s64ModelData* mdldata, GLuint* glb
                 }
 
                 // Generate the buffers
-                glBindBufferARB(GL_ARRAY_BUFFER_ARB, glbuffers[i*2]);
+                glBindBufferARB(GL_ARRAY_BUFFER_ARB, mdldata->glbuffers[i*2]);
                 glBufferDataARB(GL_ARRAY_BUFFER_ARB, vertcount*sizeof(f32)*11, dl->renders[0].verts, GL_STATIC_DRAW_ARB);
-                glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER_ARB, glbuffers[i*2 + 1]);
+                glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER_ARB, mdldata->glbuffers[i*2 + 1]);
                 glBufferDataARB(GL_ELEMENT_ARRAY_BUFFER_ARB, facecount*sizeof(u16)*3, dl->renders[0].faces, GL_STATIC_DRAW_ARB);
             }
         }
     #endif
+    return mdl;
 }
 
 
@@ -755,6 +772,9 @@ void sausage64_set_anim(s64ModelHelper* mdl, u16 anim)
         const s64ModelData* mdata = mdl->mdldata;
         const u16 mcount = mdata->meshcount;
         const s64Animation* anim = mdl->curanim;
+
+        // Increment the render count for transform calculations
+        mdl->rendercount++;
     
         // If we have a valid animation
         if (anim != NULL)
@@ -811,10 +831,14 @@ void sausage64_set_anim(s64ModelHelper* mdl, u16 anim)
         const u16 mcount = mdata->meshcount;
         const s64Animation* anim = mdl->curanim;
 
+        // Initialize OpenGL state
         glEnableClientState(GL_VERTEX_ARRAY);
         glEnableClientState(GL_TEXTURE_COORD_ARRAY);
         glEnableClientState(GL_NORMAL_ARRAY);
         glEnableClientState(GL_COLOR_ARRAY);
+
+        // Increment the render count for transform calculations
+        mdl->rendercount++;
 
         // If we have a valid animation
         if (anim != NULL)
@@ -881,3 +905,18 @@ void sausage64_set_anim(s64ModelHelper* mdl, u16 anim)
         }
     }
 #endif
+
+/*==============================
+    sausage64_freehelper
+    Frees the memory used up by a Sausage64 model helper
+    @param A pointer to the model helper
+==============================*/
+
+void sausage64_freehelper(s64ModelHelper* helper)
+{
+    free(helper->transforms);
+    #ifndef LIBDRAGON
+        free(helper->matrix);
+    #endif
+    free(helper);
+}

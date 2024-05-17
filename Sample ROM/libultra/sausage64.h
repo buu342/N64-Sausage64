@@ -104,6 +104,11 @@
     } s64FrameData;
 
     typedef struct {
+        s64FrameData data;
+        u32 rendercount;
+    } s64FrameTransform;
+
+    typedef struct {
         u32 framenumber;
         s64FrameData* framedata;
     } s64KeyFrame;
@@ -126,24 +131,27 @@
         u16 animcount;
         s64Mesh* meshes;
         s64Animation* anims;
+        #ifdef LIBDRAGON
+            GLuint* glbuffers;
+        #endif
     } s64ModelData;
 
     typedef struct {
-        u8 interpolate;
-        u8 loop;
-        s64Animation* curanim;
-        u32 curanimlen;
+        u8    interpolate;
+        u8    loop;
+        u32   curanimlen;
         float animtick;
-        u32 curkeyframe;
+        u32   curkeyframe;
+        u32   rendercount;
         #ifndef LIBDRAGON
             Mtx* matrix;
-        #else
-            GLuint* glbuffers;
         #endif
-        void (*predraw)(u16);
-        void (*postdraw)(u16);
-        void (*animcallback)(u16);
+        void  (*predraw)(u16);
+        void  (*postdraw)(u16);
+        void  (*animcallback)(u16);
         s64ModelData* mdldata;
+        s64Animation* curanim;
+        s64FrameTransform* transforms; 
     } s64ModelHelper;
     
     
@@ -152,21 +160,14 @@
     *********************************/
     
     /*==============================
-        sausage64_initmodel
-        Initialize a model helper struct
-        @param The model helper to initialize
-        @param The model data
-        @param (Libultra) An array of matrices for each mesh
-               part
-               (Libdragon) An array of GL buffers for each
-               mesh's verticies and faces
+        sausage64_inithelper
+        Allocate a new model helper struct
+        @param  The model data
+        @return A newly allocated model helper, or
+                NULL if it failed to allocate
     ==============================*/
     
-    #ifndef LIBDRAGON
-        extern void sausage64_initmodel(s64ModelHelper* mdl, s64ModelData* mdldata, Mtx* matrices);
-    #else
-        extern void sausage64_initmodel(s64ModelHelper* mdl, s64ModelData* mdldata, GLuint* glbuffers);
-    #endif
+    extern s64ModelHelper* sausage64_inithelper(s64ModelData* mdldata);
     
     
     /*==============================
@@ -253,5 +254,14 @@
     #else
         extern void sausage64_drawmodel(s64ModelHelper* mdl);
     #endif
+
+
+    /*==============================
+        sausage64_freehelper
+        Frees the memory used up by a Sausage64 model helper
+        @param A pointer to the model helper
+    ==============================*/
+
+    void sausage64_freehelper(s64ModelHelper* helper);
 
 #endif

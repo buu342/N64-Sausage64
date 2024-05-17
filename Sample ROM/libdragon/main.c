@@ -36,7 +36,6 @@ void scene_render();
 
 // Catherine model buffers
 static s64ModelHelper catherine;
-static GLuint catherine_buffers[MESHCOUNT_Catherine*2];
 static sprite_t* catherine_textures[CATHERINE_TETXURE_COUNT];
 
 // Catherine face textures
@@ -155,11 +154,6 @@ void setup_scene()
 
 void setup_catherine()
 {
-    // IMPORTANT! WE MUST SET THE GL BUFFERS TO 0xFF BEFORE USING THEM!!!
-    // Sausage64 will not initialize correctly them unless they're 0xFFFFFFFF
-    // Since you can reuse these vertex+face buffers between multiple s64ModelHelpers, you only need to do this once.
-    memset(catherine_buffers, 0xFF, MESHCOUNT_Catherine*2*sizeof(GLuint));
-
     // Load Catherine's textures into sprite structures
     for (uint32_t i=0; i<CATHERINE_TETXURE_COUNT; i++)
         catherine_textures[i] = sprite_load(catherine_texture_paths[i]);

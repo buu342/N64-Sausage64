@@ -54,8 +54,8 @@ static float campos[3] = {0, -100, -300};
 static float camang[3] = {0, 0, -90};
 
 // Catherine
-Mtx catherineMtx[MESHCOUNT_Catherine];
-s64ModelHelper catherine;
+s64ModelData* modeltorender = MODEL_Catherine;
+s64ModelHelper* catherine;
 float catherine_animspeed;
 
 // Face animation
@@ -79,10 +79,11 @@ static char usb_buffer[USB_BUFFER_SIZE];
 void stage00_init(void)
 {
     // Initialize Catherine
-    sausage64_initmodel(&catherine, MODEL_Catherine, catherineMtx);
-    sausage64_set_anim(&catherine, ANIMATION_Catherine_Walk); 
-    sausage64_set_predrawfunc(&catherine, catherine_predraw);
-    sausage64_set_animcallback(&catherine, catherine_animcallback);
+    catherine = sausage64_inithelper(modeltorender);
+    debug_assert(catherine != NULL);
+    sausage64_set_anim(catherine, ANIMATION_Catherine_Walk); 
+    sausage64_set_predrawfunc(catherine, catherine_predraw);
+    sausage64_set_animcallback(catherine, catherine_animcallback);
     
     // Set catherine's animation speed based on region
     #if TV_TYPE == PAL
@@ -113,7 +114,7 @@ void stage00_update(void)
     debug_pollcommands();  
     
     // Advance Catherine's animation
-    sausage64_advance_anim(&catherine, catherine_animspeed);
+    sausage64_advance_anim(catherine, catherine_animspeed);
     
     
     /* -------- Face Animation -------- */
@@ -217,7 +218,7 @@ void stage00_update(void)
             switch (curx)
             {
                 case 0:
-                    sausage64_set_anim(&catherine, cury);
+                    sausage64_set_anim(catherine, cury);
                     break;
                 case 1:
                     facetick = 60;
@@ -232,9 +233,9 @@ void stage00_update(void)
                     break;
                 case 3:
                     if (cury == 0)
-                        catherine.interpolate = !catherine.interpolate;
+                        catherine->interpolate = !catherine->interpolate;
                     else if (cury == 1)
-                        catherine.loop = !catherine.loop;
+                        catherine->loop = !catherine->loop;
                     else if (cury == 2)
                         drawaxis = !drawaxis;
                     else if (cury == 3)
@@ -333,7 +334,7 @@ void stage00_draw(void)
         gSPDisplayList(glistp++, gfx_axis);
     
     // Draw catherine
-    sausage64_drawmodel(&glistp, &catherine);
+    sausage64_drawmodel(&glistp, catherine);
     
     // Syncronize the RCP and CPU and specify that our display list has ended
     gDPFullSync(glistp++);
@@ -376,7 +377,7 @@ void draw_menu()
     for (i=0; i<ANIMATIONCOUNT_Catherine; i++) // Can also use MODEL_Catherine->animcount (but macro is faster on the CPU)
     {
         nuDebConTextPos(NU_DEB_CON_WINDOW0, 4, 5+i);
-        nuDebConCPuts(NU_DEB_CON_WINDOW0, MODEL_Catherine->anims[i].name);
+        nuDebConCPuts(NU_DEB_CON_WINDOW0, modeltorender->anims[i].name);
     }
     
     // List the faces
@@ -462,7 +463,7 @@ void catherine_animcallback(u16 anim)
     {
         case ANIMATION_Catherine_Attack1:
         case ANIMATION_Catherine_ThrowKnife:
-            sausage64_set_anim(&catherine, ANIMATION_Catherine_Idle);
+            sausage64_set_anim(catherine, ANIMATION_Catherine_Idle);
             break;
     }
 }
@@ -484,7 +485,7 @@ char* command_listanims()
 
     // Go through all the animations names and append them to the string
     for (i=0; i<ANIMATIONCOUNT_Catherine; i++)
-        sprintf(usb_buffer, "%s%s\n", usb_buffer, MODEL_Catherine->anims[i].name);
+        sprintf(usb_buffer, "%s%s\n", usb_buffer, modeltorender->anims[i].name);
 
         // Return the string of animation names
     return usb_buffer;
@@ -509,9 +510,9 @@ char* command_setanim()
     // Compare the animation names
     for (i=0; i<ANIMATIONCOUNT_Catherine; i++)
     {
-        if (!strcmp(MODEL_Catherine->anims[i].name, usb_buffer))
+        if (!strcmp(modeltorender->anims[i].name, usb_buffer))
         {
-            sausage64_set_anim(&catherine, i);
+            sausage64_set_anim(catherine, i);
             return "Animation set.";
         }
     }
@@ -599,7 +600,7 @@ char* command_freezelight()
 
 char* command_togglelerp()
 {
-    catherine.interpolate = !catherine.interpolate;
+    catherine->interpolate = !catherine->interpolate;
     return "Interpolation Toggled";
 }
 
@@ -611,7 +612,7 @@ char* command_togglelerp()
 
 char* command_toggleloop()
 {
-    catherine.loop = !catherine.loop;
+    catherine->loop = !catherine->loop;
     return "Loop Toggled";
 }
 

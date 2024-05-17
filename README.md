@@ -21,7 +21,7 @@ This repository contains five folders:
 ### What do you mean by Sausage Links?
 Sausage link characters are made out of different unconnected segments. This is also known as "hierarchical modeling".
 
-<img src=".github/mario.jpeg" width="340" height="428"/>
+<img src=".github/mario.png" width="274" height="415"/>
 <sup>Photo taken from: https://bradh2002.wordpress.com/a2-task-3-video-game-history/</sup>
 </br></br>
 

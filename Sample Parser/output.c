@@ -208,7 +208,25 @@ void write_output_text()
             fprintf(fp, "    {\"%s\", %d, anim_%s_%s_keyframes},\n", anim->name, anim->keyframes.size, global_modelname, anim->name);
         }
         fputs("};\n\n", fp);
-        fprintf(fp, "static s64ModelData mdl_%s = {%d, %d, meshes_%s, anims_%s};", global_modelname, list_meshes.size, list_animations.size, global_modelname, global_modelname);
+
+        // OpenGL buffers
+        if (global_opengl)
+        {
+            fprintf(fp, "static GLuint buffers_%s = {\n    ", global_modelname);
+            for (i=0; i<list_meshes.size*2; i++)
+            {
+                fprintf(fp, "0xFFFFFFFF, ");
+                if ((i+1)%8 == 0)
+                    fprintf(fp, "\n");
+            }
+            fprintf(fp, "};\n\n");
+        }
+
+        // Final model data
+        fprintf(fp, "static s64ModelData mdl_%s = {%d, %d, meshes_%s, anims_%s", global_modelname, list_meshes.size, list_animations.size, global_modelname, global_modelname);
+        if (global_opengl)
+            fprintf(fp, ", buffers_%s", global_modelname);
+        fprintf(fp, "};");
     }
     
     // Finish

@@ -49,12 +49,13 @@ class S64Face:
 
 class S64Mesh:
     def __init__(self, name):
-        self.name  = name # Skeleton name
-        self.verts = {}   # Dict of vertices
-        self.faces = []   # List of faces
-        self.mats  = []   # List of materials used by this mesh
-        self.props = []   # List of custom properties
-        self.root  = None # Bone root location
+        self.name   = name # Skeleton name
+        self.verts  = {}   # Dict of vertices
+        self.faces  = []   # List of faces
+        self.mats   = []   # List of materials used by this mesh
+        self.props  = []   # List of custom properties
+        self.root   = None # Bone root location
+        self.parent = None # Bone parent
     def __str__(self):
         string = "S64Mesh: '"+self.name+"'\n"
         string = string+"Root: "+str(self.root)+"\n"
@@ -323,6 +324,10 @@ def setupData(self, object, skeletonList, meshList):
 
                         boneframe = S64KeyFrame(b.name)
 
+                        # Parent
+                        if (not b.parent == None):
+                            finalList[b.name].parent = b.parent.name
+
                         # Grab the bone data for its rest and posed version
                         obone = s.data.bones[b.name]
                         pbone = s.pose.bones[b.name]
@@ -459,6 +464,8 @@ def writeFile(self, object, finalList, animList):
                 file.write("ROOT "+("%.4f " % (m.root.x*self.setting_scale))+("%.4f " % (m.root.z*self.setting_scale))+("%.4f\n" % (-m.root.y*self.setting_scale)))
             if (len(m.props) > 0):
                 file.write("PROPERTIES "+' '.join(m.props)+"\n")
+            if (not m.parent == None):
+                file.write("PARENT "+m.parent+"\n")
 
             # Write the list of vertices
             file.write("BEGIN VERTICES\n")
@@ -597,7 +604,7 @@ class ObjectExport(bpy.types.Operator):
                 skeletoncount = skeletoncount + 1
             elif (v.type == 'MESH'):
                 meshcount = meshcount + 1
-        if (meshcount > 0 or not meshList):
+        if (meshcount == 0 or not meshList):
             self.report({'WARNING'}, 'No mesh was exported with the selected options. Did you mean to do this?')
             return {'CANCELLED'}
         if (self.setting_onlyselected and skeletoncount > 0 and not skeletonList):

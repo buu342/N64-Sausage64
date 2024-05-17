@@ -401,7 +401,9 @@ FodyWeavers.xsd
 *.sln.iml
 
 #Build directories
+*/out
 */build
 */*/build
+*/*/out
 
 **/nuboot.c

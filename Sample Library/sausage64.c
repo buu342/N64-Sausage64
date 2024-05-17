@@ -420,51 +420,51 @@ static void sausage64_update_anim(s64ModelHelper* mdl)
 
 void sausage64_advance_anim(s64ModelHelper* mdl, float tickamount)
 {
-    char loop = TRUE;
-    float division;
+    int rollover = 0;
     mdl->animtick += tickamount;
     
-    // If the animation ended, call the callback function and roll the tick value over
+    // Check for rollover
     if (mdl->animtick >= mdl->curanimlen)
-    {
-        // Execute the animation end callback function
-        if (mdl->animcallback != NULL)
-            mdl->animcallback(mdl->curanim - &mdl->mdldata->anims[0]);
-            
-        // If looping is disabled, then stop
-        if (!mdl->loop)
-        {
-            mdl->animtick = (float)mdl->curanimlen;
-            mdl->curkeyframe = mdl->curanim->keyframecount-1;
-            return;
-        }
-        
-        // Calculate the correct tick         
-        division = mdl->animtick/((float)mdl->curanimlen);
-        mdl->animtick = (division - ((int)division))*((float)mdl->curanimlen);
-    }
+        rollover = 1;
     else if (mdl->animtick <= 0)
+        rollover = -1;
+    
+    // If the animation ended, call the callback function and roll the tick value over
+    if (rollover)
     {
+        float division;
+        const int animlength = mdl->curanimlen;
+    
         // Execute the animation end callback function
         if (mdl->animcallback != NULL)
             mdl->animcallback(mdl->curanim - &mdl->mdldata->anims[0]);
-            
+        
         // If looping is disabled, then stop
         if (!mdl->loop)
         {
-            mdl->animtick = 0;
-            mdl->curkeyframe = 0;
+            if (rollover > 0)
+            {
+                mdl->animtick = (float)animlength;
+                mdl->curkeyframe = mdl->curanim->keyframecount-1;
+            }
+            else
+            {
+                mdl->animtick = 0;
+                mdl->curkeyframe = 0;
+            }
             return;
         }
         
-        // Calculate the correct tick       
+        // Calculate the correct tick
         division = mdl->animtick/((float)mdl->curanimlen);
-        mdl->animtick = (1+(division - ((int)division)))*((float)mdl->curanimlen);
-        mdl->curkeyframe = mdl->curanim->keyframecount-1;
+        if (rollover > 0)
+            mdl->animtick = (division - ((int)division))*((float)mdl->curanimlen);
+        else
+            mdl->animtick = (1+(division - ((int)division)))*((float)mdl->curanimlen);
     }
-    
+
     // Update the animation
-    if (mdl->curanim->keyframecount > 0 && loop)
+    if (mdl->curanim->keyframecount > 0)
         sausage64_update_anim(mdl);
 }
 

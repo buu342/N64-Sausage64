@@ -100,7 +100,7 @@ static inline f32 s64lerp(f32 a, f32 b, f32 f)
     @return The dot product
 ==============================*/
 
-static inline float s64quat_dot(s64Quat q1, s64Quat q2)
+static inline f32 s64quat_dot(s64Quat q1, s64Quat q2)
 {
     return q1.x*q2.x + q1.y*q2.y + q1.z*q2.z + q1.w*q2.w;
 }
@@ -113,7 +113,7 @@ static inline float s64quat_dot(s64Quat q1, s64Quat q2)
     @return The normalized quaternion
 ==============================*/
 
-static inline float s64quat_normalize(s64Quat q)
+static inline f32 s64quat_normalize(s64Quat q)
 {
     return sqrtf(s64quat_dot(q, q));
 }
@@ -165,7 +165,7 @@ static inline s64Quat s64slerp(s64Quat a, s64Quat b, f32 f)
     @param The rotation matrix to modify
 ==============================*/
 
-static inline void s64quat_to_mtx(s64Quat q, float dest[][4])
+static inline void s64quat_to_mtx(s64Quat q, f32 dest[][4])
 {
     float xx, yy, zz, xy, yz, xz, wx, wy, wz, norm, s = 0;
     
@@ -210,6 +210,35 @@ static inline void s64quat_to_mtx(s64Quat q, float dest[][4])
 
 
 /*==============================
+    s64quat_fromdir
+    Calculates a quaternion from a normalized direction vector (using the up vector)
+    @param  The normalized direction vector
+    @return The direction quaternion
+==============================*/
+
+static s64Quat s64quat_fromdir(float dir[3])
+{
+    float l;
+    const float upvector[3] = S64_UPVEC;
+    float w[3];
+    s64Quat q;
+    w[0] = (upvector[1]*dir[2]) - (upvector[1]*dir[2]);
+    w[1] = (upvector[2]*dir[0]) - (upvector[2]*dir[0]);
+    w[2] = (upvector[0]*dir[1]) - (upvector[0]*dir[1]);
+    q.w = 1.0f + upvector[0]*dir[0] + upvector[1]*dir[1] + upvector[2]*dir[2];
+    q.x = w[0];
+    q.y = w[1];
+    q.z = w[2];
+    l = 1/sqrtf(q.w*q.w + q.x*q.x + q.y*q.y +q.z*q.z);
+    q.w *= l;
+    q.x *= l;
+    q.y *= l;
+    q.z *= l;
+    return q;
+}
+
+
+/*==============================
     s64quat_fromeuler
     Currently unused
     Converts a Euler angle (in radians)
@@ -220,7 +249,7 @@ static inline void s64quat_to_mtx(s64Quat q, float dest[][4])
     @return The calculated quaternion
 ==============================*/
 
-static inline s64Quat s64quat_fromeuler(float yaw, float pitch, float roll)
+static inline s64Quat s64quat_fromeuler(f32 yaw, f32 pitch, f32 roll)
 {
     s64Quat q;
     const float c1 = cosf(yaw/2);
@@ -245,7 +274,7 @@ static inline s64Quat s64quat_fromeuler(float yaw, float pitch, float roll)
     @param The matrix to fill
 ==============================*/
 
-static inline void s64calc_billboard(float mtx[4][4])
+static inline void s64calc_billboard(f32 mtx[4][4])
 {
     mtx[0][0] = s64_viewmat[0][0];
     mtx[1][0] = s64_viewmat[0][1];
@@ -465,7 +494,7 @@ static void sausage64_update_anim(s64ModelHelper* mdl)
     @param The amount to increase the animation tick by
 ==============================*/
 
-void sausage64_advance_anim(s64ModelHelper* mdl, float tickamount)
+void sausage64_advance_anim(s64ModelHelper* mdl, f32 tickamount)
 {
     int rollover = 0;
     mdl->animtick += tickamount;
@@ -616,7 +645,7 @@ void sausage64_set_anim(s64ModelHelper* mdl, u16 anim)
     @param The lerp amount
 ==============================*/
 
-static void sausage64_calctransforms(s64ModelHelper* mdl, const u16 mesh, float l)
+static void sausage64_calctransforms(s64ModelHelper* mdl, const u16 mesh, f32 l)
 {
     // Prevent these calculations from being performed again
     if (mdl->transforms[mesh].rendercount == mdl->rendercount)
@@ -657,6 +686,90 @@ static void sausage64_calctransforms(s64ModelHelper* mdl, const u16 mesh, float 
         }
     }
 }
+
+
+/*==============================
+    sausage64_calclerp
+    Calculates the lerp value based on the current animation
+    @param  A pointer to the model helper to use
+    @return The lerp amount
+==============================*/
+
+static f32 sausage64_calclerp(s64ModelHelper* mdl)
+{
+    const s64Animation* anim = mdl->curanim;
+    const s64KeyFrame* ckframe = &anim->keyframes[mdl->curkeyframe];
+    const s64KeyFrame* nkframe = &anim->keyframes[(mdl->curkeyframe+1)%anim->keyframecount];
+
+    // Prevent division by zero when calculating the lerp amount
+    if (nkframe->framenumber - ckframe->framenumber != 0)
+        return ((f32)(mdl->animtick - ckframe->framenumber))/((f32)(nkframe->framenumber - ckframe->framenumber));
+    return 0;
+}
+
+
+/*==============================
+    sausage64_get_meshtransform
+    Get the current transform of the mesh,
+    local to the object
+    @param  The model helper pointer
+    @param  The mesh to check
+    @return The mesh's local transform
+==============================*/
+
+s64FrameData sausage64_get_meshtransform(s64ModelHelper* mdl, const u16 mesh)
+{
+    f32 l = sausage64_calclerp(mdl);
+    sausage64_calctransforms(mdl, mesh, l);
+    return mdl->transforms[mesh].data;
+}
+
+
+/*==============================
+    sausage64_lookat
+    Make a mesh look at another
+    @param The model helper pointer
+    @param The mesh to force the lookat
+    @param The normalized direction vector of what we want to look at
+    @param A value from 0.0 to 1.0 stating how much to look at the object
+    @param Whether the lookat should propagate to the children meshes (up to one level)
+==============================*/
+
+void sausage64_lookat(s64ModelHelper* mdl, const u16 mesh, f32 dir[3], f32 amount, u8 affectchildren)
+{
+    s64Quat q, qt;
+    s64FrameData* trans;
+    f32 l = sausage64_calclerp(mdl);
+    
+    // First, ensure that the transforms for this mesh (and the children) have all been calculated
+    sausage64_calctransforms(mdl, mesh, l);
+    if (affectchildren)
+    {
+        int i;
+        s64ModelData* mdata = mdl->mdldata;
+        for (i=0; i<mdata->meshcount; i++)
+            if (mdata->meshes[i].parent == mesh)
+                sausage64_calctransforms(mdl, i, l);
+    }
+    
+    // Get the transform data
+    trans = &mdl->transforms[mesh].data;
+    q.w = trans->rot[0];
+    q.x = trans->rot[1];
+    q.y = trans->rot[2];
+    q.z = trans->rot[3];
+    
+    // Now, we can calculate the target quaternion, and lerp it
+    qt = s64quat_fromdir(dir);
+    qt = s64slerp(q, qt, amount);
+    trans->rot[0] = qt.w;
+    trans->rot[1] = qt.x;
+    trans->rot[2] = qt.y;
+    trans->rot[3] = qt.z;
+    
+    // Calculate the children's new transforms
+}
+
 
 /*==============================
     sausage64_drawpart
@@ -803,16 +916,9 @@ static void sausage64_calctransforms(s64ModelHelper* mdl, const u16 mesh, float 
         // Increment the render count for transform calculations
         mdl->rendercount++;
     
-        // If we have a valid animation, calculate the lerp value
+        // If we have a valid animation, get the lerp value
         if (anim != NULL)
-        {
-            const s64KeyFrame* ckframe = &anim->keyframes[mdl->curkeyframe];
-            const s64KeyFrame* nkframe = &anim->keyframes[(mdl->curkeyframe+1)%anim->keyframecount];
-        
-            // Prevent division by zero when calculating the lerp amount
-            if (nkframe->framenumber - ckframe->framenumber != 0)
-                l = ((f32)(mdl->animtick - ckframe->framenumber))/((f32)(nkframe->framenumber - ckframe->framenumber));
-        }
+            l = sausage64_calclerp(mdl);
         
         // Iterate through each mesh
         for (i=0; i<mcount; i++)

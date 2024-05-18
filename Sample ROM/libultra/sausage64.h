@@ -3,6 +3,9 @@
 
     // UNCOMMENT THE #DEFINE IF USING LIBDRAGON
     //#define LIBDRAGON
+    
+    // World space assumptions
+    #define S64_UPVEC {0.0f, 0.0f, 1.0f}
 
 
     /*********************************
@@ -227,7 +230,7 @@
         @param The amount to increase the animation tick by
     ==============================*/
     
-    extern void sausage64_advance_anim(s64ModelHelper* mdl, float tickamount);
+    extern void sausage64_advance_anim(s64ModelHelper* mdl, f32 tickamount);
     
 
     #ifdef LIBDRAGON
@@ -239,6 +242,31 @@
     
         extern void sausage64_loadmaterial(s64Material* mat);
     #endif
+    
+    
+    /*==============================
+        sausage64_get_meshtransform
+        Get the current transform of the mesh,
+        local to the object
+        @param  The model helper pointer
+        @param  The mesh to check
+        @return The mesh's local transform
+    ==============================*/
+    
+    extern s64FrameData sausage64_get_meshtransform(s64ModelHelper* mdl, const u16 mesh);
+    
+    
+    /*==============================
+        sausage64_lookat
+        Make a mesh look at another
+        @param The model helper pointer
+        @param The mesh to force the lookat
+        @param The normalized direction vector
+        @param A value from 1.0 to 0.0 stating how much to look at the object
+        @param Whether the lookat should propagate to the children meshes (up to one level)
+    ==============================*/
+    
+    extern void sausage64_lookat(s64ModelHelper* mdl, const u16 mesh, f32 dir[3], f32 amount, u8 affectchildren);
 
 
     /*==============================

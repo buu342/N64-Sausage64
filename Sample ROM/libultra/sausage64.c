@@ -219,13 +219,13 @@ static inline void s64quat_to_mtx(s64Quat q, f32 dest[][4])
 static s64Quat s64quat_fromdir(float dir[3])
 {
     float l;
-    const float upvector[3] = S64_UPVEC;
+    const float forward[3] = S64_FORWARDVEC;
     float w[3];
     s64Quat q;
-    w[0] = (upvector[1]*dir[2]) - (upvector[1]*dir[2]);
-    w[1] = (upvector[2]*dir[0]) - (upvector[2]*dir[0]);
-    w[2] = (upvector[0]*dir[1]) - (upvector[0]*dir[1]);
-    q.w = 1.0f + upvector[0]*dir[0] + upvector[1]*dir[1] + upvector[2]*dir[2];
+    w[0] = (forward[1]*dir[2]) - (forward[2]*dir[1]);
+    w[1] = (forward[2]*dir[0]) - (forward[0]*dir[2]);
+    w[2] = (forward[0]*dir[1]) - (forward[1]*dir[0]);
+    q.w = 1.0f + forward[0]*dir[0] + forward[1]*dir[1] + forward[2]*dir[2];
     q.x = w[0];
     q.y = w[1];
     q.z = w[2];
@@ -639,7 +639,7 @@ void sausage64_set_anim(s64ModelHelper* mdl, u16 anim)
 
 /*==============================
     sausage64_calctransforms
-    Calculates the final transform of a mesh
+    Calculates the transform of a mesh based on the animation
     @param A pointer to the model helper to use
     @param The mesh to calculate the transforms of
     @param The lerp amount
@@ -689,13 +689,13 @@ static void sausage64_calctransforms(s64ModelHelper* mdl, const u16 mesh, f32 l)
 
 
 /*==============================
-    sausage64_calclerp
+    sausage64_calcanimlerp
     Calculates the lerp value based on the current animation
     @param  A pointer to the model helper to use
     @return The lerp amount
 ==============================*/
 
-static f32 sausage64_calclerp(s64ModelHelper* mdl)
+static f32 sausage64_calcanimlerp(s64ModelHelper* mdl)
 {
     const s64Animation* anim = mdl->curanim;
     const s64KeyFrame* ckframe = &anim->keyframes[mdl->curkeyframe];
@@ -717,11 +717,11 @@ static f32 sausage64_calclerp(s64ModelHelper* mdl)
     @return The mesh's local transform
 ==============================*/
 
-s64FrameData sausage64_get_meshtransform(s64ModelHelper* mdl, const u16 mesh)
+s64FrameData* sausage64_get_meshtransform(s64ModelHelper* mdl, const u16 mesh)
 {
-    f32 l = sausage64_calclerp(mdl);
+    f32 l = sausage64_calcanimlerp(mdl);
     sausage64_calctransforms(mdl, mesh, l);
-    return mdl->transforms[mesh].data;
+    return &mdl->transforms[mesh].data;
 }
 
 
@@ -739,7 +739,7 @@ void sausage64_lookat(s64ModelHelper* mdl, const u16 mesh, f32 dir[3], f32 amoun
 {
     s64Quat q, qt;
     s64FrameData* trans;
-    f32 l = sausage64_calclerp(mdl);
+    f32 l = sausage64_calcanimlerp(mdl);
     
     // First, ensure that the transforms for this mesh (and the children) have all been calculated
     sausage64_calctransforms(mdl, mesh, l);
@@ -822,7 +822,7 @@ void sausage64_lookat(s64ModelHelper* mdl, const u16 mesh, f32 dir[3], f32 amoun
             // Setup the quaternions
             if (!mesh->is_billboard)
             {
-                s64Quat qn = { nfdata->rot[0], nfdata->rot[1], nfdata->rot[2], nfdata->rot[3] };
+                s64Quat qn = {nfdata->rot[0], nfdata->rot[1], nfdata->rot[2], nfdata->rot[3]};
                 q = s64slerp(q, qn, l);
             }
 
@@ -918,7 +918,7 @@ void sausage64_lookat(s64ModelHelper* mdl, const u16 mesh, f32 dir[3], f32 amoun
     
         // If we have a valid animation, get the lerp value
         if (anim != NULL)
-            l = sausage64_calclerp(mdl);
+            l = sausage64_calcanimlerp(mdl);
         
         // Iterate through each mesh
         for (i=0; i<mcount; i++)

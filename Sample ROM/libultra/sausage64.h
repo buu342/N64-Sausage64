@@ -6,6 +6,7 @@
     
     // World space assumptions
     #define S64_UPVEC {0.0f, 0.0f, 1.0f}
+    #define S64_FORWARDVEC {0.0f, -1.0f, 0.0f}
 
 
     /*********************************
@@ -253,7 +254,7 @@
         @return The mesh's local transform
     ==============================*/
     
-    extern s64FrameData sausage64_get_meshtransform(s64ModelHelper* mdl, const u16 mesh);
+    extern s64FrameData* sausage64_get_meshtransform(s64ModelHelper* mdl, const u16 mesh);
     
     
     /*==============================

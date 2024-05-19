@@ -68,6 +68,9 @@ static FaceAnim* faceanim;
 static char uselight = TRUE;
 static char drawaxis = TRUE;
 static char freezelight = FALSE;
+static char lookat = TRUE;
+static char lookat_canseecam = TRUE;
+static float lookat_amount = 0.0f;
 static char usb_buffer[USB_BUFFER_SIZE];
 
 
@@ -183,13 +186,19 @@ void stage00_update(void)
         campos[1] += contdata->stick_y/10;
     }
     
-        
+    // Handle lookat lerp
+    if (lookat && lookat_canseecam) 
+        lookat_amount += 0.1*(1.0 - lookat_amount);
+    else
+        lookat_amount -= 0.1*(lookat_amount);
+    
+    
     /* -------- Menu -------- */
     
     // If the menu is open
     if (menuopen)
     {
-        int menuyscale[4] = {ANIMATIONCOUNT_Catherine, TOTALFACES, 2, 5};
+        int menuyscale[4] = {modeltorender->animcount, TOTALFACES, 2, 6};
     
         // Moving the cursor left/right
         if (contdata[0].trigger & R_JPAD)
@@ -239,8 +248,10 @@ void stage00_update(void)
                     else if (cury == 2)
                         drawaxis = !drawaxis;
                     else if (cury == 3)
-                        catherine_animspeed += 0.1;
+                        lookat = !lookat;
                     else if (cury == 4)
+                        catherine_animspeed += 0.1;
+                    else if (cury == 5)
                         catherine_animspeed -= 0.1;
                     break;
             }
@@ -336,12 +347,13 @@ void stage00_draw(void)
     // Draw catherine
     sausage64_drawmodel(&glistp, catherine);
     
-    // Syncronize the RCP and CPU and specify that our display list has ended
+    // Synchronize the RCP and CPU and specify that our display list has ended
     gDPFullSync(glistp++);
     gSPEndDisplayList(glistp++);
     
-    // Ensure the chache lines are valid
+    // Ensure the cache lines are valid
     osWritebackDCache(&projection, sizeof(projection));
+    osWritebackDCache(&viewing, sizeof(viewing));
     osWritebackDCache(&modeling, sizeof(modeling));
     
     // Ensure we haven't gone over the display list size and start the graphics task
@@ -374,7 +386,7 @@ void draw_menu()
     // List the animations
     nuDebConTextPos(NU_DEB_CON_WINDOW0, 3, 3);
     nuDebConCPuts(NU_DEB_CON_WINDOW0, "Anims");
-    for (i=0; i<ANIMATIONCOUNT_Catherine; i++) // Can also use MODEL_Catherine->animcount (but macro is faster on the CPU)
+    for (i=0; i<modeltorender->animcount; i++) // Can also use MODEL_Catherine->animcount (but macro is faster on the CPU)
     {
         nuDebConTextPos(NU_DEB_CON_WINDOW0, 4, 5+i);
         nuDebConCPuts(NU_DEB_CON_WINDOW0, modeltorender->anims[i].name);
@@ -407,8 +419,10 @@ void draw_menu()
     nuDebConTextPos(NU_DEB_CON_WINDOW0, 33, 7);
     nuDebConCPuts(NU_DEB_CON_WINDOW0, "Axis");
     nuDebConTextPos(NU_DEB_CON_WINDOW0, 33, 8);
-    nuDebConCPuts(NU_DEB_CON_WINDOW0, "Faster");
+    nuDebConCPuts(NU_DEB_CON_WINDOW0, "Lookat");
     nuDebConTextPos(NU_DEB_CON_WINDOW0, 33, 9);
+    nuDebConCPuts(NU_DEB_CON_WINDOW0, "Faster");
+    nuDebConTextPos(NU_DEB_CON_WINDOW0, 33, 10);
     nuDebConCPuts(NU_DEB_CON_WINDOW0, "Slower");
     
     // Draw a nice little bar separating everything
@@ -440,11 +454,63 @@ void draw_menu()
 
 void catherine_predraw(u16 part)
 {
-    // Handle face drawing
+    // Handle face drawing and lookat
     switch (part)
     {
         case MESH_Catherine_Head:
             gDPLoadTextureBlock(glistp++, faceanim->faces[faceindex], G_IM_FMT_RGBA, G_IM_SIZ_16b, 32, 64, 0, G_TX_CLAMP, G_TX_CLAMP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+            
+            // Handle the head looking at the camera
+            if (lookat)
+            {
+                float w;
+                s64FrameData* headtrans;
+                float viewmat[4][4], viewmat_inv[4][4];
+                float camerapos[3];
+                float targetpos[3], targetdir[3];
+                float eyepos[3] = {0, -25.27329f, 18.116f}; // This is the eye position, offset from the head mesh's root
+                
+                // First, we need the head's transform in model space
+                headtrans = sausage64_get_meshtransform(catherine, MESH_Catherine_Head);
+                
+                // Now we can calculate the eye's position from the model's space
+                // To make the code simpler, I am ignoring rotation and scaling of the head's transform
+                eyepos[0] = headtrans->pos[0] + eyepos[0];
+                eyepos[1] = headtrans->pos[1] + eyepos[1];
+                eyepos[2] = headtrans->pos[2] + eyepos[2];
+                
+                // Take the camera's position in world space and convert it to the model's space
+                // The camera pos needs to be extracted from the inverse of the view matrix
+                guMtxL2F(viewmat, &viewing);
+                matrix_inverse(viewmat, viewmat_inv);
+                camerapos[0] = viewmat_inv[3][0];
+                camerapos[1] = viewmat_inv[3][1];
+                camerapos[2] = viewmat_inv[3][2];
+                
+                // Model is always at 0,0,0, so nothing magical here :P
+                targetpos[0] = camerapos[0] - 0;
+                targetpos[1] = camerapos[1] - 0;
+                targetpos[2] = camerapos[2] - 0;
+                
+                // Calculate the direction vector and normalize it
+                targetdir[0] = targetpos[0] - eyepos[0];
+                targetdir[1] = targetpos[1] - eyepos[1];
+                targetdir[2] = targetpos[2] - eyepos[2];
+                w = 1/sqrtf(targetdir[0]*targetdir[0] + targetdir[1]*targetdir[1] + targetdir[2]*targetdir[2]);
+                targetdir[0] *= w;
+                targetdir[1] *= w;
+                targetdir[2] *= w;
+                
+                // Put a limit on how much catherine can turn their head
+                // I'm just gonna check the angle between the target direction and the forward axis ((0, -1, 0) in Catherine's case)
+                // instead of doing it properly by limiting pitch yaw and roll.
+                w = 1/((targetdir[0]*targetdir[0] + targetdir[1]*targetdir[1] + targetdir[2]*targetdir[2]) * (0*0 + (-1)*(-1) + 0*0));
+                w = (targetdir[0]*0 + targetdir[1]*(-1) + targetdir[2]*0)*w;
+                lookat_canseecam = (w >= 0.6);
+                
+                // Perform the lookat
+                sausage64_lookat(catherine, MESH_Catherine_Head, targetdir, lookat_amount, TRUE);
+            }
             break;
     }
 }
@@ -470,6 +536,84 @@ void catherine_animcallback(u16 anim)
 
 
 /*********************************
+      Helper Math Functions
+*********************************/
+
+/*==============================
+    matrix_inverse
+    Inverts a 4x4 matrix. 
+    Code taken from GLM.
+    @param The matrix to invert
+    @param The destination to store the inverted matrix in
+==============================*/
+
+void matrix_inverse(float mat[4][4], float dest[4][4])
+{
+    int i, j;
+    float t[6];
+    float det;
+    float a = mat[0][0], b = mat[0][1], c = mat[0][2], d = mat[0][3],
+          e = mat[1][0], f = mat[1][1], g = mat[1][2], h = mat[1][3],
+          i = mat[2][0], j = mat[2][1], k = mat[2][2], l = mat[2][3],
+          m = mat[3][0], n = mat[3][1], o = mat[3][2], p = mat[3][3];
+
+    // Temp calculations
+    t[0] = k*p - o*l;
+    t[1] = j*p - n*l;
+    t[2] = j*o - n*k;
+    t[3] = i*p - m*l;
+    t[4] = i*o - m*k;
+    t[5] = i*n - m*j;
+
+    // First column
+    dest[0][0] =  f*t[0] - g*t[1] + h*t[2];
+    dest[1][0] =-(e*t[0] - g*t[3] + h*t[4]);
+    dest[2][0] =  e*t[1] - f*t[3] + h*t[5];
+    dest[3][0] =-(e*t[2] - f*t[4] + g*t[5]);
+    
+    // Second column
+    dest[0][1] =-(b*t[0] - c*t[1] + d*t[2]);
+    dest[1][1] =  a*t[0] - c*t[3] + d*t[4];
+    dest[2][1] =-(a*t[1] - b*t[3] + d*t[5]);
+    dest[3][1] =  a*t[2] - b*t[4] + c*t[5];
+
+    // More temp calculations
+    t[0] = g*p - o*h; 
+    t[1] = f*p - n*h; 
+    t[2] = f*o - n*g;
+    t[3] = e*p - m*h; 
+    t[4] = e*o - m*g; 
+    t[5] = e*n - m*f;
+
+    // Third column
+    dest[0][2] =  b*t[0] - c*t[1] + d*t[2];
+    dest[1][2] =-(a*t[0] - c*t[3] + d*t[4]);
+    dest[2][2] =  a*t[1] - b*t[3] + d*t[5];
+    dest[3][2] =-(a*t[2] - b*t[4] + c*t[5]);
+
+    // Last set of temp calculations
+    t[0] = g*l - k*h;
+    t[1] = f*l - j*h;
+    t[2] = f*k - j*g;
+    t[3] = e*l - i*h;
+    t[4] = e*k - i*g;
+    t[5] = e*j - i*f;
+
+    // Fourth column
+    dest[0][3] =-(b*t[0] - c*t[1] + d*t[2]);
+    dest[1][3] =  a*t[0] - c*t[3] + d*t[4];
+    dest[2][3] =-(a*t[1] - b*t[3] + d*t[5]);
+    dest[3][3] =  a*t[2] - b*t[4] + c*t[5];
+
+    // Normalize
+    det = 1.0f/(a*dest[0][0] + b*dest[1][0] + c*dest[2][0] + d*dest[3][0]);
+    for (j=0; j<4; j++)
+        for (i=0; i<4; i++;
+            dest[j][i] *= det;
+}
+
+
+/*********************************
       USB Command Functions
 *********************************/
 
@@ -484,7 +628,7 @@ char* command_listanims()
     memset(usb_buffer, 0, USB_BUFFER_SIZE);
 
     // Go through all the animations names and append them to the string
-    for (i=0; i<ANIMATIONCOUNT_Catherine; i++)
+    for (i=0; i<modeltorender->animcount; i++)
         sprintf(usb_buffer, "%s%s\n", usb_buffer, modeltorender->anims[i].name);
 
         // Return the string of animation names
@@ -508,7 +652,7 @@ char* command_setanim()
     debug_parsecommand(usb_buffer);
     
     // Compare the animation names
-    for (i=0; i<ANIMATIONCOUNT_Catherine; i++)
+    for (i=0; i<modeltorender->animcount; i++)
     {
         if (!strcmp(modeltorender->anims[i].name, usb_buffer))
         {

@@ -35,7 +35,7 @@ void scene_render();
 *********************************/
 
 // Catherine model buffers
-static s64ModelHelper catherine;
+static s64ModelHelper* catherine;
 static sprite_t* catherine_textures[CATHERINE_TETXURE_COUNT];
 
 // Catherine face textures
@@ -159,9 +159,9 @@ void setup_catherine()
         catherine_textures[i] = sprite_load(catherine_texture_paths[i]);
     
     // Initialize Catherine's model, then set her animation and predraw function
-    sausage64_initmodel(&catherine, MODEL_Catherine, catherine_buffers);
-    sausage64_set_anim(&catherine, ANIMATION_Catherine_Walk);
-    sausage64_set_predrawfunc(&catherine, catherine_predraw);
+    catherine = sausage64_inithelper(MODEL_Catherine);
+    sausage64_set_anim(catherine, ANIMATION_Catherine_Walk);
+    sausage64_set_predrawfunc(catherine, catherine_predraw);
 
     // Generate the textures
     generate_texture((s64Texture*)mat_BackTex.data, &BackTex, catherine_textures[0]);
@@ -239,7 +239,7 @@ void scene_tick()
     long long curtick = timer_ticks();
 
     // Advance Catherine's animation    
-    sausage64_advance_anim(&catherine, 1.0f);
+    sausage64_advance_anim(catherine, 0.5f);
     
     // If the frame time has elapsed
     if (facetime < curtick)
@@ -291,7 +291,7 @@ void scene_render()
     glRotatef(-90, 1, 0, 0);
 
     // Render our model
-    sausage64_drawmodel(&catherine);
+    sausage64_drawmodel(catherine);
 
     gl_context_end();
 }

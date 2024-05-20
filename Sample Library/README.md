@@ -2,9 +2,9 @@
 
 This library contains a single .c and .h file which you can drag and drop into your N64 project in order to have support for Sausage64 models converted by the [Sample Parser](../Sample%20Parser) tool. It is designed for both Libultra and Libdragon (using OpenGL).
 
-In order to use the library with Libdragon, make sure you uncomment the `#define LIBDRAGON` to enable Libdragon support. The API changes slightly between both versions, so please double check below what functions you are supposed to be using.
+Because the library uses `malloc` internally, Libultra projects are expected to have the heap set up properly using `InitHeap`. Failure to do so will likely result in a crash at startup.
 
-The library is, currently, very basic. It can be expanded in the future in order to add more features, such as animation speed and blending. 
+In order to use the library with Libdragon, make sure you uncomment the `#define LIBDRAGON` to enable Libdragon support. The API changes slightly between both versions, so please double check below what functions you are supposed to be using.
 
 With this implementation of the library, matrix transformations are done on the CPU in order to reduce the memory footprint. This does mean that the CPU will be doing a bit more work, but that will probably not be too much of a problem given that most games are fillrate limited. Animations are also expected to playback at 30 frames per second.
 
@@ -15,13 +15,13 @@ A tutorial on how to use the library is available [in the wiki](../../../wiki/5%
     
 ```c
 /*==============================
-    sausage64_initmodel
-    Initialize a model helper struct
-    @param The model helper to initialize
-    @param The model data 
-    @param An array of matrices for each mesh part
+    sausage64_inithelper
+    Allocate a new model helper struct
+    @param  The model data
+    @return A newly allocated model helper, or
+            NULL if it failed to allocate
 ==============================*/
-extern void sausage64_initmodel(s64ModelHelper* mdl, s64ModelData* mdldata, Mtx* matrices);
+s64ModelHelper* sausage64_inithelper(s64ModelData* mdldata);
 
 /*==============================
     sausage64_set_camera
@@ -29,7 +29,7 @@ extern void sausage64_initmodel(s64ModelHelper* mdl, s64ModelData* mdldata, Mtx*
     @param The view matrix
     @param The projection matrix
 ==============================*/
-extern void sausage64_set_camera(Mtx* view, Mtx* projection);
+void sausage64_set_camera(Mtx* view, Mtx* projection);
 
 /*==============================
     sausage64_set_anim
@@ -38,7 +38,7 @@ extern void sausage64_set_camera(Mtx* view, Mtx* projection);
     @param The model helper pointer
     @param The ANIMATION_* macro to set
 ==============================*/
-extern void sausage64_set_anim(s64ModelHelper* mdl, u16 anim);
+void sausage64_set_anim(s64ModelHelper* mdl, u16 anim);
         
 /*==============================
     sausage64_set_animcallback
@@ -46,7 +46,7 @@ extern void sausage64_set_anim(s64ModelHelper* mdl, u16 anim);
     @param The model helper pointer
     @param The animation end callback function
 ==============================*/
-extern void sausage64_set_animcallback(s64ModelHelper* mdl, void (*animcallback)(u16));
+void sausage64_set_animcallback(s64ModelHelper* mdl, void (*animcallback)(u16));
 
 /*==============================
     sausage64_set_predrawfunc
@@ -54,7 +54,7 @@ extern void sausage64_set_animcallback(s64ModelHelper* mdl, void (*animcallback)
     @param The model helper pointer
     @param The pre draw function
 ==============================*/
-extern void sausage64_set_predrawfunc(s64ModelHelper* mdl, void (*predraw)(u16));
+void sausage64_set_predrawfunc(s64ModelHelper* mdl, void (*predraw)(u16));
 
 /*==============================
     sausage64_set_postdrawfunc
@@ -62,7 +62,7 @@ extern void sausage64_set_predrawfunc(s64ModelHelper* mdl, void (*predraw)(u16))
     @param The model helper pointer
     @param The post draw function
 ==============================*/
-extern void sausage64_set_postdrawfunc(s64ModelHelper* mdl, void (*postdraw)(u16));
+void sausage64_set_postdrawfunc(s64ModelHelper* mdl, void (*postdraw)(u16));
 
 /*==============================
     sausage64_advance_anim
@@ -70,7 +70,28 @@ extern void sausage64_set_postdrawfunc(s64ModelHelper* mdl, void (*postdraw)(u16
     @param The model helper pointer
     @param The amount to increase the animation tick by
 ==============================*/
-extern void sausage64_advance_anim(s64ModelHelper* mdl, float tickamount);
+void sausage64_advance_anim(s64ModelHelper* mdl, float tickamount);
+
+/*==============================
+    sausage64_get_meshtransform
+    Get the current transform of the mesh,
+    local to the object
+    @param  The model helper pointer
+    @param  The mesh to check
+    @return The mesh's local transform
+==============================*/
+s64Transform* sausage64_get_meshtransform(s64ModelHelper* mdl, const u16 mesh);
+
+/*==============================
+    sausage64_lookat
+    Make a mesh look at another
+    @param The model helper pointer
+    @param The mesh to force the lookat
+    @param The normalized direction vector
+    @param A value from 1.0 to 0.0 stating how much to look at the object
+    @param Whether the lookat should propagate to the children meshes (up to one level)
+==============================*/
+void sausage64_lookat(s64ModelHelper* mdl, const u16 mesh, f32 dir[3], f32 amount, u8 affectchildren);
 
 /*==============================
     sausage64_drawmodel
@@ -78,7 +99,15 @@ extern void sausage64_advance_anim(s64ModelHelper* mdl, float tickamount);
     @param A pointer to a display list pointer
     @param The model helper data
 ==============================*/
-extern void sausage64_drawmodel(Gfx** glistp, s64ModelHelper* mdl);
+void sausage64_drawmodel(Gfx** glistp, s64ModelHelper* mdl);
+
+
+/*==============================
+    sausage64_freehelper
+    Frees the memory used up by a Sausage64 model helper
+    @param A pointer to the model helper
+==============================*/
+void sausage64_freehelper(s64ModelHelper* helper);
 ```
 </p>
 </details>
@@ -90,13 +119,13 @@ extern void sausage64_drawmodel(Gfx** glistp, s64ModelHelper* mdl);
     
 ```c
 /*==============================
-    sausage64_initmodel
-    Initialize a model helper struct
-    @param The model helper to initialize
-    @param The model data 
-    @param An array of GL buffers for each mesh's verticies and faces
+    sausage64_inithelper
+    Allocate a new model helper struct
+    @param  The model data
+    @return A newly allocated model helper, or
+            NULL if it failed to allocate
 ==============================*/
-extern void sausage64_initmodel(s64ModelHelper* mdl, s64ModelData* mdldata, GLuint* glbuffers);
+s64ModelHelper* sausage64_inithelper(s64ModelData* mdldata);
 
 /*==============================
     sausage64_set_camera
@@ -104,7 +133,7 @@ extern void sausage64_initmodel(s64ModelHelper* mdl, s64ModelData* mdldata, GLui
     @param The view matrix
     @param The projection matrix
 ==============================*/
-extern void sausage64_set_camera(Mtx* view, Mtx* projection);
+void sausage64_set_camera(Mtx* view, Mtx* projection);
 
 /*==============================
     sausage64_set_anim
@@ -113,7 +142,7 @@ extern void sausage64_set_camera(Mtx* view, Mtx* projection);
     @param The model helper pointer
     @param The ANIMATION_* macro to set
 ==============================*/
-extern void sausage64_set_anim(s64ModelHelper* mdl, u16 anim);
+void sausage64_set_anim(s64ModelHelper* mdl, u16 anim);
         
 /*==============================
     sausage64_set_animcallback
@@ -121,7 +150,7 @@ extern void sausage64_set_anim(s64ModelHelper* mdl, u16 anim);
     @param The model helper pointer
     @param The animation end callback function
 ==============================*/
-extern void sausage64_set_animcallback(s64ModelHelper* mdl, void (*animcallback)(u16));
+void sausage64_set_animcallback(s64ModelHelper* mdl, void (*animcallback)(u16));
 
 /*==============================
     sausage64_set_predrawfunc
@@ -129,7 +158,7 @@ extern void sausage64_set_animcallback(s64ModelHelper* mdl, void (*animcallback)
     @param The model helper pointer
     @param The pre draw function
 ==============================*/
-extern void sausage64_set_predrawfunc(s64ModelHelper* mdl, void (*predraw)(u16));
+void sausage64_set_predrawfunc(s64ModelHelper* mdl, void (*predraw)(u16));
 
 /*==============================
     sausage64_set_postdrawfunc
@@ -137,7 +166,7 @@ extern void sausage64_set_predrawfunc(s64ModelHelper* mdl, void (*predraw)(u16))
     @param The model helper pointer
     @param The post draw function
 ==============================*/
-extern void sausage64_set_postdrawfunc(s64ModelHelper* mdl, void (*postdraw)(u16));
+void sausage64_set_postdrawfunc(s64ModelHelper* mdl, void (*postdraw)(u16));
 
 /*==============================
     sausage64_advance_anim
@@ -145,21 +174,51 @@ extern void sausage64_set_postdrawfunc(s64ModelHelper* mdl, void (*postdraw)(u16
     @param The model helper pointer
     @param The amount to increase the animation tick by
 ==============================*/
-extern void sausage64_advance_anim(s64ModelHelper* mdl, float tickamount);
+void sausage64_advance_anim(s64ModelHelper* mdl, float tickamount);
+
+/*==============================
+    sausage64_get_meshtransform
+    Get the current transform of the mesh,
+    local to the object
+    @param  The model helper pointer
+    @param  The mesh to check
+    @return The mesh's local transform
+==============================*/
+s64Transform* sausage64_get_meshtransform(s64ModelHelper* mdl, const u16 mesh);
+
+/*==============================
+    sausage64_lookat
+    Make a mesh look at another
+    @param The model helper pointer
+    @param The mesh to force the lookat
+    @param The normalized direction vector
+    @param A value from 1.0 to 0.0 stating how much to look at the object
+    @param Whether the lookat should propagate to the children meshes (up to one level)
+==============================*/
+void sausage64_lookat(s64ModelHelper* mdl, const u16 mesh, f32 dir[3], f32 amount, u8 affectchildren);
 
 /*==============================
     sausage64_loadmaterial
     Loads a material for libdragon rendering
     @param The material to load
 ==============================*/
-extern void sausage64_loadmaterial(s64Material* mat);
+void sausage64_loadmaterial(s64Material* mat);
 
 /*==============================
     sausage64_drawmodel
     Renders a Sausage64 model
+    @param A pointer to a display list pointer
     @param The model helper data
 ==============================*/
-extern void sausage64_drawmodel(s64ModelHelper* mdl);
+void sausage64_drawmodel(Gfx** glistp, s64ModelHelper* mdl);
+
+
+/*==============================
+    sausage64_freehelper
+    Frees the memory used up by a Sausage64 model helper
+    @param A pointer to the model helper
+==============================*/
+void sausage64_freehelper(s64ModelHelper* helper);
 ```
 </p>
 </details>

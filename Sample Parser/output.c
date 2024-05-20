@@ -118,13 +118,13 @@ void write_output_text()
             {
                 listNode* meshnode;
                 s64Keyframe* keyf = (s64Keyframe*)keyfnode->data;
-                fprintf(fp, "static s64FrameData anim_%s_%s_framedata%d[] = {\n", global_modelname, anim->name, keyf->keyframe);
+                fprintf(fp, "static s64Transform anim_%s_%s_framedata%d[] = {\n", global_modelname, anim->name, keyf->keyframe);
                 for (meshnode = list_meshes.head; meshnode != NULL; meshnode = meshnode->next) // Iterating meshes because they can be out of order to the frame data, due to texture sorting optimization
                 {
                     listNode* fdatanode;
                     for (fdatanode = keyf->framedata.head; fdatanode != NULL; fdatanode = fdatanode->next)
                     {
-                        s64FrameData* fdata = (s64FrameData*)fdatanode->data;
+                        s64Transform* fdata = (s64Transform*)fdatanode->data;
                         if (meshnode->data == fdata->mesh)
                         {
                             fprintf(fp, "    {{%.4ff, %.4ff, %.4ff}, {%.4ff, %.4ff, %.4ff, %.4ff}, {%.4ff, %.4ff, %.4ff}},\n", 

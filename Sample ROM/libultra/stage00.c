@@ -27,6 +27,7 @@ Handles the first level of the game.
 *********************************/
 
 void draw_menu();
+void catherine_lookat();
 void catherine_predraw(u16 part);
 void catherine_animcallback(u16 anim);
 
@@ -68,8 +69,8 @@ static FaceAnim* faceanim;
 static char uselight = TRUE;
 static char drawaxis = TRUE;
 static char freezelight = FALSE;
-static char lookat = TRUE;
-static char lookat_canseecam = TRUE;
+static char lookat = FALSE;
+static char lookat_canseecam = FALSE;
 static float lookat_amount = 0.0f;
 static char usb_buffer[USB_BUFFER_SIZE];
 
@@ -344,6 +345,10 @@ void stage00_draw(void)
     if (drawaxis)
         gSPDisplayList(glistp++, gfx_axis);
     
+    // Make Catherine look at the camera
+    if (lookat)
+        catherine_lookat();
+    
     // Draw catherine
     sausage64_drawmodel(&glistp, catherine);
     
@@ -459,58 +464,6 @@ void catherine_predraw(u16 part)
     {
         case MESH_Catherine_Head:
             gDPLoadTextureBlock(glistp++, faceanim->faces[faceindex], G_IM_FMT_RGBA, G_IM_SIZ_16b, 32, 64, 0, G_TX_CLAMP, G_TX_CLAMP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
-            
-            // Handle the head looking at the camera
-            if (lookat)
-            {
-                float w;
-                s64FrameData* headtrans;
-                float viewmat[4][4], viewmat_inv[4][4];
-                float camerapos[3];
-                float targetpos[3], targetdir[3];
-                float eyepos[3] = {0, -25.27329f, 18.116f}; // This is the eye position, offset from the head mesh's root
-                
-                // First, we need the head's transform in model space
-                headtrans = sausage64_get_meshtransform(catherine, MESH_Catherine_Head);
-                
-                // Now we can calculate the eye's position from the model's space
-                // To make the code simpler, I am ignoring rotation and scaling of the head's transform
-                eyepos[0] = headtrans->pos[0] + eyepos[0];
-                eyepos[1] = headtrans->pos[1] + eyepos[1];
-                eyepos[2] = headtrans->pos[2] + eyepos[2];
-                
-                // Take the camera's position in world space and convert it to the model's space
-                // The camera pos needs to be extracted from the inverse of the view matrix
-                guMtxL2F(viewmat, &viewing);
-                matrix_inverse(viewmat, viewmat_inv);
-                camerapos[0] = viewmat_inv[3][0];
-                camerapos[1] = viewmat_inv[3][1];
-                camerapos[2] = viewmat_inv[3][2];
-                
-                // Model is always at 0,0,0, so nothing magical here :P
-                targetpos[0] = camerapos[0] - 0;
-                targetpos[1] = camerapos[1] - 0;
-                targetpos[2] = camerapos[2] - 0;
-                
-                // Calculate the direction vector and normalize it
-                targetdir[0] = targetpos[0] - eyepos[0];
-                targetdir[1] = targetpos[1] - eyepos[1];
-                targetdir[2] = targetpos[2] - eyepos[2];
-                w = 1/sqrtf(targetdir[0]*targetdir[0] + targetdir[1]*targetdir[1] + targetdir[2]*targetdir[2]);
-                targetdir[0] *= w;
-                targetdir[1] *= w;
-                targetdir[2] *= w;
-                
-                // Put a limit on how much catherine can turn their head
-                // I'm just gonna check the angle between the target direction and the forward axis ((0, -1, 0) in Catherine's case)
-                // instead of doing it properly by limiting pitch yaw and roll.
-                w = 1/((targetdir[0]*targetdir[0] + targetdir[1]*targetdir[1] + targetdir[2]*targetdir[2]) * (0*0 + (-1)*(-1) + 0*0));
-                w = (targetdir[0]*0 + targetdir[1]*(-1) + targetdir[2]*0)*w;
-                lookat_canseecam = (w >= 0.6);
-                
-                // Perform the lookat
-                sausage64_lookat(catherine, MESH_Catherine_Head, targetdir, lookat_amount, TRUE);
-            }
             break;
     }
 }
@@ -535,6 +488,63 @@ void catherine_animcallback(u16 anim)
 }
 
 
+/*==============================
+    catherine_lookat
+    Make Catherine look at the camera
+==============================*/
+
+void catherine_lookat()
+{
+    float w;
+    s64Transform* headtrans;
+    float viewmat[4][4], viewmat_inv[4][4];
+    float camerapos[3];
+    float targetpos[3], targetdir[3];
+    float eyepos[3] = {0, -25.27329f, 18.116f}; // This is the eye position, offset from the head mesh's root
+    
+    // First, we need the head's transform in model space
+    headtrans = sausage64_get_meshtransform(catherine, MESH_Catherine_Head);
+    
+    // Now we can calculate the eye's position from the model's space
+    // To make the code simpler, I am ignoring rotation and scaling of the head's transform
+    eyepos[0] = headtrans->pos[0] + eyepos[0];
+    eyepos[1] = headtrans->pos[1] + eyepos[1];
+    eyepos[2] = headtrans->pos[2] + eyepos[2];
+    
+    // Take the camera's position in world space and convert it to the model's space
+    // The camera pos needs to be extracted from the inverse of the view matrix
+    guMtxL2F(viewmat, &viewing);
+    matrix_inverse(viewmat, viewmat_inv);
+    camerapos[0] = viewmat_inv[3][0];
+    camerapos[1] = viewmat_inv[3][1];
+    camerapos[2] = viewmat_inv[3][2];
+    
+    // Model is always at 0,0,0, so nothing magical here :P
+    targetpos[0] = camerapos[0] - 0;
+    targetpos[1] = camerapos[1] - 0;
+    targetpos[2] = camerapos[2] - 0;
+    
+    // Calculate the direction vector and normalize it
+    targetdir[0] = targetpos[0] - eyepos[0];
+    targetdir[1] = targetpos[1] - eyepos[1];
+    targetdir[2] = targetpos[2] - eyepos[2];
+    w = 1/sqrtf(targetdir[0]*targetdir[0] + targetdir[1]*targetdir[1] + targetdir[2]*targetdir[2]);
+    targetdir[0] *= w;
+    targetdir[1] *= w;
+    targetdir[2] *= w;
+    
+    // Put a limit on how much Catherine can turn her head
+    // I'm just gonna check the angle between the target direction and the forward axis ((0, -1, 0) in Catherine's case)
+    // instead of doing it properly by limiting pitch yaw and roll specifically.
+    w = 1/((targetdir[0]*targetdir[0] + targetdir[1]*targetdir[1] + targetdir[2]*targetdir[2]) * (0*0 + (-1)*(-1) + 0*0));
+    w = (targetdir[0]*0 + targetdir[1]*(-1) + targetdir[2]*0)*w;
+    lookat_canseecam = (w >= 0.6);
+    
+    // Perform the lookat
+    sausage64_lookat(catherine, MESH_Catherine_Head, targetdir, lookat_amount, TRUE);
+}
+
+
 /*********************************
       Helper Math Functions
 *********************************/
@@ -549,7 +559,7 @@ void catherine_animcallback(u16 anim)
 
 void matrix_inverse(float mat[4][4], float dest[4][4])
 {
-    int i, j;
+    int x, y;
     float t[6];
     float det;
     float a = mat[0][0], b = mat[0][1], c = mat[0][2], d = mat[0][3],
@@ -607,9 +617,9 @@ void matrix_inverse(float mat[4][4], float dest[4][4])
 
     // Normalize
     det = 1.0f/(a*dest[0][0] + b*dest[1][0] + c*dest[2][0] + d*dest[3][0]);
-    for (j=0; j<4; j++)
-        for (i=0; i<4; i++;
-            dest[j][i] *= det;
+    for (x=0; x<4; x++)
+        for (y=0; y<4; y++)
+            dest[x][y] *= det;
 }
 
 
@@ -770,4 +780,16 @@ char* command_toggleaxis()
 {
     drawaxis = !drawaxis;
     return "Axis Toggled";
+}
+
+
+/*==============================
+    command_togglelookat
+    USB Command for toggling the lookat
+==============================*/
+
+char* command_togglelookat()
+{
+    lookat = !lookat;
+    return "Lookat Toggled";
 }

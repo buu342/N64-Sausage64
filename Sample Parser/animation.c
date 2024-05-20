@@ -64,9 +64,9 @@ s64Keyframe* add_keyframe(s64Anim* anim, unsigned int keyframe)
     @returns A pointer to the created framedata
 ==============================*/
 
-s64FrameData* add_framedata(s64Keyframe* frame)
+s64Transform* add_framedata(s64Keyframe* frame)
 {
-    s64FrameData* fdata = (s64FrameData*)calloc(1, sizeof(s64FrameData));
+    s64Transform* fdata = (s64Transform*)calloc(1, sizeof(s64Transform));
     if (fdata == NULL)
         terminate("Error: Unable to allocate memory for animation framedata\n");
     list_append(&(frame->framedata), fdata);

@@ -62,6 +62,7 @@ void mainproc(void)
     debug_addcommand("ToggleLerp", "Toggle animation interpolation", command_togglelerp);
     debug_addcommand("ToggleLoop", "Toggle animation looping", command_toggleloop);
     debug_addcommand("ToggleAxis", "Toggle floor axis", command_toggleaxis);
+    debug_addcommand("ToggleLookat", "Toggle lookat", command_togglelookat);
     debug_printcommands();
 
     // Initialize the heap

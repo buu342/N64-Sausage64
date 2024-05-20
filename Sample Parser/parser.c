@@ -76,7 +76,7 @@ void parse_sausage(FILE* fp)
     s64Face* curface;
     s64Anim* curanim;
     s64Keyframe* curkeyframe;
-    s64FrameData* curframedata;
+    s64Transform* curframedata;
     n64Texture* curtex;
     Vector3D tempvec;
     
@@ -309,7 +309,7 @@ void parse_sausage(FILE* fp)
                 // Compare with each frame data
                 for (curfdatanode = keyf->framedata.head; curfdatanode != NULL; curfdatanode = curfdatanode->next)
                 {
-                    s64FrameData* fdata = (s64FrameData*)curfdatanode->data;
+                    s64Transform* fdata = (s64Transform*)curfdatanode->data;
                     if (fdata->mesh == mesh)
                     {
                         listNode* elem = list_remove(&keyf->framedata, fdata);
@@ -379,7 +379,7 @@ void parse_sausage(FILE* fp)
                 // Iterate through the keyframes
                 for (keyfnode = keyf->framedata.head; keyfnode != NULL; keyfnode = keyfnode->next)
                 {
-                    s64FrameData* fdata = (s64FrameData*)keyfnode->data;
+                    s64Transform* fdata = (s64Transform*)keyfnode->data;
 
                     // Fix the translations
                     fdata->translation.x += fdata->mesh->root.x;

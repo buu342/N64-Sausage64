@@ -6,11 +6,12 @@ Arabiki64.
 https://github.com/buu342/Blender-Sausage64
 ***************************************************************/
 
-#include "sausage64.h"
+#include <string.h>
 #include <malloc.h>
 #ifdef LIBDRAGON
     #include <math.h>
 #endif
+#include "sausage64.h"
 
 
 /*********************************
@@ -116,6 +117,43 @@ static inline f32 s64quat_dot(s64Quat q1, s64Quat q2)
 static inline f32 s64quat_normalize(s64Quat q)
 {
     return sqrtf(s64quat_dot(q, q));
+}
+
+
+/*==============================
+    s64quat_mul
+    Multiply two quaternions together using Hamilton product.
+    This combines their rotations.
+    Order matters!
+    @param The first quaternion
+    @param The second quaternion
+    @return The combined quaternion
+==============================*/
+
+static s64Quat s64quat_mul(s64Quat a, s64Quat b)
+{
+    s64Quat res = {
+        a.w*b.w - a.x*b.x - a.y*b.y - a.z*b.z,
+        a.w*b.x + a.x*b.w + a.y*b.z - a.z*b.y,
+        a.w*b.y - a.x*b.z + a.y*b.w + a.z*b.x,
+        a.w*b.z + a.x*b.y - a.y*b.x + a.z*b.w
+    };
+    return res;
+}
+
+
+/*==============================
+    s64quat_difference
+    Get the angle difference between two quaternions
+    @param The first quaternion
+    @param The second quaternion
+    @return The quaternion representing the difference in angle
+==============================*/
+
+static inline s64Quat s64quat_difference(s64Quat a, s64Quat b)
+{
+    s64Quat a_inv = {a.w, -a.x, -a.y, -a.z};
+    return s64quat_mul(b, a_inv);
 }
 
 
@@ -298,6 +336,25 @@ static inline void s64calc_billboard(f32 mtx[4][4])
 }
 
 
+/*==============================
+    s64vec_rotate
+    Rotate a vector using a quaternion
+    @param The vector to rotate
+    @param The rotation quaternion
+    @param The vector to store the result in
+==============================*/
+
+static inline void s64vec_rotate(f32 vec[3], s64Quat rot, f32 result[3])
+{
+    s64Quat vecquat = {0, vec[0], vec[1], vec[2]};
+    s64Quat rotinv = {rot.w, -rot.x, -rot.y, -rot.z};
+    s64Quat res = s64quat_mul(s64quat_mul(rot, vecquat), rotinv);
+    result[0] = res.x;
+    result[1] = res.y;
+    result[2] = res.z;
+}
+
+
 /*********************************
        Sausage64 Functions
 *********************************/
@@ -322,7 +379,7 @@ s64ModelHelper* sausage64_inithelper(s64ModelData* mdldata)
     mdl->loop = TRUE;
     mdl->curkeyframe = 0;
     mdl->animtick = 0;
-    mdl->rendercount = 0;
+    mdl->rendercount = 1;
     mdl->predraw = NULL;
     mdl->postdraw = NULL;
     mdl->animcallback = NULL;
@@ -342,13 +399,12 @@ s64ModelHelper* sausage64_inithelper(s64ModelData* mdldata)
     }
 
     // Allocate space for the transform helper
-    mdl->transforms = (s64FrameTransform*)malloc(sizeof(s64FrameTransform)*mdldata->meshcount);
+    mdl->transforms = (s64FrameTransform*)calloc(sizeof(s64FrameTransform)*mdldata->meshcount, 1);
     if (mdl->transforms == NULL)
     {
         free(mdl);
         return NULL;
     }
-    mdl->transforms->rendercount = 0;
 
     // Allocate space for the model matrices (or GLBuffers in Libdragon's case)
     #ifndef LIBDRAGON
@@ -655,13 +711,13 @@ static void sausage64_calctransforms(s64ModelHelper* mdl, const u16 mesh, f32 l)
     // Calculate animation transforms
     if (mdl->curanim != NULL)
     {    
-        s64FrameData* fdata = &mdl->transforms[mesh].data;
-        const s64FrameData* cfdata = &mdl->curanim->keyframes[mdl->curkeyframe].framedata[mesh];
+        s64Transform* fdata = &mdl->transforms[mesh].data;
+        const s64Transform* cfdata = &mdl->curanim->keyframes[mdl->curkeyframe].framedata[mesh];
         
         // Calculate animation lerp
         if (mdl->interpolate)
         {
-            const s64FrameData* nfdata = &mdl->curanim->keyframes[(mdl->curkeyframe+1)%mdl->curanim->keyframecount].framedata[mesh];
+            const s64Transform* nfdata = &mdl->curanim->keyframes[(mdl->curkeyframe+1)%mdl->curanim->keyframecount].framedata[mesh];
             
             fdata->pos[0] = s64lerp(cfdata->pos[0], nfdata->pos[0], l);
             fdata->pos[1] = s64lerp(cfdata->pos[1], nfdata->pos[1], l);
@@ -717,7 +773,7 @@ static f32 sausage64_calcanimlerp(s64ModelHelper* mdl)
     @return The mesh's local transform
 ==============================*/
 
-s64FrameData* sausage64_get_meshtransform(s64ModelHelper* mdl, const u16 mesh)
+s64Transform* sausage64_get_meshtransform(s64ModelHelper* mdl, const u16 mesh)
 {
     f32 l = sausage64_calcanimlerp(mdl);
     sausage64_calctransforms(mdl, mesh, l);
@@ -738,22 +794,18 @@ s64FrameData* sausage64_get_meshtransform(s64ModelHelper* mdl, const u16 mesh)
 void sausage64_lookat(s64ModelHelper* mdl, const u16 mesh, f32 dir[3], f32 amount, u8 affectchildren)
 {
     s64Quat q, qt;
-    s64FrameData* trans;
+    s64Quat oldrot_parent;
+    s64Transform oldtrans_parent;
+    s64Transform* trans;
     f32 l = sausage64_calcanimlerp(mdl);
     
-    // First, ensure that the transforms for this mesh (and the children) have all been calculated
+    // First, ensure that the transforms for this mesh has been calculated
     sausage64_calctransforms(mdl, mesh, l);
-    if (affectchildren)
-    {
-        int i;
-        s64ModelData* mdata = mdl->mdldata;
-        for (i=0; i<mdata->meshcount; i++)
-            if (mdata->meshes[i].parent == mesh)
-                sausage64_calctransforms(mdl, i, l);
-    }
     
     // Get the transform data
     trans = &mdl->transforms[mesh].data;
+    if (affectchildren)
+        oldtrans_parent = *trans;
     q.w = trans->rot[0];
     q.x = trans->rot[1];
     q.y = trans->rot[2];
@@ -768,6 +820,47 @@ void sausage64_lookat(s64ModelHelper* mdl, const u16 mesh, f32 dir[3], f32 amoun
     trans->rot[3] = qt.z;
     
     // Calculate the children's new transforms
+    if (affectchildren)
+    {
+        int i;
+        s64ModelData* mdata = mdl->mdldata;
+        s64Quat rotdiff = s64quat_difference(q, qt);
+        for (i=0; i<mdata->meshcount; i++)  
+        {
+            float root_offset[3];
+            float root_offset_new[3];
+            s64Transform* trans_child;
+            s64Quat rot;
+            if (mdata->meshes[i].parent != mesh)
+                continue;
+            sausage64_calctransforms(mdl, i, l);
+            trans_child = &mdl->transforms[i].data;
+            
+            // Get the offset of the child's root compared to the parent's
+            root_offset[0] = trans_child->pos[0] - oldtrans_parent.pos[0];
+            root_offset[1] = trans_child->pos[1] - oldtrans_parent.pos[1];
+            root_offset[2] = trans_child->pos[2] - oldtrans_parent.pos[2];
+            
+            // Rotate the root around the new rotational difference
+            s64vec_rotate(root_offset, rotdiff, root_offset_new);
+            
+            // Apply the new root
+            trans_child->pos[0] += root_offset_new[0] - root_offset[0];
+            trans_child->pos[1] += root_offset_new[1] - root_offset[1];
+            trans_child->pos[2] += root_offset_new[2] - root_offset[2];
+            
+            // Now add the rotation to the mesh itself
+            rot.w = trans_child->rot[0];
+            rot.x = trans_child->rot[1];
+            rot.y = trans_child->rot[2];
+            rot.z = trans_child->rot[3];
+            rot = s64quat_mul(rotdiff, rot);
+            trans_child->rot[0] = rot.w;
+            trans_child->rot[1] = rot.x;
+            trans_child->rot[2] = rot.y;
+            trans_child->rot[3] = rot.z;
+        }
+    }
 }
 
 
@@ -784,7 +877,7 @@ void sausage64_lookat(s64ModelHelper* mdl, const u16 mesh, f32 dir[3], f32 amoun
     {
         float helper1[4][4];
         float helper2[4][4];
-        s64FrameData* fdata = &helper->transforms[mesh].data;
+        s64Transform* fdata = &helper->transforms[mesh].data;
         
         // Combine the translation and scale matrix
         guTranslateF(helper1, fdata->pos[0], fdata->pos[1], fdata->pos[2]);
@@ -808,7 +901,7 @@ void sausage64_lookat(s64ModelHelper* mdl, const u16 mesh, f32 dir[3], f32 amoun
         gSPPopMatrix((*glistp)++, G_MTX_MODELVIEW);
     }
 #else
-    static inline void sausage64_drawpart(s64Gfx* dl, s64Mesh* mesh, const s64FrameData* cfdata, const s64FrameData* nfdata, const u8 interpolate, const f32 l)
+    static inline void sausage64_drawpart(s64Gfx* dl, s64Mesh* mesh, const s64Transform* cfdata, const s64Transform* nfdata, const u8 interpolate, const f32 l)
     {
         float helper1[4][4];
         s64Quat q = {cfdata->rot[0], cfdata->rot[1], cfdata->rot[2], cfdata->rot[3]};
@@ -912,9 +1005,6 @@ void sausage64_lookat(s64ModelHelper* mdl, const u16 mesh, f32 dir[3], f32 amoun
         const s64ModelData* mdata = mdl->mdldata;
         const u16 mcount = mdata->meshcount;
         const s64Animation* anim = mdl->curanim;
-
-        // Increment the render count for transform calculations
-        mdl->rendercount++;
     
         // If we have a valid animation, get the lerp value
         if (anim != NULL)
@@ -940,6 +1030,9 @@ void sausage64_lookat(s64ModelHelper* mdl, const u16 mesh, f32 dir[3], f32 amoun
             if (mdl->postdraw != NULL)
                 mdl->postdraw(i);
         }
+
+        // Increment the render count for transform calculations
+        mdl->rendercount++;
     }
 #else
     void sausage64_drawmodel(s64ModelHelper* mdl)
@@ -972,8 +1065,8 @@ void sausage64_lookat(s64ModelHelper* mdl, const u16 mesh, f32 dir[3], f32 amoun
             // Iterate through each mesh
             for (i=0; i<mcount; i++)
             {
-                const s64FrameData* cfdata = &ckframe->framedata[i];
-                const s64FrameData* nfdata = &nkframe->framedata[i];
+                const s64Transform* cfdata = &ckframe->framedata[i];
+                const s64Transform* nfdata = &nkframe->framedata[i];
 
                 // Call the pre draw function
                 if (mdl->predraw != NULL)

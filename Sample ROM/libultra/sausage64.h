@@ -105,16 +105,16 @@
         f32 pos[3];
         f32 rot[4];
         f32 scale[3];
-    } s64FrameData;
+    } s64Transform;
 
     typedef struct {
-        s64FrameData data;
+        s64Transform data;
         u32 rendercount;
     } s64FrameTransform;
 
     typedef struct {
         u32 framenumber;
-        s64FrameData* framedata;
+        s64Transform* framedata;
     } s64KeyFrame;
 
     typedef struct {
@@ -254,7 +254,7 @@
         @return The mesh's local transform
     ==============================*/
     
-    extern s64FrameData* sausage64_get_meshtransform(s64ModelHelper* mdl, const u16 mesh);
+    extern s64Transform* sausage64_get_meshtransform(s64ModelHelper* mdl, const u16 mesh);
     
     
     /*==============================
@@ -291,6 +291,6 @@
         @param A pointer to the model helper
     ==============================*/
 
-    void sausage64_freehelper(s64ModelHelper* helper);
+    extern void sausage64_freehelper(s64ModelHelper* helper);
 
 #endif

@@ -20,5 +20,6 @@
     char* command_togglelerp();
     char* command_toggleloop();
     char* command_toggleaxis();
+    char* command_togglelookat();
     
 #endif

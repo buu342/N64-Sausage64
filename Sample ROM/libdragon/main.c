@@ -7,10 +7,12 @@ Program entrypoint.
 #include <libdragon.h>
 #include <GL/gl.h>
 #include <GL/gl_integration.h>
+#include <GL/glu.h>
 #include <time.h>
 #include <stdlib.h>
 #include <malloc.h>
 #include <math.h>
+#include <stdbool.h>
 
 // Load Sausage64, the model, and the textures for our character
 #include "sausage64.h"
@@ -28,11 +30,16 @@ void catherine_predraw(u16 part);
 void generate_texture(s64Texture* tex, GLuint* store, sprite_t* texture);
 void scene_tick();
 void scene_render();
+void catherine_lookat();
 
 
 /*********************************
          Global variables
 *********************************/
+
+// Camera variables
+float campos[3] = {0, -300, 100};
+float camang[3] = {0, 1, 0}; 
 
 // Catherine model buffers
 static s64ModelHelper* catherine;
@@ -53,8 +60,12 @@ static uint32_t facetick;
 static s64Material* facemat;
 static long long facetime;
 
+// Lookat
+static char lookat_canseecam = false;
+static float lookat_amount = 0.0f;
+
 // Default OpenGL lighting
-static const GLfloat default_ambient[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+static const GLfloat default_ambient[4] = {0.0, 0.0, 0.0, 1.0f};
 static const GLfloat default_diffuse[4] = {1.0f, 1.0f, 1.0f, 1.0f};
 static const GLfloat default_specular[4] = {0.0f, 0.0f, 0.0f, 0.0f};
 
@@ -86,6 +97,9 @@ int main()
     gl_init();
     setup_scene();
 
+    // Initialize the controller subsystem
+    joypad_init();
+
     // Initialize Catherine
     setup_catherine();
 
@@ -93,6 +107,7 @@ int main()
     while (1)
     {
         // Perform a game tick
+        joypad_poll();
         scene_tick();
 
         // Get the next framebuffer
@@ -132,7 +147,7 @@ void setup_scene()
     float aspect_ratio = (float)display_get_width()/(float)display_get_height();
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    glFrustum(-20*aspect_ratio, 20*aspect_ratio, -20, 20, 20, 300);
+    gluPerspective(45, aspect_ratio, 100.0, 1000.0);
 
     // Modelview matrix
     glMatrixMode(GL_MODELVIEW);
@@ -181,27 +196,6 @@ void setup_catherine()
 
 
 /*==============================
-    catherine_predraw
-    Called before Catherine is drawn.
-    This is needed since the model's face texture is not loaded
-    automatically (due to the DONTLOAD flag). This instead allows
-    us to swap the face dynamically (in this case, to let her blink).
-    @param The model segment being drawn
-==============================*/
-
-void catherine_predraw(u16 part)
-{
-    // Handle face drawing
-    switch (part)
-    {
-        case MESH_Catherine_Head:
-            sausage64_loadmaterial(facemat);
-            break;
-    }
-}
-
-
-/*==============================
     generate_texture
     Generates a texture for OpenGL.
     Since the s64Texture struct contains a bunch of information,
@@ -224,6 +218,7 @@ void generate_texture(s64Texture* tex, GLuint* store, sprite_t* texture)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, tex->filter);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, tex->filter);
 
+    // Make the texture from the sprite
     glSpriteTextureN64(GL_TEXTURE_2D, texture, NULL);
 }
 
@@ -236,10 +231,97 @@ void generate_texture(s64Texture* tex, GLuint* store, sprite_t* texture)
 
 void scene_tick()
 {
+    joypad_inputs_t input;
     long long curtick = timer_ticks();
 
     // Advance Catherine's animation    
     sausage64_advance_anim(catherine, 0.5f);
+    
+    
+    /* -------- Controller -------- */
+
+    input = joypad_get_inputs(JOYPAD_PORT_1);
+
+    // Reset the camera when START is pressed
+    if (input.btn.start)
+    {
+        campos[0] = 0;
+        campos[1] = -300;
+        campos[2] = 100;
+        camang[0] = 0;
+        camang[1] = 1;
+        camang[2] = 0;
+    }
+
+    // Handle camera movement
+    if (input.btn.z)
+    {
+        float speed = input.stick_y/10;
+        campos[0] += camang[0]*speed;
+        campos[1] += camang[1]*speed;
+        campos[2] += camang[2]*speed;
+    }
+    else if (input.btn.r)
+    {
+        float w;
+        if (input.stick_x > 5 || input.stick_x < -5)
+            camang[0] += -((float)input.stick_x)/2000;
+        if (input.stick_y > 5 || input.stick_y < -5)
+            camang[2] += -((float)input.stick_y)/2000;
+        w = 1/sqrtf(camang[0]*camang[0] + camang[1]*camang[1] + camang[2]*camang[2]);
+        camang[0] *= w;
+        camang[1] *= w;
+        camang[2] *= w;
+    }
+    else
+    {
+        if (input.stick_x > 5 || input.stick_x < -5)
+        {
+            float w;    
+            float temp[3];
+            float cross[3] = {0, 0, 1};
+            float speed = input.stick_x/10;
+            temp[0] = camang[1]*cross[2] - camang[2]*cross[1];
+            temp[1] = camang[2]*cross[0] - camang[0]*cross[2];
+            temp[2] = camang[0]*cross[1] - camang[1]*cross[0];
+            w = sqrtf(temp[0]*temp[0] + temp[1]*temp[1] + temp[2]*temp[2]);
+            if (w != 0)
+                w = 1/w;
+            else
+                w = 0;
+            campos[0] -= temp[0]*speed*w;
+            campos[1] -= temp[1]*speed*w;
+            campos[2] -= temp[2]*speed*w;
+        }
+        if (input.stick_y > 5 || input.stick_y < -5)
+        {
+            float w;
+            float temp[3];
+            float cross[3] = {1, 0, 0};
+            float speed = input.stick_y/10;
+            temp[0] = camang[1]*cross[2] - camang[2]*cross[1];
+            temp[1] = camang[2]*cross[0] - camang[0]*cross[2];
+            temp[2] = camang[0]*cross[1] - camang[1]*cross[0];
+            w = sqrtf(temp[0]*temp[0] + temp[1]*temp[1] + temp[2]*temp[2]);
+            if (w != 0)
+                w = 1/w;
+            else
+                w = 0;
+            campos[0] += temp[0]*speed*w;
+            campos[1] += temp[1]*speed*w;
+            campos[2] += temp[2]*speed*w;
+        }
+    }
+
+    
+    
+    /* -------- Animation -------- */
+    
+    // Handle lookat lerp
+    if (input.btn.l && lookat_canseecam) 
+        lookat_amount += 0.1*(1.0 - lookat_amount);
+    else
+        lookat_amount -= 0.1*(lookat_amount);
     
     // If the frame time has elapsed
     if (facetime < curtick)
@@ -284,14 +366,92 @@ void scene_render()
     // Initialize our view
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-    glTranslatef(0, -100, -150);
+    gluLookAt(campos[0], campos[1], campos[2], campos[0]+camang[0], campos[1]+camang[1], campos[2]+camang[2], 0, 0, 1);
 
-    // Apply a rotation to the scene
-    glRotatef(45, 0, 1, 0);
-    glRotatef(-90, 1, 0, 0);
+    // Libdragon doesn't support retrieving the view/projection matrix state, so
+    // for billboarding we need to provide the camera position relative to the model's root
+    // Because the model is always at 0,0,0 in this example, we don't need to subtract the model root to get the relative pos
+    // So we can just feed campos directly :)
+    sausage64_set_camera(campos);
+    
+    // Make Catherine look at the camera
+    catherine_lookat();
 
     // Render our model
     sausage64_drawmodel(catherine);
 
     gl_context_end();
+}
+
+
+/*********************************
+     Model callback functions
+*********************************/
+
+/*==============================
+    catherine_predraw
+    Called before Catherine is drawn.
+    This is needed since the model's face texture is not loaded
+    automatically (due to the DONTLOAD flag). This instead allows
+    us to swap the face dynamically (in this case, to let her blink).
+    @param The model segment being drawn
+==============================*/
+
+void catherine_predraw(u16 part)
+{
+    // Handle face drawing
+    switch (part)
+    {
+        case MESH_Catherine_Head:
+            sausage64_loadmaterial(facemat);
+            break;
+    }
+}
+
+
+/*==============================
+    catherine_lookat
+    Make Catherine look at the camera
+==============================*/
+
+void catherine_lookat()
+{
+    float w;
+    s64Transform* headtrans;
+    float targetpos[3], targetdir[3];
+    float eyepos[3] = {0, -25.27329f, 18.116f}; // This is the eye position, offset from the head mesh's root
+    
+    // First, we need the head's transform in model space
+    headtrans = sausage64_get_meshtransform(catherine, MESH_Catherine_Head);
+    
+    // Now we can calculate the eye's position from the model's space
+    // To make the code simpler, I am ignoring rotation and scaling of the head's transform
+    eyepos[0] = headtrans->pos[0] + eyepos[0];
+    eyepos[1] = headtrans->pos[1] + eyepos[1];
+    eyepos[2] = headtrans->pos[2] + eyepos[2];
+    
+    // Take the camera's position in world space and convert it to the model's space    
+    // Model is always at 0,0,0, so nothing magical here :P
+    targetpos[0] = campos[0] - 0;
+    targetpos[1] = campos[1] - 0;
+    targetpos[2] = campos[2] - 0;
+    
+    // Calculate the direction vector and normalize it
+    targetdir[0] = targetpos[0] - eyepos[0];
+    targetdir[1] = targetpos[1] - eyepos[1];
+    targetdir[2] = targetpos[2] - eyepos[2];
+    w = 1/sqrtf(targetdir[0]*targetdir[0] + targetdir[1]*targetdir[1] + targetdir[2]*targetdir[2]);
+    targetdir[0] *= w;
+    targetdir[1] *= w;
+    targetdir[2] *= w;
+    
+    // Put a limit on how much Catherine can turn her head
+    // I'm just gonna check the angle between the target direction and the forward axis ((0, -1, 0) in Catherine's case)
+    // instead of doing it properly by limiting pitch yaw and roll specifically.
+    w = 1/((targetdir[0]*targetdir[0] + targetdir[1]*targetdir[1] + targetdir[2]*targetdir[2]) * (0*0 + (-1)*(-1) + 0*0));
+    w = (targetdir[0]*0 + targetdir[1]*(-1) + targetdir[2]*0)*w;
+    lookat_canseecam = (w >= 0.6);
+    
+    // Perform the lookat
+    sausage64_lookat(catherine, MESH_Catherine_Head, targetdir, lookat_amount, true);
 }

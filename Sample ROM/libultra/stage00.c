@@ -512,7 +512,8 @@ void catherine_lookat()
     eyepos[2] = headtrans->pos[2] + eyepos[2];
     
     // Take the camera's position in world space and convert it to the model's space
-    // The camera pos needs to be extracted from the inverse of the view matrix
+    // Since I haven't properly set up the camera like I would for a game, the camerapos array is inaccurate...
+    // We will need to extract the camera pos from the inverse of the view matrix
     guMtxL2F(viewmat, &viewing);
     matrix_inverse(viewmat, viewmat_inv);
     camerapos[0] = viewmat_inv[3][0];

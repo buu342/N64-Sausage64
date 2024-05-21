@@ -172,16 +172,22 @@
     ==============================*/
     
     extern s64ModelHelper* sausage64_inithelper(s64ModelData* mdldata);
-    
-    
+
+
     /*==============================
         sausage64_set_camera
         Sets the camera for Sausage64 to use for billboarding
-        @param The view matrix
-        @param The projection matrix
+        @param (Libultra) The view matrix
+        @param (Libultra) The projection matrix
+        @param (Libdragon) The location of the camera, relative to the model's root
     ==============================*/
     
-    extern void sausage64_set_camera(Mtx* view, Mtx* projection);
+    #ifndef LIBDRAGON
+        extern void sausage64_set_camera(Mtx* view, Mtx* projection);
+    #else
+        extern void sausage64_set_camera(f32 campos[3]);
+    #endif
+
     
     /*==============================
         sausage64_set_anim

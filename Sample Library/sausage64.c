@@ -49,8 +49,7 @@ typedef struct {
     static f32 s64_viewmat[4][4];
     static f32 s64_projmat[4][4];
 #else
-    static Mtx s64_viewmat;
-    static Mtx s64_projmat;
+    static f32 s64_campos[3];
     static s64Material* s64_lastmat = NULL;
 #endif
 
@@ -306,34 +305,81 @@ static inline s64Quat s64quat_fromeuler(f32 yaw, f32 pitch, f32 roll)
 }
 
 
-/*==============================
-    s64calc_billboard
-    Calculate a billboard matrix
-    @param The matrix to fill
-==============================*/
+#ifndef LIBDRAGON
+    /*==============================
+        s64calc_billboard
+        Calculate a billboard matrix
+        @param The matrix to fill
+    ==============================*/
 
-static inline void s64calc_billboard(f32 mtx[4][4])
-{
-    mtx[0][0] = s64_viewmat[0][0];
-    mtx[1][0] = s64_viewmat[0][1];
-    mtx[2][0] = s64_viewmat[0][2];
-    mtx[3][0] = 0;
+    static inline void s64calc_billboard(f32 mtx[4][4])
+    {
+        mtx[0][0] = s64_viewmat[0][0];
+        mtx[1][0] = s64_viewmat[0][1];
+        mtx[2][0] = s64_viewmat[0][2];
+        mtx[3][0] = 0;
 
-    mtx[0][1] = s64_viewmat[1][0];
-    mtx[1][1] = s64_viewmat[1][1];
-    mtx[2][1] = s64_viewmat[1][2];
-    mtx[3][1] = 0;
+        mtx[0][1] = s64_viewmat[1][0];
+        mtx[1][1] = s64_viewmat[1][1];
+        mtx[2][1] = s64_viewmat[1][2];
+        mtx[3][1] = 0;
 
-    mtx[0][2] = s64_viewmat[2][0];
-    mtx[1][2] = s64_viewmat[2][1];
-    mtx[2][2] = s64_viewmat[2][2];
-    mtx[3][2] = 0;
+        mtx[0][2] = s64_viewmat[2][0];
+        mtx[1][2] = s64_viewmat[2][1];
+        mtx[2][2] = s64_viewmat[2][2];
+        mtx[3][2] = 0;
 
-    mtx[0][3] = 0;
-    mtx[1][3] = 0;
-    mtx[2][3] = 0;
-    mtx[3][3] = 1;
-}
+        mtx[0][3] = 0;
+        mtx[1][3] = 0;
+        mtx[2][3] = 0;
+        mtx[3][3] = 1;
+    }
+#else
+    /*==============================
+        s64calc_billboard
+        Calculate a billboard matrix
+        @param The matrix to fill
+        @param The model helper
+        @param The mesh to billboard
+    ==============================*/
+
+    static inline void s64calc_billboard(f32 mtx[4][4], s64ModelHelper* mdl, u16 mesh)
+    {
+        float w;
+        float dir[3];
+        s64Quat q = {0.525322, 0.850904, 0.0, 0.0};
+        s64Quat looked;
+        s64Transform* trans = &mdl->transforms[mesh].data;
+
+        // In libdragon, since we can't retrieve matrix states, we gotta calculate billboarding manually
+        // Luckily, the lookat function will do the heavy lifting, we just need to get the direction of the camera
+        dir[0] = s64_campos[0] - trans->pos[0];
+        dir[1] = s64_campos[1] - trans->pos[1];
+        dir[2] = s64_campos[2] - trans->pos[2];
+        w = sqrtf(dir[0]*dir[0] + dir[1]*dir[1] + dir[2]*dir[2]);
+        if (w != 0)
+            w = 1/w;
+        else
+            w = 0;
+        dir[0] *= w;
+        dir[1] *= w;
+        dir[2] *= w;
+
+        // Use lookat
+        sausage64_lookat(mdl, mesh, dir, 1.0f, FALSE);
+
+        // Rotate the mesh 90 degrees to match the billboarding in Libultra
+        looked.w = trans->rot[0];
+        looked.x = trans->rot[1];
+        looked.y = trans->rot[2];
+        looked.z = trans->rot[3];
+        q = s64quat_mul(looked, q);
+        trans->rot[0] = q.w;
+        trans->rot[1] = q.x;
+        trans->rot[2] = q.y;
+        trans->rot[3] = q.z;
+    }
+#endif
 
 
 /*==============================
@@ -447,30 +493,35 @@ s64ModelHelper* sausage64_inithelper(s64ModelData* mdldata)
 }
 
 
-/*==============================
-    sausage64_set_camera
-    Sets the camera for Sausage64 to use for billboarding
-    @param The view matrix
-    @param The projection matrix
-==============================*/
+#ifndef LIBDRAGON
+    
+    /*==============================
+        sausage64_set_camera
+        Sets the camera for Sausage64 to use for billboarding
+        @param The view matrix
+        @param The projection matrix
+    ==============================*/
 
-void sausage64_set_camera(Mtx* view, Mtx* projection)
-{
-    #ifndef LIBDRAGON
+    void sausage64_set_camera(Mtx* view, Mtx* projection)
+    {
         guMtxL2F(s64_viewmat, view);
         guMtxL2F(s64_projmat, projection);
-    #else
-        int i, j;
-        for (i=0; i<4; i++)
-        {
-            for (j=0; j<4; j++)
-            {
-                s64_viewmat[i][j] = *view[i][j];
-                s64_projmat[i][j] = *projection[i][j];
-            }
-        }
-    #endif
-}
+    }
+#else
+    
+    /*==============================
+        sausage64_set_camera
+        Sets the camera for Sausage64 to use for billboarding
+        @param The location of the camera, relative to the model's root
+    ==============================*/
+
+    void sausage64_set_camera(f32 campos[3])
+    {
+        s64_campos[0] = campos[0];
+        s64_campos[1] = campos[1];
+        s64_campos[2] = campos[2];
+    }
+#endif
 
 
 /*==============================
@@ -932,13 +983,10 @@ void sausage64_lookat(s64ModelHelper* mdl, const u16 mesh, f32 dir[3], f32 amoun
         glScalef(fdata->scale[0], fdata->scale[1], fdata->scale[2]);
 
         // Combine the rotation matrix
-        if (!mdl->mdldata->meshes[mesh].is_billboard)
-        {
-            s64Quat q = {fdata->rot[0], fdata->rot[1], fdata->rot[2], fdata->rot[3]};
-            s64quat_to_mtx(q, helper1);
-        }
-        else
-            s64calc_billboard(helper1);
+        if (mdl->mdldata->meshes[mesh].is_billboard)
+            s64calc_billboard(helper1, mdl, mesh);
+        s64Quat q = {fdata->rot[0], fdata->rot[1], fdata->rot[2], fdata->rot[3]};
+        s64quat_to_mtx(q, helper1);
         glMultMatrixf(&helper1[0][0]);
 
         // Draw the body part

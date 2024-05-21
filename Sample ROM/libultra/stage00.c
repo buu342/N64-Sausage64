@@ -72,6 +72,7 @@ static char freezelight = FALSE;
 static char lookat = FALSE;
 static char lookat_canseecam = FALSE;
 static float lookat_amount = 0.0f;
+static float blending = 0.0f;
 static char usb_buffer[USB_BUFFER_SIZE];
 
 
@@ -199,7 +200,7 @@ void stage00_update(void)
     // If the menu is open
     if (menuopen)
     {
-        int menuyscale[4] = {modeltorender->animcount, TOTALFACES, 2, 6};
+        int menuyscale[4] = {modeltorender->animcount, TOTALFACES, 2, 7};
     
         // Moving the cursor left/right
         if (contdata[0].trigger & R_JPAD)
@@ -228,7 +229,10 @@ void stage00_update(void)
             switch (curx)
             {
                 case 0:
-                    sausage64_set_anim(catherine, cury);
+                    if (blending == 0)
+                        sausage64_set_anim(catherine, cury);
+                    else
+                        sausage64_set_anim_blend(catherine, cury, blending);
                     break;
                 case 1:
                     facetick = 60;
@@ -254,6 +258,10 @@ void stage00_update(void)
                         catherine_animspeed += 0.1;
                     else if (cury == 5)
                         catherine_animspeed -= 0.1;
+                    else if (cury == 6)
+                    {
+                        blending = (blending == 0 ? 10.0f : 0.0f);
+                    }
                     break;
             }
         }
@@ -429,6 +437,8 @@ void draw_menu()
     nuDebConCPuts(NU_DEB_CON_WINDOW0, "Faster");
     nuDebConTextPos(NU_DEB_CON_WINDOW0, 33, 10);
     nuDebConCPuts(NU_DEB_CON_WINDOW0, "Slower");
+    nuDebConTextPos(NU_DEB_CON_WINDOW0, 33, 11);
+    nuDebConCPuts(NU_DEB_CON_WINDOW0, "Blend");
     
     // Draw a nice little bar separating everything
     nuDebConTextPos(NU_DEB_CON_WINDOW0, 3, 4);

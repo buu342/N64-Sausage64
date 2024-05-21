@@ -212,7 +212,7 @@ void write_output_text()
         // OpenGL buffers
         if (global_opengl)
         {
-            fprintf(fp, "static GLuint buffers_%s = {\n    ", global_modelname);
+            fprintf(fp, "static GLuint buffers_%s[] = {\n    ", global_modelname);
             for (i=0; i<list_meshes.size*2; i++)
             {
                 fprintf(fp, "0xFFFFFFFF, ");

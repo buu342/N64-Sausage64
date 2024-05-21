@@ -39,7 +39,17 @@ void sausage64_set_camera(Mtx* view, Mtx* projection);
     @param The ANIMATION_* macro to set
 ==============================*/
 void sausage64_set_anim(s64ModelHelper* mdl, u16 anim);
-        
+
+/*==============================
+    sausage64_set_anim_blend
+    Sets an animation on the model with blending. Does not perform 
+    error checking if an invalid animation is given.
+    @param The model helper pointer
+    @param The ANIMATION_* macro to set
+    @param The amount of ticks to blend the animation over
+==============================*/
+void sausage64_set_anim_blend(s64ModelHelper* mdl, u16 anim, f32 ticks);
+
 /*==============================
     sausage64_set_animcallback
     Set a function that gets called when an animation finishes
@@ -70,7 +80,7 @@ void sausage64_set_postdrawfunc(s64ModelHelper* mdl, void (*postdraw)(u16));
     @param The model helper pointer
     @param The amount to increase the animation tick by
 ==============================*/
-void sausage64_advance_anim(s64ModelHelper* mdl, float tickamount);
+void sausage64_advance_anim(s64ModelHelper* mdl, f32 tickamount);
 
 /*==============================
     sausage64_get_meshtransform
@@ -100,7 +110,6 @@ void sausage64_lookat(s64ModelHelper* mdl, const u16 mesh, f32 dir[3], f32 amoun
     @param The model helper data
 ==============================*/
 void sausage64_drawmodel(Gfx** glistp, s64ModelHelper* mdl);
-
 
 /*==============================
     sausage64_freehelper
@@ -127,13 +136,19 @@ void sausage64_freehelper(s64ModelHelper* helper);
 ==============================*/
 s64ModelHelper* sausage64_inithelper(s64ModelData* mdldata);
 
+ /*==============================
+    sausage64_loadmaterial
+    Loads a material for libdragon rendering
+    @param The material to load
+==============================*/
+void sausage64_loadmaterial(s64Material* mat);
+
 /*==============================
     sausage64_set_camera
     Sets the camera for Sausage64 to use for billboarding
-    @param The view matrix
-    @param The projection matrix
+    @param The location of the camera, relative to the model's root
 ==============================*/
-void sausage64_set_camera(Mtx* view, Mtx* projection);
+void sausage64_set_camera(f32 campos[3]);
 
 /*==============================
     sausage64_set_anim
@@ -143,7 +158,17 @@ void sausage64_set_camera(Mtx* view, Mtx* projection);
     @param The ANIMATION_* macro to set
 ==============================*/
 void sausage64_set_anim(s64ModelHelper* mdl, u16 anim);
-        
+
+/*==============================
+    sausage64_set_anim_blend
+    Sets an animation on the model with blending. Does not perform 
+    error checking if an invalid animation is given.
+    @param The model helper pointer
+    @param The ANIMATION_* macro to set
+    @param The amount of ticks to blend the animation over
+==============================*/
+void sausage64_set_anim_blend(s64ModelHelper* mdl, u16 anim, f32 ticks);
+
 /*==============================
     sausage64_set_animcallback
     Set a function that gets called when an animation finishes
@@ -174,7 +199,7 @@ void sausage64_set_postdrawfunc(s64ModelHelper* mdl, void (*postdraw)(u16));
     @param The model helper pointer
     @param The amount to increase the animation tick by
 ==============================*/
-void sausage64_advance_anim(s64ModelHelper* mdl, float tickamount);
+void sausage64_advance_anim(s64ModelHelper* mdl, f32 tickamount);
 
 /*==============================
     sausage64_get_meshtransform
@@ -198,20 +223,13 @@ s64Transform* sausage64_get_meshtransform(s64ModelHelper* mdl, const u16 mesh);
 void sausage64_lookat(s64ModelHelper* mdl, const u16 mesh, f32 dir[3], f32 amount, u8 affectchildren);
 
 /*==============================
-    sausage64_loadmaterial
-    Loads a material for libdragon rendering
-    @param The material to load
-==============================*/
-void sausage64_loadmaterial(s64Material* mat);
-
-/*==============================
     sausage64_drawmodel
     Renders a Sausage64 model
     @param A pointer to a display list pointer
+           The model helper data
     @param The model helper data
 ==============================*/
-void sausage64_drawmodel(Gfx** glistp, s64ModelHelper* mdl);
-
+void sausage64_drawmodel(s64ModelHelper* mdl);
 
 /*==============================
     sausage64_freehelper

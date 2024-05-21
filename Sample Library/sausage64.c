@@ -46,8 +46,8 @@ typedef struct {
 *********************************/
 
 #ifndef LIBDRAGON
-    static float s64_viewmat[4][4];
-    static float s64_projmat[4][4];
+    static f32 s64_viewmat[4][4];
+    static f32 s64_projmat[4][4];
 #else
     static f32 s64_campos[3];
     static s64Material* s64_lastmat = NULL;
@@ -170,8 +170,8 @@ static inline s64Quat s64quat_difference(s64Quat a, s64Quat b)
 static inline s64Quat s64slerp(s64Quat a, s64Quat b, f32 f)
 {
     s64Quat result;
-    const float dot = s64quat_dot(a, b);
-    float scale = (dot >= 0) ? 1.0f : -1.0f;
+    const f32 dot = s64quat_dot(a, b);
+    f32 scale = (dot >= 0) ? 1.0f : -1.0f;
     
     // Scale the quaternion
     result.w = b.w*scale;
@@ -204,7 +204,7 @@ static inline s64Quat s64slerp(s64Quat a, s64Quat b, f32 f)
 
 static inline void s64quat_to_mtx(s64Quat q, f32 dest[][4])
 {
-    float xx, yy, zz, xy, yz, xz, wx, wy, wz, norm, s = 0;
+    f32 xx, yy, zz, xy, yz, xz, wx, wy, wz, norm, s = 0;
     
     // Normalize the quaternion, and then check for division by zero
     norm = s64quat_normalize(q);
@@ -253,11 +253,11 @@ static inline void s64quat_to_mtx(s64Quat q, f32 dest[][4])
     @return The direction quaternion
 ==============================*/
 
-static s64Quat s64quat_fromdir(float dir[3])
+static s64Quat s64quat_fromdir(f32 dir[3])
 {
-    float l;
-    const float forward[3] = S64_FORWARDVEC;
-    float w[3];
+    f32 l;
+    const f32 forward[3] = S64_FORWARDVEC;
+    f32 w[3];
     s64Quat q;
     w[0] = (forward[1]*dir[2]) - (forward[2]*dir[1]);
     w[1] = (forward[2]*dir[0]) - (forward[0]*dir[2]);
@@ -289,14 +289,14 @@ static s64Quat s64quat_fromdir(float dir[3])
 static inline s64Quat s64quat_fromeuler(f32 yaw, f32 pitch, f32 roll)
 {
     s64Quat q;
-    const float c1 = cosf(yaw/2);
-    const float s1 = sinf(yaw/2);
-    const float c2 = cosf(pitch/2);
-    const float s2 = sinf(pitch/2);
-    const float c3 = cosf(roll/2);
-    const float s3 = sinf(roll/2);
-    const float c1c2 = c1*c2;
-    const float s1s2 = s1*s2;
+    const f32 c1 = cosf(yaw/2);
+    const f32 s1 = sinf(yaw/2);
+    const f32 c2 = cosf(pitch/2);
+    const f32 s2 = sinf(pitch/2);
+    const f32 c3 = cosf(roll/2);
+    const f32 s3 = sinf(roll/2);
+    const f32 c1c2 = c1*c2;
+    const f32 s1s2 = s1*s2;
     q.w = c1c2*c3 - s1s2*s3;
     q.x = c1c2*s3 + s1s2*c3;
     q.y = s1*c2*c3 + c1*s2*s3;
@@ -345,8 +345,8 @@ static inline s64Quat s64quat_fromeuler(f32 yaw, f32 pitch, f32 roll)
 
     static inline void s64calc_billboard(f32 mtx[4][4], s64ModelHelper* mdl, u16 mesh)
     {
-        float w;
-        float dir[3];
+        f32 w;
+        f32 dir[3];
         s64Quat q = {0.525322, 0.850904, 0.0, 0.0};
         s64Quat looked;
         s64Transform* trans = &mdl->transforms[mesh].data;
@@ -573,7 +573,7 @@ inline void sausage64_set_animcallback(s64ModelHelper* mdl, void (*animcallback)
 static void sausage64_update_animplay(s64AnimPlay* playing)
 {
     const s64Animation* anim = playing->animdata;
-    const float curtick = playing->curtick;
+    const f32 curtick = playing->curtick;
     u32 curkf_index = playing->curkeyframe;
     u32 nextkf_index = (curkf_index+1)%(anim->keyframecount);
     const u32 curkf_value = anim->keyframes[curkf_index].framenumber;
@@ -623,7 +623,7 @@ static void sausage64_advance_animplay(s64ModelHelper* mdl, s64AnimPlay* playing
     // If the animation ended, call the callback function and roll the tick value over
     if (rollover)
     {
-        float division;
+        f32 division;
     
         // Execute the animation end callback function
         if (mdl->animcallback != NULL)
@@ -634,7 +634,7 @@ static void sausage64_advance_animplay(s64ModelHelper* mdl, s64AnimPlay* playing
         {
             if (rollover > 0)
             {
-                playing->curtick = (float)animlength;
+                playing->curtick = (f32)animlength;
                 playing->curkeyframe = playing->animdata->keyframecount-1;
             }
             else
@@ -646,11 +646,11 @@ static void sausage64_advance_animplay(s64ModelHelper* mdl, s64AnimPlay* playing
         }
         
         // Calculate the correct tick
-        division = playing->curtick/((float)animlength);
+        division = playing->curtick/((f32)animlength);
         if (rollover > 0)
-            playing->curtick = (division - ((int)division))*((float)animlength);
+            playing->curtick = (division - ((int)division))*((f32)animlength);
         else
-            playing->curtick = (1+(division - ((int)division)))*((float)animlength);
+            playing->curtick = (1+(division - ((int)division)))*((f32)animlength);
     }
 
     // Update the animation
@@ -709,7 +709,7 @@ void sausage64_set_anim(s64ModelHelper* mdl, u16 anim)
     @param The amount of ticks to blend the animation over
 ==============================*/
 
-void sausage64_set_anim_blend(s64ModelHelper* mdl, u16 anim, float ticks)
+void sausage64_set_anim_blend(s64ModelHelper* mdl, u16 anim, f32 ticks)
 {
     if (mdl->curanim.animdata != NULL)
         mdl->blendanim = mdl->curanim;
@@ -748,7 +748,7 @@ void sausage64_set_anim_blend(s64ModelHelper* mdl, u16 anim, float ticks)
                 glDisable(GL_TEXTURE_2D);
                 glDisable(GL_COLOR_MATERIAL);
             }
-            const GLfloat diffuse[] = {(float)col->r/255.0f, (float)col->g/255.0f, (float)col->b/255.0f, 1.0f};
+            const GLfloat diffuse[] = {(f32)col->r/255.0f, (f32)col->g/255.0f, (f32)col->b/255.0f, 1.0f};
             glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, diffuse);
         }
 
@@ -884,7 +884,7 @@ static void sausage64_calcanimtransforms(s64ModelHelper* mdl, const u16 mesh, f3
         s64Transform* fdata = &mdl->transforms[mesh].data;
         const s64Transform* cfdata = &blendanim->keyframes[blending->curkeyframe].framedata[mesh];
         const s64Transform* nfdata = &blendanim->keyframes[(blending->curkeyframe+1)%blendanim->keyframecount].framedata[mesh];
-        const float blendlerp = mdl->blendticks_left/mdl->blendticks;
+        const f32 blendlerp = mdl->blendticks_left/mdl->blendticks;
         
         fdata->pos[0] = s64lerp(fdata->pos[0], s64lerp(cfdata->pos[0], nfdata->pos[0], bl), blendlerp);
         fdata->pos[1] = s64lerp(fdata->pos[1], s64lerp(cfdata->pos[1], nfdata->pos[1], bl), blendlerp);
@@ -975,8 +975,8 @@ void sausage64_lookat(s64ModelHelper* mdl, const u16 mesh, f32 dir[3], f32 amoun
         s64Quat rotdiff = s64quat_difference(q, qt);
         for (i=0; i<mdata->meshcount; i++)  
         {
-            float root_offset[3];
-            float root_offset_new[3];
+            f32 root_offset[3];
+            f32 root_offset_new[3];
             s64Transform* trans_child;
             s64Quat rot;
             if (mdata->meshes[i].parent != mesh)
@@ -1023,8 +1023,8 @@ void sausage64_lookat(s64ModelHelper* mdl, const u16 mesh, f32 dir[3], f32 amoun
 #ifndef LIBDRAGON
     static inline void sausage64_drawpart(Gfx** glistp, s64ModelHelper* helper, u16 mesh)
     {
-        float helper1[4][4];
-        float helper2[4][4];
+        f32 helper1[4][4];
+        f32 helper2[4][4];
         s64Transform* fdata = &helper->transforms[mesh].data;
         
         // Combine the translation and scale matrix
@@ -1051,7 +1051,7 @@ void sausage64_lookat(s64ModelHelper* mdl, const u16 mesh, f32 dir[3], f32 amoun
 #else
     static inline void sausage64_drawpart(s64Gfx* dl, s64ModelHelper* mdl, u16 mesh)
     {
-        float helper1[4][4];
+        f32 helper1[4][4];
         s64Transform* fdata = &mdl->transforms[mesh].data;
     
         // Push a new matrix

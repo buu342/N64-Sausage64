@@ -88,7 +88,7 @@
         } s64Material;
 
         typedef struct {
-            float (*verts)[11];
+            f32 (*verts)[11];
             u16 vertcount;
             u16 facecount;
             u16 (*faces)[3];
@@ -127,7 +127,7 @@
         const char* name;
         const u32 is_billboard;
         s64Gfx* dl;
-        int parent;
+        s32 parent;
     } s64Mesh;
 
     typedef struct {
@@ -142,8 +142,8 @@
     
     typedef struct {
         s64Animation* animdata;
-        float curtick;
-        u32   curkeyframe;
+        f32 curtick;
+        u32 curkeyframe;
     } s64AnimPlay;
 
     typedef struct {
@@ -160,8 +160,8 @@
         s64FrameTransform* transforms; 
         s64AnimPlay curanim;
         s64AnimPlay blendanim;
-        float blendticks;
-        float blendticks_left;
+        f32 blendticks;
+        f32 blendticks_left;
     } s64ModelHelper;
     
     
@@ -178,6 +178,17 @@
     ==============================*/
     
     extern s64ModelHelper* sausage64_inithelper(s64ModelData* mdldata);
+    
+
+    #ifdef LIBDRAGON
+         /*==============================
+            sausage64_loadmaterial
+            Loads a material for libdragon rendering
+            @param The material to load
+        ==============================*/
+    
+        extern void sausage64_loadmaterial(s64Material* mat);
+    #endif
 
 
     /*==============================
@@ -215,7 +226,7 @@
         @param The amount of ticks to blend the animation over
     ==============================*/
     
-    extern void sausage64_set_anim_blend(s64ModelHelper* mdl, u16 anim, float ticks);
+    extern void sausage64_set_anim_blend(s64ModelHelper* mdl, u16 anim, f32 ticks);
     
     
     /*==============================
@@ -256,17 +267,6 @@
     ==============================*/
     
     extern void sausage64_advance_anim(s64ModelHelper* mdl, f32 tickamount);
-    
-
-    #ifdef LIBDRAGON
-         /*==============================
-            sausage64_loadmaterial
-            Loads a material for libdragon rendering
-            @param The material to load
-        ==============================*/
-    
-        extern void sausage64_loadmaterial(s64Material* mat);
-    #endif
     
     
     /*==============================

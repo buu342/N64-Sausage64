@@ -259,9 +259,7 @@ void stage00_update(void)
                     else if (cury == 5)
                         catherine_animspeed -= 0.1;
                     else if (cury == 6)
-                    {
                         blending = (blending == 0 ? 10.0f : 0.0f);
-                    }
                     break;
             }
         }

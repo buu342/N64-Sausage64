@@ -8,21 +8,21 @@ assets_conv = $(addprefix filesystem/,$(notdir $(assets_png:%.png=%.sprite)))
 
 MKSPRITE_FLAGS ?=
 
-all: sausage64.z64
+all: sausage.z64
 
 filesystem/%.sprite: assets/%.png
 	@mkdir -p $(dir $@)
 	@echo "    [SPRITE] $@"
 	@$(N64_MKSPRITE) -v -m BOX -o "$(dir $@)" "$<"
 
-$(BUILD_DIR)/sausage64.dfs: $(assets_conv)
-$(BUILD_DIR)/sausage64.elf: $(src:%.c=$(BUILD_DIR)/%.o)
+$(BUILD_DIR)/sausage.dfs: $(assets_conv)
+$(BUILD_DIR)/sausage.elf: $(src:%.c=$(BUILD_DIR)/%.o)
 
-sausage64.z64: N64_ROM_TITLE="SAUSAGE64"
-sausage64.z64: $(BUILD_DIR)/sausage64.dfs
+sausage.z64: N64_ROM_TITLE="SAUSAGE64"
+sausage.z64: $(BUILD_DIR)/sausage.dfs
 
 clean:
-	rm -rf $(BUILD_DIR) sausage64.z64
+	rm -rf $(BUILD_DIR) sausage.z64
 
 -include $(wildcard $(BUILD_DIR)/*.d)
 

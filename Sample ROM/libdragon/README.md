@@ -8,6 +8,13 @@ This folder contains a sample ROM for the Nintendo64, which demonstrates the exp
 ### Playing the ROM
 The ROM should work on any official Nintendo64 hardware, and most emulators. 
 
+The controls are:
+* Use the control stick to pan the camera.
+* Hold R and use the control stick to rotate the camera (like in an FPS game).
+* Hold Z and use the control stick to zoom the view.
+* Press START to reset the camera position
+* Hold L to make the character look at the camera..
+
 
 ### Compiling the ROM
 Simply call `make`. A compiled version of the ROM should be available in the [releases page](../../../../releases).

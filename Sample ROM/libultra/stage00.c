@@ -507,6 +507,7 @@ void catherine_lookat()
     
     // Now we can calculate the eye's position from the model's space
     // To make the code simpler, I am ignoring rotation and scaling of the head's transform
+    // If you want to take the head's rotation into account, check the s64vec_rotate function in sausage64.c
     eyepos[0] = headtrans->pos[0] + eyepos[0];
     eyepos[1] = headtrans->pos[1] + eyepos[1];
     eyepos[2] = headtrans->pos[2] + eyepos[2];
@@ -537,6 +538,7 @@ void catherine_lookat()
     // Put a limit on how much Catherine can turn her head
     // I'm just gonna check the angle between the target direction and the forward axis ((0, -1, 0) in Catherine's case)
     // instead of doing it properly by limiting pitch yaw and roll specifically.
+    // Remember, if the head mesh rotates, the axis to check against must be properly rotated too.
     w = 1/((targetdir[0]*targetdir[0] + targetdir[1]*targetdir[1] + targetdir[2]*targetdir[2]) * (0*0 + (-1)*(-1) + 0*0));
     w = (targetdir[0]*0 + targetdir[1]*(-1) + targetdir[2]*0)*w;
     lookat_canseecam = (w >= 0.6);

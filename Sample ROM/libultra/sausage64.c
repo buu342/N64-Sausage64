@@ -6,12 +6,12 @@ Arabiki64.
 https://github.com/buu342/Blender-Sausage64
 ***************************************************************/
 
-#include <string.h>
-#include <malloc.h>
+#include "sausage64.h"
 #ifdef LIBDRAGON
     #include <math.h>
 #endif
-#include "sausage64.h"
+#include <stdlib.h>
+#include <malloc.h>
 
 
 /*********************************
@@ -940,7 +940,6 @@ s64Transform* sausage64_get_meshtransform(s64ModelHelper* mdl, const u16 mesh)
 void sausage64_lookat(s64ModelHelper* mdl, const u16 mesh, f32 dir[3], f32 amount, u8 affectchildren)
 {
     s64Quat q, qt;
-    s64Quat oldrot_parent;
     s64Transform oldtrans_parent;
     s64Transform* trans;
     f32 l = sausage64_calcanimlerp(&mdl->curanim);
@@ -1050,74 +1049,23 @@ void sausage64_lookat(s64ModelHelper* mdl, const u16 mesh, f32 dir[3], f32 amoun
         gSPPopMatrix((*glistp)++, G_MTX_MODELVIEW);
     }
 #else
-    static inline void sausage64_drawpart(s64Gfx* dl, s64Mesh* mesh, const s64Transform* cfdata, const s64Transform* nfdata, const u8 interpolate, const f32 l)
+    static inline void sausage64_drawpart(s64Gfx* dl, s64ModelHelper* mdl, u16 mesh)
     {
         float helper1[4][4];
-        s64Quat q = {cfdata->rot[0], cfdata->rot[1], cfdata->rot[2], cfdata->rot[3]};
+        s64Transform* fdata = &mdl->transforms[mesh].data;
     
         // Push a new matrix
         glPushMatrix();
-
-        // Calculate the transformations on the CPU
-        if (interpolate)
-        {
-            // Setup the quaternions
-            if (!mesh->is_billboard)
-            {
-                s64Quat qn = {nfdata->rot[0], nfdata->rot[1], nfdata->rot[2], nfdata->rot[3]};
-                q = s64slerp(q, qn, l);
-            }
-
-            // Combine the translation and scale matrix
-            glTranslatef(
-                s64lerp(cfdata->pos[0], nfdata->pos[0], l),
-                s64lerp(cfdata->pos[1], nfdata->pos[1], l),
-                s64lerp(cfdata->pos[2], nfdata->pos[2], l)
-            );
-            glScalef(
-                s64lerp(cfdata->scale[0], nfdata->scale[0], l),
-                s64lerp(cfdata->scale[1], nfdata->scale[1], l),
-                s64lerp(cfdata->scale[2], nfdata->scale[2], l)
-            );
-        }
-        else
-        {
-            // Combine the translation and scale matrix
-            glTranslatef(
-                cfdata->pos[0],
-                cfdata->pos[1],
-                cfdata->pos[2]
-            );
-            glScalef(cfdata->scale[0], cfdata->scale[1], cfdata->scale[2]);
-        }
+        
+        // Combine the translation and scale matrix
+        glTranslatef(fdata->pos[0], fdata->pos[1], fdata->pos[2]);
+        glScalef(fdata->scale[0], fdata->scale[1], fdata->scale[2]);
 
         // Combine the rotation matrix
-        if (!mesh->is_billboard)
-        {
-            s64quat_to_mtx(q, helper1);
-        }
-        else
-        {
-            helper1[0][0] = (*s64_viewmat)[0][0];
-            helper1[1][0] = (*s64_viewmat)[0][1];
-            helper1[2][0] = (*s64_viewmat)[0][2];
-            helper1[3][0] = 0;
-            
-            helper1[0][1] = (*s64_viewmat)[1][0];
-            helper1[1][1] = (*s64_viewmat)[1][1];
-            helper1[2][1] = (*s64_viewmat)[1][2];
-            helper1[3][1] = 0;
-            
-            helper1[0][2] = (*s64_viewmat)[2][0];
-            helper1[1][2] = (*s64_viewmat)[2][1];
-            helper1[2][2] = (*s64_viewmat)[2][2];
-            helper1[3][2] = 0;
-            
-            helper1[0][3] = 0;
-            helper1[1][3] = 0;
-            helper1[2][3] = 0;
-            helper1[3][3] = 1;
-        }
+        if (mdl->mdldata->meshes[mesh].is_billboard)
+            s64calc_billboard(helper1, mdl, mesh);
+        s64Quat q = {fdata->rot[0], fdata->rot[1], fdata->rot[2], fdata->rot[3]};
+        s64quat_to_mtx(q, helper1);
         glMultMatrixf(&helper1[0][0]);
 
         // Draw the body part
@@ -1191,6 +1139,53 @@ void sausage64_lookat(s64ModelHelper* mdl, const u16 mesh, f32 dir[3], f32 amoun
     void sausage64_drawmodel(s64ModelHelper* mdl)
     {
         u16 i;
+        f32 l = 0, bl = 0;
+        const s64ModelData* mdata = mdl->mdldata;
+        const u16 mcount = mdata->meshcount;
+        const s64Animation* anim = mdl->curanim.animdata;
+
+        // Initialize OpenGL state
+        glEnableClientState(GL_VERTEX_ARRAY);
+        glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+        glEnableClientState(GL_NORMAL_ARRAY);
+        glEnableClientState(GL_COLOR_ARRAY);
+    
+        // If we have a valid animation, get the lerp value
+        if (anim != NULL)
+        {
+            l = sausage64_calcanimlerp(&mdl->curanim);
+            if (mdl->blendticks_left > 0)
+                bl = sausage64_calcanimlerp(&mdl->blendanim);
+        }
+        
+        // Iterate through each mesh
+        for (i=0; i<mcount; i++)
+        {           
+            // Call the pre draw function
+            if (mdl->predraw != NULL)
+                mdl->predraw(i);
+            
+            // Draw this part of the model
+            if (anim != NULL)
+            {
+                s64Gfx* dl = mdl->mdldata->meshes[i].dl;
+                sausage64_calcanimtransforms(mdl, i, l, bl);
+                glBindBufferARB(GL_ARRAY_BUFFER_ARB, mdata->glbuffers[i*2]);
+                glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER_ARB, mdata->glbuffers[i*2 + 1]);
+                sausage64_drawpart(dl, mdl, i);
+            }
+            //else
+            //    gSPDisplayList((*glistp)++, mdata->meshes[i].dl);
+        
+            // Call the post draw function
+            if (mdl->postdraw != NULL)
+                mdl->postdraw(i);
+        }
+
+        // Increment the render count for transform calculations
+        mdl->rendercount++;
+        /*
+        u16 i;
         const s64ModelData* mdata = mdl->mdldata;
         const u16 mcount = mdata->meshcount;
         const s64Animation* anim = mdl->curanim;
@@ -1227,8 +1222,8 @@ void sausage64_lookat(s64ModelHelper* mdl, const u16 mesh, f32 dir[3], f32 amoun
 
                 // Draw this part of the model without animations
                 s64Gfx* dl = mdl->mdldata->meshes[i].dl;
-                glBindBufferARB(GL_ARRAY_BUFFER_ARB, mdl->glbuffers[i*2]);
-                glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER_ARB, mdl->glbuffers[i*2 + 1]);
+                glBindBufferARB(GL_ARRAY_BUFFER_ARB, mdata->glbuffers[i*2]);
+                glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER_ARB, mdata->glbuffers[i*2 + 1]);
                 sausage64_drawpart(dl, &mdata->meshes[i], cfdata, nfdata, mdl->interpolate, l);
             }
 
@@ -1247,8 +1242,8 @@ void sausage64_lookat(s64ModelHelper* mdl, const u16 mesh, f32 dir[3], f32 amoun
 
                 // Draw this part of the model without animations
                 s64Gfx* dl = mdl->mdldata->meshes[i].dl;
-                glBindBufferARB(GL_ARRAY_BUFFER_ARB, mdl->glbuffers[i*2]);
-                glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER_ARB, mdl->glbuffers[i*2 + 1]);
+                glBindBufferARB(GL_ARRAY_BUFFER_ARB, mdata->glbuffers[i*2]);
+                glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER_ARB, mdata->glbuffers[i*2 + 1]);
                 for (u32 j=0; j<dl->blockcount; j++)
                 {
                     s64RenderBlock* render = &dl->renders[j];
@@ -1267,6 +1262,7 @@ void sausage64_lookat(s64ModelHelper* mdl, const u16 mesh, f32 dir[3], f32 amoun
                     mdl->postdraw(i);
             }
         }
+        */
     }
 #endif
 

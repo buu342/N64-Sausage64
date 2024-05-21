@@ -139,13 +139,16 @@
             GLuint* glbuffers;
         #endif
     } s64ModelData;
+    
+    typedef struct {
+        s64Animation* animdata;
+        float curtick;
+        u32   curkeyframe;
+    } s64AnimPlay;
 
     typedef struct {
         u8    interpolate;
         u8    loop;
-        u32   curanimlen;
-        float animtick;
-        u32   curkeyframe;
         u32   rendercount;
         #ifndef LIBDRAGON
             Mtx* matrix;
@@ -154,8 +157,11 @@
         void  (*postdraw)(u16);
         void  (*animcallback)(u16);
         s64ModelData* mdldata;
-        s64Animation* curanim;
         s64FrameTransform* transforms; 
+        s64AnimPlay curanim;
+        s64AnimPlay blendanim;
+        float blendticks;
+        float blendticks_left;
     } s64ModelHelper;
     
     
@@ -198,6 +204,18 @@
     ==============================*/
     
     extern void sausage64_set_anim(s64ModelHelper* mdl, u16 anim);
+
+    
+    /*==============================
+        sausage64_set_anim_blend
+        Sets an animation on the model with blending. Does not perform 
+        error checking if an invalid animation is given.
+        @param The model helper pointer
+        @param The ANIMATION_* macro to set
+        @param The amount of ticks to blend the animation over
+    ==============================*/
+    
+    extern void sausage64_set_anim_blend(s64ModelHelper* mdl, u16 anim, float ticks);
     
     
     /*==============================

@@ -12,6 +12,7 @@ https://github.com/buu342/Blender-Sausage64
 #endif
 #include <stdlib.h>
 #include <malloc.h>
+#include <rdpq_tex.h>
 
 
 /*********************************
@@ -418,6 +419,8 @@ static inline void s64vec_rotate(f32 vec[3], s64Quat rot, f32 result[3])
 
 void sausage64_load_texture(s64Texture* tex, GLuint* store, sprite_t* texture)
 {
+    int repeats = 0, repeatt = 0, mirrors = MIRROR_NONE, mirrort = MIRROR_NONE;
+
     // Create the texture buffer 
     glGenTextures(1, store);
     glBindTexture(GL_TEXTURE_2D, *store);
@@ -425,11 +428,26 @@ void sausage64_load_texture(s64Texture* tex, GLuint* store, sprite_t* texture)
     // Set the texture parameters
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, tex->wraps);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, tex->wrapt);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, tex->filter);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, tex->filter);
+
+    // Set the clamping values manually because SpriteTexture overrides TexParameter
+    switch (tex->wraps)
+    {
+        case GL_MIRRORED_REPEAT_ARB: repeats = REPEAT_INFINITE; mirrors = MIRROR_REPEAT; break;
+        case GL_REPEAT: repeats = REPEAT_INFINITE; mirrors = MIRROR_NONE; break;
+    }
+    switch (tex->wrapt)
+    {
+        case GL_MIRRORED_REPEAT_ARB: repeatt = REPEAT_INFINITE; mirrort = MIRROR_REPEAT; break;
+        case GL_REPEAT: repeatt = REPEAT_INFINITE; mirrort = MIRROR_NONE; break;
+    }
 
     // Make the texture from the sprite
-    glSpriteTextureN64(GL_TEXTURE_2D, texture, NULL);
+    glSpriteTextureN64(GL_TEXTURE_2D, texture, &(rdpq_texparms_t){
+        .s.repeats = repeats, 
+        .s.mirror = mirrors, 
+        .t.repeats = repeatt,
+        .t.mirror = mirrort
+    });
 }
 
 

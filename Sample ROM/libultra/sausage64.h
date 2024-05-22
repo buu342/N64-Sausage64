@@ -92,6 +92,7 @@
             u16 vertcount;
             u16 facecount;
             u16 (*faces)[3];
+            GLuint dl[3];
             s64Material* material;
         } s64RenderBlock;
 
@@ -135,9 +136,6 @@
         u16 animcount;
         s64Mesh* meshes;
         s64Animation* anims;
-        #ifdef LIBDRAGON
-            GLuint* glbuffers;
-        #endif
     } s64ModelData;
     
     typedef struct {

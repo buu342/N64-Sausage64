@@ -138,6 +138,7 @@ void setup_scene()
     glEnable(GL_CULL_FACE);
     glEnable(GL_LIGHTING);
     glEnable(GL_ALPHA_TEST);
+    glEnable(GL_MULTISAMPLE_ARB);
     glAlphaFunc(GL_GREATER, 0.5f);
     glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, default_diffuse);
     glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, default_ambient);
@@ -172,11 +173,6 @@ void setup_catherine()
     // Load Catherine's textures into sprite structures
     for (uint32_t i=0; i<CATHERINE_TETXURE_COUNT; i++)
         catherine_textures[i] = sprite_load(catherine_texture_paths[i]);
-    
-    // Initialize Catherine's model, then set her animation and predraw function
-    catherine = sausage64_inithelper(MODEL_Catherine);
-    sausage64_set_anim(catherine, ANIMATION_Catherine_Walk);
-    sausage64_set_predrawfunc(catherine, catherine_predraw);
 
     // Generate the textures
     generate_texture((s64Texture*)mat_BackTex.data, &BackTex, catherine_textures[0]);
@@ -187,6 +183,14 @@ void setup_catherine()
     generate_texture((s64Texture*)mat_CatherineFace.data, &FaceTex, catherine_textures[5]);
     generate_texture((s64Texture*)mat_CatherineBlink1Face.data, &FaceBlink1Tex, catherine_textures[6]);
     generate_texture((s64Texture*)mat_CatherineBlink2Face.data, &FaceBlink2Tex, catherine_textures[7]);
+
+    // Generate the model display list
+    sausage64_load_staticmodel(MODEL_Catherine);
+    
+    // Initialize Catherine's model, then set her animation and predraw function
+    catherine = sausage64_inithelper(MODEL_Catherine);
+    sausage64_set_anim(catherine, ANIMATION_Catherine_Walk);
+    sausage64_set_predrawfunc(catherine, catherine_predraw);
 
     // Initialize the face animation variables
     facemat = &mat_CatherineFace;

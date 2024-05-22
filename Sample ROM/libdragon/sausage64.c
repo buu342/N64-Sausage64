@@ -402,6 +402,86 @@ static inline void s64vec_rotate(f32 vec[3], s64Quat rot, f32 result[3])
 
 
 /*********************************
+     Model Loading Functions
+*********************************/
+
+void sausage64_load_staticmodel(s64ModelData* mdldata)
+{
+    u32 meshcount = mdldata->meshcount;
+
+    // Check that the model hasn't been initialized yet
+    if (mdldata->meshes[0].dl->guid[0] != 0xFFFFFFFF)
+        return;
+
+    // Enable the array client states so that the display list can be built
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    glEnableClientState(GL_NORMAL_ARRAY);
+    glEnableClientState(GL_COLOR_ARRAY);
+
+    // Generate the buffers, and then assign them to the vert+face arrays
+    for (u32 i=0; i<meshcount; i++)
+    {
+        s64Gfx* dl = mdldata->meshes[i].dl;
+        u32 facecount = 0, vertcount = 0;
+
+        // Count the number of faces
+        for (u32 j=0; j<dl->blockcount; j++)
+        {
+            vertcount += dl->renders[j].vertcount;
+            facecount += dl->renders[j].facecount;
+        }
+
+        // Generate the array buffers
+        glGenBuffersARB(2, &dl->guid[1]);
+        glBindBufferARB(GL_ARRAY_BUFFER_ARB, dl->guid[1]);
+        glBufferDataARB(GL_ARRAY_BUFFER_ARB, vertcount*sizeof(f32)*11, dl->renders[0].verts, GL_STATIC_DRAW_ARB);
+        glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER_ARB, dl->guid[2]);
+        glBufferDataARB(GL_ELEMENT_ARRAY_BUFFER_ARB, facecount*sizeof(u16)*3, dl->renders[0].faces, GL_STATIC_DRAW_ARB);
+
+        // Now generate the display list
+        dl->guid[0] = glGenLists(1);
+        glNewList(dl->guid[0], GL_COMPILE);
+        glBindBufferARB(GL_ARRAY_BUFFER_ARB, dl->guid[1]);
+        glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER_ARB, dl->guid[2]);
+        for (u32 j=0; j<dl->blockcount; j++)
+        {
+            s64RenderBlock* render = &dl->renders[j];
+            int fc = render->facecount;
+            if (render->material != NULL && render->material != s64_lastmat)
+                sausage64_loadmaterial(render->material);
+            glVertexPointer(3, GL_FLOAT, sizeof(f32)*11, (u8*)(0*sizeof(f32)));
+            glTexCoordPointer(2, GL_FLOAT, sizeof(f32)*11, (u8*)(3*sizeof(f32)));
+            glNormalPointer(GL_FLOAT, sizeof(f32)*11, (u8*)(5*sizeof(f32)));
+            glColorPointer(3, GL_FLOAT, sizeof(f32)*11, (u8*)(8*sizeof(f32)));
+            glDrawElements(GL_TRIANGLES, fc * 3, GL_UNSIGNED_SHORT, (u8*)(3*sizeof(u16)*(render->faces - dl->renders[0].faces)));
+        }
+        glEndList();
+    }
+    
+    // No need for this anymore
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisableClientState(GL_NORMAL_ARRAY);
+    glDisableClientState(GL_COLOR_ARRAY);
+    s64_lastmat = NULL;
+}
+
+void sausage64_unload_staticmodel(s64ModelData* mdldata)
+{
+    u32 meshcount = mdldata->meshcount;
+    for (u32 i=0; i<meshcount; i++)
+    {
+        s64Gfx* dl = mdldata->meshes[i].dl;
+        glDeleteBuffersARB(3, dl->guid);
+        dl->guid[0] = 0xFFFFFFFF;
+        dl->guid[1] = 0xFFFFFFFF;
+        dl->guid[2] = 0xFFFFFFFF;
+    }
+}
+
+
+/*********************************
        Sausage64 Functions
 *********************************/
 
@@ -452,7 +532,7 @@ s64ModelHelper* sausage64_inithelper(s64ModelData* mdldata)
         return NULL;
     }
 
-    // Allocate space for the model matrices (or GLBuffers in Libdragon's case)
+    // Allocate space for the model matrices in Libultra
     #ifndef LIBDRAGON
         mdl->matrix = (Mtx*)malloc(sizeof(Mtx)*1); // TODO: Handle frame buffering properly. Will require a better API
         if (mdl->matrix == NULL)
@@ -460,33 +540,6 @@ s64ModelHelper* sausage64_inithelper(s64ModelData* mdldata)
             free(mdl->transforms);
             free(mdl);
             return NULL;
-        }
-    #else
-        // If the GL buffers haven't been initialized
-        if (mdldata->glbuffers[0] == 0xFFFFFFFF)
-        {
-            int meshcount = mdldata->meshcount;
-
-            // Generate the buffers, and then loop through and assign them to the vert+face arrays
-            glGenBuffersARB(meshcount*2, mdldata->glbuffers);
-            for (int i=0; i<meshcount; i++)
-            {
-                s64Gfx* dl = mdldata->meshes[i].dl;
-                int facecount = 0, vertcount = 0;
-
-                // Count the number of faces
-                for (u32 j=0; j<dl->blockcount; j++)
-                {
-                    vertcount += dl->renders[j].vertcount;
-                    facecount += dl->renders[j].facecount;
-                }
-
-                // Generate the buffers
-                glBindBufferARB(GL_ARRAY_BUFFER_ARB, mdldata->glbuffers[i*2]);
-                glBufferDataARB(GL_ARRAY_BUFFER_ARB, vertcount*sizeof(f32)*11, dl->renders[0].verts, GL_STATIC_DRAW_ARB);
-                glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER_ARB, mdldata->glbuffers[i*2 + 1]);
-                glBufferDataARB(GL_ELEMENT_ARRAY_BUFFER_ARB, facecount*sizeof(u16)*3, dl->renders[0].faces, GL_STATIC_DRAW_ARB);
-            }
         }
     #endif
     return mdl;
@@ -1069,18 +1122,7 @@ void sausage64_lookat(s64ModelHelper* mdl, const u16 mesh, f32 dir[3], f32 amoun
         glMultMatrixf(&helper1[0][0]);
 
         // Draw the body part
-        for (u32 j=0; j<dl->blockcount; j++)
-        {
-            s64RenderBlock* render = &dl->renders[j];
-            int fc = render->facecount;
-            if (render->material != NULL && render->material != s64_lastmat)
-                sausage64_loadmaterial(render->material);
-            glVertexPointer(3, GL_FLOAT, sizeof(f32)*11, (u8*)(0*sizeof(f32)));
-            glTexCoordPointer(2, GL_FLOAT, sizeof(f32)*11, (u8*)(3*sizeof(f32)));
-            glNormalPointer(GL_FLOAT, sizeof(f32)*11, (u8*)(5*sizeof(f32)));
-            glColorPointer(3, GL_FLOAT, sizeof(f32)*11, (u8*)(8*sizeof(f32)));
-            glDrawElements(GL_TRIANGLES, fc * 3, GL_UNSIGNED_SHORT, (u8*)(3*sizeof(u16)*(render->faces - dl->renders[0].faces)));
-        }
+        glCallList(dl->guid[0]);
         glPopMatrix();
     }
 #endif
@@ -1160,7 +1202,9 @@ void sausage64_lookat(s64ModelHelper* mdl, const u16 mesh, f32 dir[3], f32 amoun
         
         // Iterate through each mesh
         for (i=0; i<mcount; i++)
-        {           
+        {
+            s64Gfx* dl = mdl->mdldata->meshes[i].dl;
+
             // Call the pre draw function
             if (mdl->predraw != NULL)
                 mdl->predraw(i);
@@ -1168,14 +1212,11 @@ void sausage64_lookat(s64ModelHelper* mdl, const u16 mesh, f32 dir[3], f32 amoun
             // Draw this part of the model
             if (anim != NULL)
             {
-                s64Gfx* dl = mdl->mdldata->meshes[i].dl;
                 sausage64_calcanimtransforms(mdl, i, l, bl);
-                glBindBufferARB(GL_ARRAY_BUFFER_ARB, mdata->glbuffers[i*2]);
-                glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER_ARB, mdata->glbuffers[i*2 + 1]);
                 sausage64_drawpart(dl, mdl, i);
             }
-            //else
-            //    gSPDisplayList((*glistp)++, mdata->meshes[i].dl);
+            else
+                glCallList(dl->guid[0]);
         
             // Call the post draw function
             if (mdl->postdraw != NULL)
@@ -1184,85 +1225,9 @@ void sausage64_lookat(s64ModelHelper* mdl, const u16 mesh, f32 dir[3], f32 amoun
 
         // Increment the render count for transform calculations
         mdl->rendercount++;
-        /*
-        u16 i;
-        const s64ModelData* mdata = mdl->mdldata;
-        const u16 mcount = mdata->meshcount;
-        const s64Animation* anim = mdl->curanim;
 
-        // Initialize OpenGL state
-        glEnableClientState(GL_VERTEX_ARRAY);
-        glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-        glEnableClientState(GL_NORMAL_ARRAY);
-        glEnableClientState(GL_COLOR_ARRAY);
-
-        // Increment the render count for transform calculations
-        mdl->rendercount++;
-
-        // If we have a valid animation
-        if (anim != NULL)
-        {
-            const s64KeyFrame* ckframe = &anim->keyframes[mdl->curkeyframe];
-            const s64KeyFrame* nkframe = &anim->keyframes[(mdl->curkeyframe+1)%anim->keyframecount];
-            f32 l = 0;
-
-            // Prevent division by zero when calculating the lerp amount
-            if (nkframe->framenumber - ckframe->framenumber != 0)
-                l = ((f32)(mdl->animtick - ckframe->framenumber))/((f32)(nkframe->framenumber - ckframe->framenumber));
-
-            // Iterate through each mesh
-            for (i=0; i<mcount; i++)
-            {
-                const s64Transform* cfdata = &ckframe->framedata[i];
-                const s64Transform* nfdata = &nkframe->framedata[i];
-
-                // Call the pre draw function
-                if (mdl->predraw != NULL)
-                    mdl->predraw(i);
-
-                // Draw this part of the model without animations
-                s64Gfx* dl = mdl->mdldata->meshes[i].dl;
-                glBindBufferARB(GL_ARRAY_BUFFER_ARB, mdata->glbuffers[i*2]);
-                glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER_ARB, mdata->glbuffers[i*2 + 1]);
-                sausage64_drawpart(dl, &mdata->meshes[i], cfdata, nfdata, mdl->interpolate, l);
-            }
-
-            // Call the post draw function
-            if (mdl->postdraw != NULL)
-                mdl->postdraw(i);
-        }
-        else
-        {
-            // Iterate through each mesh
-            for (i=0; i<mcount; i++)
-            {
-                // Call the pre draw function
-                if (mdl->predraw != NULL)
-                    mdl->predraw(i);
-
-                // Draw this part of the model without animations
-                s64Gfx* dl = mdl->mdldata->meshes[i].dl;
-                glBindBufferARB(GL_ARRAY_BUFFER_ARB, mdata->glbuffers[i*2]);
-                glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER_ARB, mdata->glbuffers[i*2 + 1]);
-                for (u32 j=0; j<dl->blockcount; j++)
-                {
-                    s64RenderBlock* render = &dl->renders[j];
-                    int fc = render->facecount;
-                    if (render->material != NULL && render->material != s64_lastmat)
-                        sausage64_loadmaterial(render->material);
-                    glVertexPointer(3, GL_FLOAT, sizeof(f32)*11, (u8*)(0*sizeof(f32)));
-                    glTexCoordPointer(2, GL_FLOAT, sizeof(f32)*11, (u8*)(3*sizeof(f32)));
-                    glNormalPointer(GL_FLOAT, sizeof(f32)*11, (u8*)(5*sizeof(f32)));
-                    glColorPointer(4, GL_UNSIGNED_BYTE, sizeof(f32)*11, (u8*)(8*sizeof(f32)));
-                    glDrawElements(GL_TRIANGLES, fc*3, GL_UNSIGNED_SHORT, (u8*)(3*sizeof(u16)*(render->faces - dl->renders[0].faces)));
-                }
-
-                // Call the post draw function
-                if (mdl->postdraw != NULL)
-                    mdl->postdraw(i);
-            }
-        }
-        */
+        // Remove the last material to prevent prevent the material state from getting stuck
+        s64_lastmat = NULL;
     }
 #endif
 

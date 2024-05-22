@@ -97,6 +97,7 @@
 
         typedef struct {
             u32 blockcount;
+            GLuint guid[3];
             s64RenderBlock* renders;
         } s64Gfx;
     #endif
@@ -135,9 +136,6 @@
         u16 animcount;
         s64Mesh* meshes;
         s64Animation* anims;
-        #ifdef LIBDRAGON
-            GLuint* glbuffers;
-        #endif
     } s64ModelData;
     
     typedef struct {
@@ -163,7 +161,16 @@
         f32 blendticks;
         f32 blendticks_left;
     } s64ModelHelper;
+
+
+    /*********************************
+              Model Loading
+    *********************************/
     
+    extern void sausage64_load_staticmodel(s64ModelData* mdldata);
+
+    extern void sausage64_unload_staticmodel(s64ModelData* mdldata);
+
     
     /*********************************
            Sausage64 Functions

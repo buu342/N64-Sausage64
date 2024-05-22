@@ -27,7 +27,6 @@ Program entrypoint.
 void setup_scene();
 void setup_catherine();
 void catherine_predraw(u16 part);
-void generate_texture(s64Texture* tex, GLuint* store, sprite_t* texture);
 void scene_tick();
 void scene_render();
 void catherine_lookat();
@@ -175,14 +174,14 @@ void setup_catherine()
         catherine_textures[i] = sprite_load(catherine_texture_paths[i]);
 
     // Generate the textures
-    generate_texture((s64Texture*)mat_BackTex.data, &BackTex, catherine_textures[0]);
-    generate_texture((s64Texture*)mat_BootTex.data, &BootTex, catherine_textures[1]);
-    generate_texture((s64Texture*)mat_ChestTex.data, &ChestTex, catherine_textures[2]);
-    generate_texture((s64Texture*)mat_KnifeSheatheTex.data, &KnifeSheatheTex, catherine_textures[3]);
-    generate_texture((s64Texture*)mat_PantsTex.data, &PantsTex, catherine_textures[4]);
-    generate_texture((s64Texture*)mat_CatherineFace.data, &FaceTex, catherine_textures[5]);
-    generate_texture((s64Texture*)mat_CatherineBlink1Face.data, &FaceBlink1Tex, catherine_textures[6]);
-    generate_texture((s64Texture*)mat_CatherineBlink2Face.data, &FaceBlink2Tex, catherine_textures[7]);
+    sausage64_load_texture((s64Texture*)mat_BackTex.data, &BackTex, catherine_textures[0]);
+    sausage64_load_texture((s64Texture*)mat_BootTex.data, &BootTex, catherine_textures[1]);
+    sausage64_load_texture((s64Texture*)mat_ChestTex.data, &ChestTex, catherine_textures[2]);
+    sausage64_load_texture((s64Texture*)mat_KnifeSheatheTex.data, &KnifeSheatheTex, catherine_textures[3]);
+    sausage64_load_texture((s64Texture*)mat_PantsTex.data, &PantsTex, catherine_textures[4]);
+    sausage64_load_texture((s64Texture*)mat_CatherineFace.data, &FaceTex, catherine_textures[5]);
+    sausage64_load_texture((s64Texture*)mat_CatherineBlink1Face.data, &FaceBlink1Tex, catherine_textures[6]);
+    sausage64_load_texture((s64Texture*)mat_CatherineBlink2Face.data, &FaceBlink2Tex, catherine_textures[7]);
 
     // Generate the model display list
     sausage64_load_staticmodel(MODEL_Catherine);
@@ -196,34 +195,6 @@ void setup_catherine()
     facemat = &mat_CatherineFace;
     facetick = 60;
     facetime = timer_ticks() + TIMER_TICKS(22222);
-}
-
-
-/*==============================
-    generate_texture
-    Generates a texture for OpenGL.
-    Since the s64Texture struct contains a bunch of information,
-    this function lets us create these textures with the correct
-    attributes automatically.
-    @param The Sausage64 texture
-    @param The GLuint to store the texture in
-    @param The texture data itself, in a sprite struct
-==============================*/
-
-void generate_texture(s64Texture* tex, GLuint* store, sprite_t* texture)
-{
-    // Create the texture buffer 
-    glGenTextures(1, store);
-    glBindTexture(GL_TEXTURE_2D, *store);
-
-    // Set the texture parameters
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, tex->wraps);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, tex->wrapt);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, tex->filter);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, tex->filter);
-
-    // Make the texture from the sprite
-    glSpriteTextureN64(GL_TEXTURE_2D, texture, NULL);
 }
 
 

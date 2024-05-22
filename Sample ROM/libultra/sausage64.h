@@ -2,7 +2,7 @@
 #define SAUSAGE64_H
 
     // UNCOMMENT THE #DEFINE IF USING LIBDRAGON
-    //#define LIBDRAGON
+    #define LIBDRAGON
     
     // World space assumptions
     #define S64_UPVEC {0.0f, 0.0f, 1.0f}
@@ -92,12 +92,12 @@
             u16 vertcount;
             u16 facecount;
             u16 (*faces)[3];
-            GLuint dl[3];
             s64Material* material;
         } s64RenderBlock;
 
         typedef struct {
             u32 blockcount;
+            GLuint guid[3];
             s64RenderBlock* renders;
         } s64Gfx;
     #endif
@@ -161,7 +161,58 @@
         f32 blendticks;
         f32 blendticks_left;
     } s64ModelHelper;
-    
+
+
+    /*********************************
+              Asset Loading
+    *********************************/
+
+    #ifdef LIBDRAGON
+        /*==============================
+            sausage64_load_texture
+            Generates a texture for OpenGL.
+            Since the s64Texture struct contains a bunch of information,
+            this function lets us create these textures with the correct
+            attributes automatically.
+            @param The Sausage64 texture
+            @param The GLuint to store the texture in
+            @param The texture data itself, in a sprite struct
+        ==============================*/
+
+        extern void sausage64_load_texture(s64Texture* tex, GLuint* store, sprite_t* texture);
+
+
+        /*==============================
+            sausage64_unload_texture
+            Unloads a texture created for OpenGL
+            @param The GLuint to delete
+        ==============================*/
+
+        extern void sausage64_unload_texture(GLuint* store);
+
+
+        /*==============================
+            sausage64_load_staticmodel
+            Generates the display lists for a
+            static OpenGL model
+            @param The pointer to the model data
+                   to generate
+        ==============================*/
+        
+        extern void sausage64_load_staticmodel(s64ModelData* mdldata);
+
+
+        /*==============================
+            sausage64_load_staticmodel
+            Frees the memory used by the display 
+            lists of a static OpenGL model
+            @param The pointer to the model data
+                   to free
+        ==============================*/
+
+        extern void sausage64_unload_staticmodel(s64ModelData* mdldata);
+    #endif
+
     
     /*********************************
            Sausage64 Functions

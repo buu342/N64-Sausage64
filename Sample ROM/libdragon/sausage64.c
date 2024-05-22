@@ -402,8 +402,56 @@ static inline void s64vec_rotate(f32 vec[3], s64Quat rot, f32 result[3])
 
 
 /*********************************
-     Model Loading Functions
+     Asset Loading Functions
 *********************************/
+
+/*==============================
+    sausage64_load_texture
+    Generates a texture for OpenGL.
+    Since the s64Texture struct contains a bunch of information,
+    this function lets us create these textures with the correct
+    attributes automatically.
+    @param The Sausage64 texture
+    @param The GLuint to store the texture in
+    @param The texture data itself, in a sprite struct
+==============================*/
+
+void sausage64_load_texture(s64Texture* tex, GLuint* store, sprite_t* texture)
+{
+    // Create the texture buffer 
+    glGenTextures(1, store);
+    glBindTexture(GL_TEXTURE_2D, *store);
+
+    // Set the texture parameters
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, tex->wraps);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, tex->wrapt);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, tex->filter);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, tex->filter);
+
+    // Make the texture from the sprite
+    glSpriteTextureN64(GL_TEXTURE_2D, texture, NULL);
+}
+
+
+/*==============================
+    sausage64_unload_texture
+    Unloads a texture created for OpenGL
+    @param The GLuint to delete
+==============================*/
+
+void sausage64_unload_texture(GLuint* store)
+{
+    glDeleteTextures(1, store);
+}
+
+
+/*==============================
+    sausage64_load_staticmodel
+    Generates the display lists for a
+    static OpenGL model
+    @param The pointer to the model data
+           to generate
+==============================*/
 
 void sausage64_load_staticmodel(s64ModelData* mdldata)
 {
@@ -466,6 +514,15 @@ void sausage64_load_staticmodel(s64ModelData* mdldata)
     glDisableClientState(GL_COLOR_ARRAY);
     s64_lastmat = NULL;
 }
+
+
+/*==============================
+    sausage64_load_staticmodel
+    Frees the memory used by the display 
+    lists of a static OpenGL model
+    @param The pointer to the model data
+           to free
+==============================*/
 
 void sausage64_unload_staticmodel(s64ModelData* mdldata)
 {

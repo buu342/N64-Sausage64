@@ -161,7 +161,6 @@ Main::Main() : wxFrame(nullptr, wxID_ANY, PROGRAM_NAME, wxPoint(0, 0), wxSize(64
     this->m_Panel_Bottom = new wxPanel(this->m_Splitter_Horizontal, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL);
 
     this->m_Sizer_Bottom = new wxBoxSizer(wxVERTICAL);
-    this->m_Sizer_Bottom_Mesh;
     this->m_Sizer_Bottom_Mesh = new wxBoxSizer(wxVERTICAL);
     this->m_CheckBox_Mesh_Billboard = new wxCheckBox(this->m_Panel_Bottom, wxID_ANY, wxT("Billboard"), wxDefaultPosition, wxDefaultSize, 0);
     this->m_Sizer_Bottom_Mesh->Add(this->m_CheckBox_Mesh_Billboard, 0, wxALL, 5);
@@ -556,6 +555,7 @@ void Main::m_MenuItem_ImportTextureOnMenuSelection(wxCommandEvent& event)
                 this->m_Sizer_Bottom_PrimCol_Setup->Show(false);
                 this->RefreshTextureImage();
                 break;
+            default: break;
         }
     }
 }
@@ -643,6 +643,7 @@ void Main::m_MenuItem_ExportTextureOnMenuSelection(wxCommandEvent& event)
                 else if (tex->cycle == "G_CYC_1CYCLE" && tex->combinemode1 != DEFAULT_COMBINE1_PRIM)
                     file.Write(" " + tex->combinemode1);
                 break;
+            default: break;
         }
 
         // Handle render modes

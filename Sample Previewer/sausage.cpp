@@ -162,6 +162,7 @@ bool s64Model::GenerateFromFile(std::string path)
                             this->m_anims.push_back(curanim);
                         }
                         break;
+                    default: break;
                 }
             }
             else if (!strcmp(strdata, "END")) // Handle End
@@ -280,6 +281,7 @@ bool s64Model::GenerateFromFile(std::string path)
                         curframedata->scale.y = (float)atof(strtok(NULL, " "));
                         curframedata->scale.z = (float)atof(strtok(NULL, " "));
                         break;
+                    default: break;
                 }
             }
 

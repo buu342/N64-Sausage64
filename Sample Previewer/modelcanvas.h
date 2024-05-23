@@ -7,7 +7,7 @@ typedef struct IUnknown IUnknown;
 #include <wx/wx.h>
 #include <wx/glcanvas.h>
 #include <wx/wxprec.h>
-#ifdef __DARWIN__
+#ifdef __APPLE__
     #include <OpenGL/glu.h>
 #else
     #include <GL/glu.h>

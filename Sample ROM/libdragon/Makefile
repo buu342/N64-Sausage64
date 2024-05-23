@@ -1,3 +1,4 @@
+ROM=sausage.z64
 BUILD_DIR=build
 include $(N64_INST)/include/n64.mk
 
@@ -8,21 +9,21 @@ assets_conv = $(addprefix filesystem/,$(notdir $(assets_png:%.png=%.sprite)))
 
 MKSPRITE_FLAGS ?=
 
-all: sausage.z64
+all: $(ROM)
 
 filesystem/%.sprite: assets/%.png
 	@mkdir -p $(dir $@)
 	@echo "    [SPRITE] $@"
 	@$(N64_MKSPRITE) -v -m BOX -o "$(dir $@)" "$<"
 
-$(BUILD_DIR)/sausage.dfs: $(assets_conv)
-$(BUILD_DIR)/sausage.elf: $(src:%.c=$(BUILD_DIR)/%.o)
+$(BUILD_DIR)/$(ROM:.z64=.dfs): $(assets_conv)
+$(BUILD_DIR)/$(ROM:.z64=.elf): $(src:%.c=$(BUILD_DIR)/%.o)
 
-sausage.z64: N64_ROM_TITLE="SAUSAGE64"
-sausage.z64: $(BUILD_DIR)/sausage.dfs
+$(ROM): N64_ROM_TITLE="SAUSAGE64"
+$(ROM): $(BUILD_DIR)/sausage.dfs
 
 clean:
-	rm -rf $(BUILD_DIR) sausage.z64
+	rm -rf $(BUILD_DIR) $(ROM)
 
 -include $(wildcard $(BUILD_DIR)/*.d)
 

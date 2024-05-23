@@ -57,7 +57,7 @@ jobs:
       echo Building wxWidgets
       mkdir build-cocoa
       cd build-cocoa
-      ../configure --with-opengl --disable-shared
+      ../configure --with-opengl --disable-shared --disable-sys-libs
       make -j$(nproc)
       sudo make install
       

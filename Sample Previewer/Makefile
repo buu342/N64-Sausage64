@@ -2,6 +2,7 @@ CODEFILES   = app.cpp main.cpp modelcanvas.cpp sausage.cpp sausage_animation.cpp
 BUILDDIR = build
 CODEOBJECTS = $(CODEFILES:%.cpp=${BUILDDIR}/%.o)
 PROGNAME = Chorizo
+OS_NAME := $(shell uname -s)
 
 # -------------------------------------------------------------------------
 # These are configurable options:

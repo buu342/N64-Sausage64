@@ -11,7 +11,10 @@ PROGNAME = Chorizo
 CXX = `$(WX_CONFIG) --cxx`
 
 # Standard flags for C++ 
-CXXFLAGS ?= 
+CXXFLAGS ?= -D LINUX
+ifeq ($(OS_NAME),Darwin)
+	CXXFLAGS += -D MACOS
+endif
 
 # Standard preprocessor flags (common for CC and CXX) 
 CPPFLAGS ?= 
@@ -41,12 +44,6 @@ WX_VERSION ?= $(shell $(WX_CONFIG) --query-version | sed -e 's/\([0-9]*\)\.\([0-
 # -------------------------------------------------------------------------
 
 ### Variables: ###
-ifeq ($(OS_NAME),Darwin)
-	DEPENDENCIES := CFLAGS = -D LINUX MACOS
-else
-	DEPENDENCIES := CFLAGS = -D LINUX 
-endif
-
 CPPDEPS = -MT$@ -MF`echo $@ | sed -e 's,\.o$$,.d,'` -MD -MP
 WX_VERSION_MAJOR = $(shell echo $(WX_VERSION) | cut -c1,1)
 WX_VERSION_MINOR = $(shell echo $(WX_VERSION) | cut -c2,2)

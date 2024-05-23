@@ -244,7 +244,7 @@ void construct_opengl()
         fprintf(fp, "static s64Gfx gfx_%s", global_modelname);
         if (ismultimesh)
             fprintf(fp, "_%s", mesh->name);
-        fprintf(fp, " = {%d, {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF}, ", list_vcacherender.size);
+        fprintf(fp, " = {%d, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, ", list_vcacherender.size);
         fprintf(fp, "renb_%s", global_modelname);
         if (ismultimesh)
             fprintf(fp, "_%s", mesh->name);

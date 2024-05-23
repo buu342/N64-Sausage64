@@ -135,7 +135,7 @@ static s64RenderBlock renb_Catherine_Bang[] = {
 	{&vtx_Catherine_Bang[0], 10, 16, &ind_Catherine_Bang[0], &mat_Hair},
 };
 
-static s64Gfx gfx_Catherine_Bang = {1, {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF}, renb_Catherine_Bang};
+static s64Gfx gfx_Catherine_Bang = {1, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, renb_Catherine_Bang};
 
 static f32 vtx_Catherine_Ponytail[][11] = {
     {-1.1657f, 11.2692f, 24.4052f, 0.0000f, 1.0000f, -0.3375f, -0.6345f, 0.6953f, 0.6863f, 0.1647f, 0.1725f}, /* 0 */
@@ -188,7 +188,7 @@ static s64RenderBlock renb_Catherine_Ponytail[] = {
 	{&vtx_Catherine_Ponytail[0], 18, 23, &ind_Catherine_Ponytail[0], &mat_Hair},
 };
 
-static s64Gfx gfx_Catherine_Ponytail = {1, {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF}, renb_Catherine_Ponytail};
+static s64Gfx gfx_Catherine_Ponytail = {1, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, renb_Catherine_Ponytail};
 
 static f32 vtx_Catherine_Head[][11] = {
     {2.6918f, -20.7175f, 12.9735f, 0.1719f, 0.5664f, 0.5604f, -0.8087f, -0.1787f, 1.0000f, 1.0000f, 1.0000f}, /* 0 */
@@ -420,7 +420,7 @@ static s64RenderBlock renb_Catherine_Head[] = {
 	{&vtx_Catherine_Head[71], 25, 24, &ind_Catherine_Head[98], &mat_Skin},
 };
 
-static s64Gfx gfx_Catherine_Head = {3, {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF}, renb_Catherine_Head};
+static s64Gfx gfx_Catherine_Head = {3, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, renb_Catherine_Head};
 
 static f32 vtx_Catherine_Chest[][11] = {
     {17.9007f, 2.5346f, -0.2814f, 0.9373f, 0.0632f, 0.8418f, -0.0072f, -0.5398f, 1.0000f, 1.0000f, 1.0000f}, /* 0 */
@@ -580,7 +580,7 @@ static s64RenderBlock renb_Catherine_Chest[] = {
 	{&vtx_Catherine_Chest[58], 10, 16, &ind_Catherine_Chest[62], &mat_Scabbard},
 };
 
-static s64Gfx gfx_Catherine_Chest = {3, {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF}, renb_Catherine_Chest};
+static s64Gfx gfx_Catherine_Chest = {3, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, renb_Catherine_Chest};
 
 static f32 vtx_Catherine_LeftArm[][11] = {
     {0.7303f, 7.6470f, -10.0746f, 0.0000f, 1.0000f, -0.5651f, 0.5000f, -0.6562f, 0.2353f, 0.2784f, 0.4667f}, /* 0 */
@@ -624,7 +624,7 @@ static s64RenderBlock renb_Catherine_LeftArm[] = {
 	{&vtx_Catherine_LeftArm[0], 12, 20, &ind_Catherine_LeftArm[0], &mat_Gambeson},
 };
 
-static s64Gfx gfx_Catherine_LeftArm = {1, {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF}, renb_Catherine_LeftArm};
+static s64Gfx gfx_Catherine_LeftArm = {1, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, renb_Catherine_LeftArm};
 
 static f32 vtx_Catherine_RightArm[][11] = {
     {-0.8652f, 7.6470f, -10.0746f, 0.0000f, 1.0000f, 0.5651f, 0.5000f, -0.6562f, 0.2353f, 0.2784f, 0.4667f}, /* 0 */
@@ -668,7 +668,7 @@ static s64RenderBlock renb_Catherine_RightArm[] = {
 	{&vtx_Catherine_RightArm[0], 12, 20, &ind_Catherine_RightArm[0], &mat_Gambeson},
 };
 
-static s64Gfx gfx_Catherine_RightArm = {1, {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF}, renb_Catherine_RightArm};
+static s64Gfx gfx_Catherine_RightArm = {1, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, renb_Catherine_RightArm};
 
 static f32 vtx_Catherine_LeftFemur[][11] = {
     {6.7951f, -5.0105f, -0.2984f, 0.4219f, 0.0000f, 0.5937f, -0.5497f, 0.5876f, 1.0000f, 1.0000f, 1.0000f}, /* 0 */
@@ -714,7 +714,7 @@ static s64RenderBlock renb_Catherine_LeftFemur[] = {
 	{&vtx_Catherine_LeftFemur[0], 22, 12, &ind_Catherine_LeftFemur[0], &mat_BootTex},
 };
 
-static s64Gfx gfx_Catherine_LeftFemur = {1, {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF}, renb_Catherine_LeftFemur};
+static s64Gfx gfx_Catherine_LeftFemur = {1, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, renb_Catherine_LeftFemur};
 
 static f32 vtx_Catherine_RightFemur[][11] = {
     {-7.8491f, -4.9829f, -0.2966f, 0.4219f, 0.0000f, -0.5937f, -0.5497f, 0.5876f, 1.0000f, 1.0000f, 1.0000f}, /* 0 */
@@ -760,7 +760,7 @@ static s64RenderBlock renb_Catherine_RightFemur[] = {
 	{&vtx_Catherine_RightFemur[0], 22, 12, &ind_Catherine_RightFemur[0], &mat_BootTex},
 };
 
-static s64Gfx gfx_Catherine_RightFemur = {1, {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF}, renb_Catherine_RightFemur};
+static s64Gfx gfx_Catherine_RightFemur = {1, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, renb_Catherine_RightFemur};
 
 static f32 vtx_Catherine_LeftFoot[][11] = {
     {8.2627f, 7.0237f, -12.1683f, 0.5469f, 0.0234f, 0.6364f, 0.5771f, -0.5117f, 1.0000f, 1.0000f, 1.0000f}, /* 0 */
@@ -832,7 +832,7 @@ static s64RenderBlock renb_Catherine_LeftFoot[] = {
 	{&vtx_Catherine_LeftFoot[6], 31, 18, &ind_Catherine_LeftFoot[4], &mat_PantsTex},
 };
 
-static s64Gfx gfx_Catherine_LeftFoot = {2, {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF}, renb_Catherine_LeftFoot};
+static s64Gfx gfx_Catherine_LeftFoot = {2, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, renb_Catherine_LeftFoot};
 
 static f32 vtx_Catherine_RightFoot[][11] = {
     {-9.3593f, 7.0236f, -12.1683f, 0.5469f, 0.0234f, -0.6364f, 0.5771f, -0.5117f, 1.0000f, 1.0000f, 1.0000f}, /* 0 */
@@ -904,7 +904,7 @@ static s64RenderBlock renb_Catherine_RightFoot[] = {
 	{&vtx_Catherine_RightFoot[6], 31, 18, &ind_Catherine_RightFoot[4], &mat_PantsTex},
 };
 
-static s64Gfx gfx_Catherine_RightFoot = {2, {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF}, renb_Catherine_RightFoot};
+static s64Gfx gfx_Catherine_RightFoot = {2, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, renb_Catherine_RightFoot};
 
 static f32 vtx_Catherine_LeftForearm[][11] = {
     {2.9502f, 5.1774f, -9.3968f, 0.0000f, 1.0000f, -0.3211f, 0.4781f, -0.8174f, 0.9804f, 0.8235f, 0.7216f}, /* 0 */
@@ -948,7 +948,7 @@ static s64RenderBlock renb_Catherine_LeftForearm[] = {
 	{&vtx_Catherine_LeftForearm[0], 12, 20, &ind_Catherine_LeftForearm[0], &mat_Skin},
 };
 
-static s64Gfx gfx_Catherine_LeftForearm = {1, {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF}, renb_Catherine_LeftForearm};
+static s64Gfx gfx_Catherine_LeftForearm = {1, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, renb_Catherine_LeftForearm};
 
 static f32 vtx_Catherine_LeftHand[][11] = {
     {13.7598f, -8.0875f, 6.2498f, 0.0000f, 1.0000f, 0.3304f, -0.7904f, 0.5158f, 0.9804f, 0.8235f, 0.7216f}, /* 0 */
@@ -989,7 +989,7 @@ static s64RenderBlock renb_Catherine_LeftHand[] = {
 	{&vtx_Catherine_LeftHand[0], 11, 18, &ind_Catherine_LeftHand[0], &mat_Skin},
 };
 
-static s64Gfx gfx_Catherine_LeftHand = {1, {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF}, renb_Catherine_LeftHand};
+static s64Gfx gfx_Catherine_LeftHand = {1, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, renb_Catherine_LeftHand};
 
 static f32 vtx_Catherine_RightForearm[][11] = {
     {-3.0720f, 3.9365f, -9.7258f, 0.0000f, 1.0000f, 0.3211f, 0.4781f, -0.8174f, 0.9804f, 0.8235f, 0.7216f}, /* 0 */
@@ -1033,7 +1033,7 @@ static s64RenderBlock renb_Catherine_RightForearm[] = {
 	{&vtx_Catherine_RightForearm[0], 12, 20, &ind_Catherine_RightForearm[0], &mat_Skin},
 };
 
-static s64Gfx gfx_Catherine_RightForearm = {1, {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF}, renb_Catherine_RightForearm};
+static s64Gfx gfx_Catherine_RightForearm = {1, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, renb_Catherine_RightForearm};
 
 static f32 vtx_Catherine_RightHand[][11] = {
     {-13.8968f, -8.0867f, 6.2479f, 0.0000f, 1.0000f, -0.3304f, -0.7904f, 0.5158f, 0.9804f, 0.8235f, 0.7216f}, /* 0 */
@@ -1074,7 +1074,7 @@ static s64RenderBlock renb_Catherine_RightHand[] = {
 	{&vtx_Catherine_RightHand[0], 11, 18, &ind_Catherine_RightHand[0], &mat_Skin},
 };
 
-static s64Gfx gfx_Catherine_RightHand = {1, {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF}, renb_Catherine_RightHand};
+static s64Gfx gfx_Catherine_RightHand = {1, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, renb_Catherine_RightHand};
 
 static f32 vtx_Catherine_LeftLeg[][11] = {
     {5.4649f, -5.5786f, -30.3701f, 0.0937f, 0.4219f, 0.6263f, -0.6412f, -0.4434f, 0.2588f, 0.2588f, 0.2588f}, /* 0 */
@@ -1124,7 +1124,7 @@ static s64RenderBlock renb_Catherine_LeftLeg[] = {
 	{&vtx_Catherine_LeftLeg[0], 14, 24, &ind_Catherine_LeftLeg[0], &mat_Pants},
 };
 
-static s64Gfx gfx_Catherine_LeftLeg = {1, {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF}, renb_Catherine_LeftLeg};
+static s64Gfx gfx_Catherine_LeftLeg = {1, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, renb_Catherine_LeftLeg};
 
 static f32 vtx_Catherine_RightLeg[][11] = {
     {-6.4518f, -5.5786f, -30.3701f, 0.0937f, 0.4219f, -0.6263f, -0.6412f, -0.4434f, 0.2588f, 0.2588f, 0.2588f}, /* 0 */
@@ -1174,7 +1174,7 @@ static s64RenderBlock renb_Catherine_RightLeg[] = {
 	{&vtx_Catherine_RightLeg[0], 14, 24, &ind_Catherine_RightLeg[0], &mat_Pants},
 };
 
-static s64Gfx gfx_Catherine_RightLeg = {1, {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF}, renb_Catherine_RightLeg};
+static s64Gfx gfx_Catherine_RightLeg = {1, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, renb_Catherine_RightLeg};
 
 static f32 vtx_Catherine_Pad[][11] = {
     {-0.4436f, 12.4652f, -6.0263f, 0.5000f, 0.5000f, 0.4444f, 0.8484f, -0.2876f, 0.6353f, 0.6353f, 0.6353f}, /* 0 */
@@ -1206,7 +1206,7 @@ static s64RenderBlock renb_Catherine_Pad[] = {
 	{&vtx_Catherine_Pad[0], 8, 12, &ind_Catherine_Pad[0], &mat_Armor},
 };
 
-static s64Gfx gfx_Catherine_Pad = {1, {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF}, renb_Catherine_Pad};
+static s64Gfx gfx_Catherine_Pad = {1, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, renb_Catherine_Pad};
 
 static f32 vtx_Catherine_Pelvis[][11] = {
     {20.4382f, -4.7077f, 8.1225f, -3.0000f, 1.0000f, 0.9999f, 0.0005f, 0.0131f, 1.0000f, 1.0000f, 1.0000f}, /* 0 */
@@ -1289,7 +1289,7 @@ static s64RenderBlock renb_Catherine_Pelvis[] = {
 	{&vtx_Catherine_Pelvis[4], 32, 32, &ind_Catherine_Pelvis[2], &mat_PantsTex},
 };
 
-static s64Gfx gfx_Catherine_Pelvis = {2, {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF}, renb_Catherine_Pelvis};
+static s64Gfx gfx_Catherine_Pelvis = {2, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, renb_Catherine_Pelvis};
 
 static f32 vtx_Catherine_Sword[][11] = {
     {5.7971f, -0.7427f, -2.9115f, 0.0000f, 1.0000f, 0.0482f, 0.9987f, 0.0139f, 0.6353f, 0.6353f, 0.6353f}, /* 0 */
@@ -1379,7 +1379,7 @@ static s64RenderBlock renb_Catherine_Sword[] = {
 	{&vtx_Catherine_Sword[13], 22, 30, &ind_Catherine_Sword[11], &mat_Hilt},
 };
 
-static s64Gfx gfx_Catherine_Sword = {3, {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF}, renb_Catherine_Sword};
+static s64Gfx gfx_Catherine_Sword = {3, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, renb_Catherine_Sword};
 
 
 /*********************************

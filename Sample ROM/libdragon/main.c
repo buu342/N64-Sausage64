@@ -174,14 +174,14 @@ void setup_catherine()
         catherine_textures[i] = sprite_load(catherine_texture_paths[i]);
 
     // Generate the textures
-    sausage64_load_texture((s64Texture*)mat_BackTex.data, &BackTex, catherine_textures[0]);
-    sausage64_load_texture((s64Texture*)mat_BootTex.data, &BootTex, catherine_textures[1]);
-    sausage64_load_texture((s64Texture*)mat_ChestTex.data, &ChestTex, catherine_textures[2]);
-    sausage64_load_texture((s64Texture*)mat_KnifeSheatheTex.data, &KnifeSheatheTex, catherine_textures[3]);
-    sausage64_load_texture((s64Texture*)mat_PantsTex.data, &PantsTex, catherine_textures[4]);
-    sausage64_load_texture((s64Texture*)mat_CatherineFace.data, &FaceTex, catherine_textures[5]);
-    sausage64_load_texture((s64Texture*)mat_CatherineBlink1Face.data, &FaceBlink1Tex, catherine_textures[6]);
-    sausage64_load_texture((s64Texture*)mat_CatherineBlink2Face.data, &FaceBlink2Tex, catherine_textures[7]);
+    sausage64_load_texture((s64Texture*)mat_BackTex.data, catherine_textures[0]);
+    sausage64_load_texture((s64Texture*)mat_BootTex.data, catherine_textures[1]);
+    sausage64_load_texture((s64Texture*)mat_ChestTex.data, catherine_textures[2]);
+    sausage64_load_texture((s64Texture*)mat_KnifeSheatheTex.data, catherine_textures[3]);
+    sausage64_load_texture((s64Texture*)mat_PantsTex.data, catherine_textures[4]);
+    sausage64_load_texture((s64Texture*)mat_CatherineFace.data, catherine_textures[5]);
+    sausage64_load_texture((s64Texture*)mat_CatherineBlink1Face.data, catherine_textures[6]);
+    sausage64_load_texture((s64Texture*)mat_CatherineBlink2Face.data, catherine_textures[7]);
 
     // Generate the model display list
     sausage64_load_staticmodel(MODEL_Catherine);

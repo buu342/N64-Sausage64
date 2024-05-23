@@ -138,17 +138,16 @@ void sausage64_freehelper(s64ModelHelper* helper);
     this function lets us create these textures with the correct
     attributes automatically.
     @param The Sausage64 texture
-    @param The GLuint to store the texture in
     @param The texture data itself, in a sprite struct
 ==============================*/
-void sausage64_load_texture(s64Texture* tex, GLuint* store, sprite_t* texture);
+void sausage64_load_texture(s64Texture* tex, sprite_t* texture);
 
 /*==============================
     sausage64_unload_texture
     Unloads a texture created for OpenGL
-    @param The GLuint to delete
+    @param The s64 texture to unload
 ==============================*/
-void sausage64_unload_texture(GLuint* store);
+void sausage64_unload_texture(s64Texture* tex);
 
 /*==============================
     sausage64_load_staticmodel

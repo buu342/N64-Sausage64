@@ -413,17 +413,16 @@ static inline void s64vec_rotate(f32 vec[3], s64Quat rot, f32 result[3])
     this function lets us create these textures with the correct
     attributes automatically.
     @param The Sausage64 texture
-    @param The GLuint to store the texture in
     @param The texture data itself, in a sprite struct
 ==============================*/
 
-void sausage64_load_texture(s64Texture* tex, GLuint* store, sprite_t* texture)
+void sausage64_load_texture(s64Texture* tex, sprite_t* texture)
 {
     int repeats = 0, repeatt = 0, mirrors = MIRROR_NONE, mirrort = MIRROR_NONE;
 
     // Create the texture buffer 
-    glGenTextures(1, store);
-    glBindTexture(GL_TEXTURE_2D, *store);
+    glGenTextures(1, tex->identifier);
+    glBindTexture(GL_TEXTURE_2D, *tex->identifier);
 
     // Set the texture parameters
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, tex->wraps);
@@ -454,12 +453,12 @@ void sausage64_load_texture(s64Texture* tex, GLuint* store, sprite_t* texture)
 /*==============================
     sausage64_unload_texture
     Unloads a texture created for OpenGL
-    @param The GLuint to delete
+    @param The s64 texture to unload
 ==============================*/
 
-void sausage64_unload_texture(GLuint* store)
+void sausage64_unload_texture(s64Texture* tex)
 {
-    glDeleteTextures(1, store);
+    glDeleteTextures(1, tex->identifier);
 }
 
 
@@ -476,7 +475,7 @@ void sausage64_load_staticmodel(s64ModelData* mdldata)
     u32 meshcount = mdldata->meshcount;
 
     // Check that the model hasn't been initialized yet
-    if (mdldata->meshes[0].dl->guid[0] != 0xFFFFFFFF)
+    if (mdldata->meshes[0].dl->guid_mdl != 0xFFFFFFFF)
         return;
 
     // Enable the array client states so that the display list can be built
@@ -499,17 +498,17 @@ void sausage64_load_staticmodel(s64ModelData* mdldata)
         }
 
         // Generate the array buffers
-        glGenBuffersARB(2, &dl->guid[1]);
-        glBindBufferARB(GL_ARRAY_BUFFER_ARB, dl->guid[1]);
+        glGenBuffersARB(2, &dl->guid_verts);
+        glBindBufferARB(GL_ARRAY_BUFFER_ARB, dl->guid_verts);
         glBufferDataARB(GL_ARRAY_BUFFER_ARB, vertcount*sizeof(f32)*11, dl->renders[0].verts, GL_STATIC_DRAW_ARB);
-        glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER_ARB, dl->guid[2]);
+        glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER_ARB, dl->guid_faces);
         glBufferDataARB(GL_ELEMENT_ARRAY_BUFFER_ARB, facecount*sizeof(u16)*3, dl->renders[0].faces, GL_STATIC_DRAW_ARB);
 
         // Now generate the display list
-        dl->guid[0] = glGenLists(1);
-        glNewList(dl->guid[0], GL_COMPILE);
-        glBindBufferARB(GL_ARRAY_BUFFER_ARB, dl->guid[1]);
-        glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER_ARB, dl->guid[2]);
+        dl->guid_mdl = glGenLists(1);
+        glNewList(dl->guid_mdl, GL_COMPILE);
+        glBindBufferARB(GL_ARRAY_BUFFER_ARB, dl->guid_verts);
+        glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER_ARB, dl->guid_faces);
         for (u32 j=0; j<dl->blockcount; j++)
         {
             s64RenderBlock* render = &dl->renders[j];
@@ -548,10 +547,12 @@ void sausage64_unload_staticmodel(s64ModelData* mdldata)
     for (u32 i=0; i<meshcount; i++)
     {
         s64Gfx* dl = mdldata->meshes[i].dl;
-        glDeleteBuffersARB(3, dl->guid);
-        dl->guid[0] = 0xFFFFFFFF;
-        dl->guid[1] = 0xFFFFFFFF;
-        dl->guid[2] = 0xFFFFFFFF;
+        glDeleteBuffersARB(1, &dl->guid_mdl);
+        glDeleteBuffersARB(1, &dl->guid_verts);
+        glDeleteBuffersARB(1, &dl->guid_faces);
+        dl->guid_mdl = 0xFFFFFFFF;
+        dl->guid_verts = 0xFFFFFFFF;
+        dl->guid_faces = 0xFFFFFFFF;
     }
 }
 
@@ -1197,7 +1198,7 @@ void sausage64_lookat(s64ModelHelper* mdl, const u16 mesh, f32 dir[3], f32 amoun
         glMultMatrixf(&helper1[0][0]);
 
         // Draw the body part
-        glCallList(dl->guid[0]);
+        glCallList(dl->guid_mdl);
         glPopMatrix();
     }
 #endif
@@ -1291,7 +1292,7 @@ void sausage64_lookat(s64ModelHelper* mdl, const u16 mesh, f32 dir[3], f32 amoun
                 sausage64_drawpart(dl, mdl, i);
             }
             else
-                glCallList(dl->guid[0]);
+                glCallList(dl->guid_mdl);
         
             // Call the post draw function
             if (mdl->postdraw != NULL)

@@ -97,7 +97,9 @@
 
         typedef struct {
             u32 blockcount;
-            GLuint guid[3];
+            GLuint guid_mdl;
+            GLuint guid_verts;
+            GLuint guid_faces;
             s64RenderBlock* renders;
         } s64Gfx;
     #endif
@@ -175,20 +177,19 @@
             this function lets us create these textures with the correct
             attributes automatically.
             @param The Sausage64 texture
-            @param The GLuint to store the texture in
             @param The texture data itself, in a sprite struct
         ==============================*/
 
-        extern void sausage64_load_texture(s64Texture* tex, GLuint* store, sprite_t* texture);
+        extern void sausage64_load_texture(s64Texture* tex, sprite_t* texture);
 
 
         /*==============================
             sausage64_unload_texture
             Unloads a texture created for OpenGL
-            @param The GLuint to delete
+            @param The s64 texture to unload
         ==============================*/
 
-        extern void sausage64_unload_texture(GLuint* store);
+        extern void sausage64_unload_texture(s64Texture* tex);
 
 
         /*==============================

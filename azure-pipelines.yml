@@ -103,7 +103,7 @@ jobs:
       echo Building wxWidgets
       mkdir gtk-build
       cd gtk-build
-      ../configure --with-opengl --disable-shared
+      ../configure --with-opengl --disable-shared --disable-sys-libs
       make -j$(nproc)
       sudo make install
       sudo ldconfig

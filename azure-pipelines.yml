@@ -108,6 +108,31 @@ jobs:
       publishLocation: 'Container' # Options: container, filePath
       parallel: true # Optional
       
+- job: Arabiki_MacOS
+  pool:
+    vmImage: 'macOS-latest'
+  steps:
+  - script: |
+      cd $BUILD_SOURCESDIRECTORY
+      
+      echo Build App
+      cd "./Sample Parser/"
+      make 
+    displayName: 'Build Program'
+    continueOnError: false
+
+  # Publish build artifacts to Azure Artifacts/TFS or a file share
+  - task: PublishBuildArtifacts@1
+    displayName: Publish Build Artifacts
+    inputs:
+      pathtoPublish: '$(Build.SourcesDirectory)/Sample Parser/build/arabiki64' 
+      #pathtoPublish: '$(Build.ArtifactStagingDirectory)'
+      artifactName: 'arabiki-macos' 
+      publishLocation: 'Container' # Options: container, filePath
+      #targetPath: # Required when publishLocation == FilePath
+      parallel: true # Optional
+      #parallelCount: # Optional
+      
 - job: Arabiki_Linux
   pool:
     vmImage: 'ubuntu-latest'

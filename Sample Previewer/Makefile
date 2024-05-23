@@ -21,7 +21,11 @@ endif
 CPPFLAGS ?= 
 
 # Standard linker flags 
-LDFLAGS ?= -lGL -lGLU
+ifeq ($(OS_NAME),Darwin)
+	LDFLAGS ?= -framework OpenGL
+else
+	LDFLAGS ?= -lGL -lGLU
+endif
 
 # Location and arguments of wx-config script 
 WX_CONFIG ?= wx-config

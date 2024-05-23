@@ -41,7 +41,12 @@ WX_VERSION ?= $(shell $(WX_CONFIG) --query-version | sed -e 's/\([0-9]*\)\.\([0-
 # -------------------------------------------------------------------------
 
 ### Variables: ###
-CFLAGS = -D LINUX 
+ifeq ($(OS_NAME),Darwin)
+	DEPENDENCIES := CFLAGS = -D LINUX MACOS
+else
+	DEPENDENCIES := CFLAGS = -D LINUX 
+endif
+
 CPPDEPS = -MT$@ -MF`echo $@ | sed -e 's,\.o$$,.d,'` -MD -MP
 WX_VERSION_MAJOR = $(shell echo $(WX_VERSION) | cut -c1,1)
 WX_VERSION_MINOR = $(shell echo $(WX_VERSION) | cut -c2,2)

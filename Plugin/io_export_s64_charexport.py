@@ -610,6 +610,13 @@ class ObjectExport(bpy.types.Operator):
         if (self.setting_onlyselected and skeletoncount > 0 and not skeletonList):
             self.report({'WARNING'}, 'No skeleton was exported with the selected options. Did you mean to do this?')
 
+        # Warn for unapplied transforms
+        if (not self.setting_applytransforms):
+            for v in list:
+                if (v.type == 'ARMATURE' or v.type == 'MESH'):
+                    if (not v.location == mathutils.Vector((0.0, 0.0, 0.0)) or not v.rotation_quaternion == mathutils.Quaternion((1.0, 0.0, 0.0, 0.0)) or not v.scale == mathutils.Vector((1.0, 1.0, 1.0))):
+                        self.report({'WARNING'}, 'Your model has unapplied transforms, these will not be exported! Select the object and apply all transforms.')
+
         # Next, organize the data further by splitting them into categories
         oldmodes = {}
         oldposes = {}

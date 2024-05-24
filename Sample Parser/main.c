@@ -35,11 +35,11 @@ linkedList list_textures = EMPTY_LINKEDLIST;
 // Program settings
 bool global_quiet = FALSE;
 bool global_fixroot = TRUE;
-bool global_binaryout = FALSE;
+bool global_binaryout = TRUE;
 bool global_initialload = TRUE;
 bool global_no2tri = FALSE;
 bool global_opengl = FALSE;
-char* global_outputname = "outdlist.h";
+char* global_outputname = "outdlist";
 char* global_modelname = "MyModel";
 unsigned int global_cachesize = 32;
 
@@ -67,14 +67,14 @@ int main(int argc, char* argv[])
         terminate(
             "Program arguments:\n"
             "\t-f <File>\tThe file to load\n"
-            //"\t-b \t\t(optional) Binary Display List\n" // TODO
+            "\t-s \t\t(optional) Export as C structs\n"
             "\t-t <File>\t(optional) A list of textures and their data\n"
             "\t-2 \t\t(optional) Disable 2Tri optimization (libultra only)\n"
             "\t-g \t\t(optional) Export an OpenGL compatible model instead\n"
             "\t-c <Int>\t(optional) Vertex cache size (default '32') (libultra only)\n"
             "\t-i \t\t(optional) Omit initial display list setup (libultra only)\n"
             "\t-n <Name>\t(optional) Model name (default 'MyModel')\n"
-            "\t-o <File>\t(optional) Output filename (default 'outdlist.h')\n"
+            "\t-o <File>\t(optional) Output filename (default 'outdlist')\n"
             "\t-q \t\t(optional) Quiet mode\n"
             "\t-r \t\t(optional) Don't add root to coordinates/translations\n"
         );
@@ -93,15 +93,16 @@ int main(int argc, char* argv[])
     // Optimize the model
     optimize_mdl();
     
-    // Construct a display list
-    if (!global_opengl)
-        construct_dl();
-    else
-        construct_opengl();
-    
     // Save our model data to a file
     if (!global_binaryout)
+    {
+        // Construct a display list
+        if (!global_opengl)
+            construct_dl();
+        else
+            construct_opengl();
         write_output_text();
+    }
     else
         write_output_binary();
     return 0;
@@ -178,7 +179,7 @@ static void parse_programargs(int argc, char* argv[])
                 case 'q':
                     global_quiet = !global_quiet;
                     break;
-                case 'b':
+                case 's':
                     global_binaryout = !global_binaryout;
                     break;
                 case 'i':

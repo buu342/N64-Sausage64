@@ -222,7 +222,7 @@ void construct_dl()
                     {
                         bool appendline = FALSE;
                     
-                        // TODO: Smartly omit display list commands based on what changed
+                        // TODO: Smartly omit geometry flags commands based on what changed
                         fprintf(fp, "    gsSPClearGeometryMode(0xFFFFFFFF),\n");
                         fprintf(fp, "    gsSPSetGeometryMode(");
                         for (i=0; i<MAXGEOFLAGS; i++)

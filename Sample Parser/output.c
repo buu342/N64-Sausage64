@@ -31,7 +31,8 @@ void write_output_text()
     char makestructs = (list_animations.size > 0 || list_meshes.size > 1);
 
     // Open the file
-    fp = fopen(global_outputname, "w+");
+    sprintf(strbuff, "%s.h", global_outputname);
+    fp = fopen(strbuff, "w+");
     if (fp == NULL)
         terminate("Error: Unable to open file for writing\n");
         
@@ -214,28 +215,29 @@ void write_output_text()
     }
     
     // Finish
-    if (!global_quiet) printf("Wrote output to '%s'\n", global_outputname);
+    if (!global_quiet) printf("Wrote output to '%s.h'\n", global_outputname);
     fclose(fp);
 }
 
 
 /*==============================
     write_output_binary
-    NOT IMPLEMENTED!
     Writes the output to a binary file.
 ==============================*/
 
 void write_output_binary()
 {
     FILE* fp;
+    char strbuff[STRBUF_SIZE];
     
     // Open the file
-    fp = fopen(global_outputname, "wb+");
+    sprintf(strbuff, "%s.bin", global_outputname);
+    fp = fopen(strbuff, "wb+");
     if (fp == NULL)
         terminate("Error: Unable to open file for writing\n");
     
     // TODO
         
-    if (!global_quiet) printf("Wrote output to '%s'", global_outputname);
+    if (!global_quiet) printf("Wrote output to '%s.bin' and '%s.h", global_outputname, global_outputname);
     fclose(fp);
 }

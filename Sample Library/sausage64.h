@@ -2,7 +2,7 @@
 #define SAUSAGE64_H
 
     // UNCOMMENT THE #DEFINE IF USING LIBDRAGON
-    #define LIBDRAGON
+    //#define LIBDRAGON
     
     // World space assumptions
     #define S64_UPVEC {0.0f, 0.0f, 1.0f}

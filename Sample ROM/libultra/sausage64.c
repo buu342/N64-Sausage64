@@ -12,7 +12,6 @@ https://github.com/buu342/Blender-Sausage64
 #endif
 #include <stdlib.h>
 #include <malloc.h>
-#include <rdpq_tex.h>
 
 
 /*********************************
@@ -406,156 +405,210 @@ static inline void s64vec_rotate(f32 vec[3], s64Quat rot, f32 result[3])
      Asset Loading Functions
 *********************************/
 
-/*==============================
-    sausage64_load_texture
-    Generates a texture for OpenGL.
-    Since the s64Texture struct contains a bunch of information,
-    this function lets us create these textures with the correct
-    attributes automatically.
-    @param The Sausage64 texture
-    @param The texture data itself, in a sprite struct
-==============================*/
+#ifdef LIBDRAGON
+    /*==============================
+        sausage64_load_texture
+        Generates a texture for OpenGL.
+        Since the s64Texture struct contains a bunch of information,
+        this function lets us create these textures with the correct
+        attributes automatically.
+        @param The Sausage64 texture
+        @param The texture data itself, in a sprite struct
+    ==============================*/
 
-void sausage64_load_texture(s64Texture* tex, sprite_t* texture)
-{
-    int repeats = 0, repeatt = 0, mirrors = MIRROR_NONE, mirrort = MIRROR_NONE;
-
-    // Create the texture buffer 
-    glGenTextures(1, tex->identifier);
-    glBindTexture(GL_TEXTURE_2D, *tex->identifier);
-
-    // Set the texture parameters
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, tex->wraps);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, tex->wrapt);
-
-    // Set the clamping values manually because SpriteTexture overrides TexParameter
-    switch (tex->wraps)
+    void sausage64_load_texture(s64Texture* tex, sprite_t* texture)
     {
-        case GL_MIRRORED_REPEAT_ARB: repeats = REPEAT_INFINITE; mirrors = MIRROR_REPEAT; break;
-        case GL_REPEAT: repeats = REPEAT_INFINITE; mirrors = MIRROR_NONE; break;
-    }
-    switch (tex->wrapt)
-    {
-        case GL_MIRRORED_REPEAT_ARB: repeatt = REPEAT_INFINITE; mirrort = MIRROR_REPEAT; break;
-        case GL_REPEAT: repeatt = REPEAT_INFINITE; mirrort = MIRROR_NONE; break;
-    }
+        int repeats = 0, repeatt = 0, mirrors = MIRROR_NONE, mirrort = MIRROR_NONE;
 
-    // Make the texture from the sprite
-    glSpriteTextureN64(GL_TEXTURE_2D, texture, &(rdpq_texparms_t){
-        .s.repeats = repeats, 
-        .s.mirror = mirrors, 
-        .t.repeats = repeatt,
-        .t.mirror = mirrort
-    });
-}
+        // Create the texture buffer 
+        glGenTextures(1, tex->identifier);
+        glBindTexture(GL_TEXTURE_2D, *tex->identifier);
 
+        // Set the texture parameters
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, tex->wraps);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, tex->wrapt);
 
-/*==============================
-    sausage64_unload_texture
-    Unloads a texture created for OpenGL
-    @param The s64 texture to unload
-==============================*/
-
-void sausage64_unload_texture(s64Texture* tex)
-{
-    glDeleteTextures(1, tex->identifier);
-}
-
-
-/*==============================
-    sausage64_load_staticmodel
-    Generates the display lists for a
-    static OpenGL model
-    @param The pointer to the model data
-           to generate
-==============================*/
-
-void sausage64_load_staticmodel(s64ModelData* mdldata)
-{
-    u32 meshcount = mdldata->meshcount;
-
-    // Check that the model hasn't been initialized yet
-    if (mdldata->meshes[0].dl->guid_mdl != 0xFFFFFFFF)
-        return;
-
-    // Enable the array client states so that the display list can be built
-    glEnableClientState(GL_VERTEX_ARRAY);
-    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-    glEnableClientState(GL_NORMAL_ARRAY);
-    glEnableClientState(GL_COLOR_ARRAY);
-
-    // Generate the buffers, and then assign them to the vert+face arrays
-    for (u32 i=0; i<meshcount; i++)
-    {
-        s64Gfx* dl = mdldata->meshes[i].dl;
-        u32 facecount = 0, vertcount = 0;
-
-        // Count the number of faces
-        for (u32 j=0; j<dl->blockcount; j++)
+        // Set the clamping values manually because SpriteTexture overrides TexParameter
+        switch (tex->wraps)
         {
-            vertcount += dl->renders[j].vertcount;
-            facecount += dl->renders[j].facecount;
+            case GL_MIRRORED_REPEAT_ARB: repeats = REPEAT_INFINITE; mirrors = MIRROR_REPEAT; break;
+            case GL_REPEAT: repeats = REPEAT_INFINITE; mirrors = MIRROR_NONE; break;
+        }
+        switch (tex->wrapt)
+        {
+            case GL_MIRRORED_REPEAT_ARB: repeatt = REPEAT_INFINITE; mirrort = MIRROR_REPEAT; break;
+            case GL_REPEAT: repeatt = REPEAT_INFINITE; mirrort = MIRROR_NONE; break;
         }
 
-        // Generate the array buffers
-        glGenBuffersARB(2, &dl->guid_verts);
-        glBindBufferARB(GL_ARRAY_BUFFER_ARB, dl->guid_verts);
-        glBufferDataARB(GL_ARRAY_BUFFER_ARB, vertcount*sizeof(f32)*11, dl->renders[0].verts, GL_STATIC_DRAW_ARB);
-        glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER_ARB, dl->guid_faces);
-        glBufferDataARB(GL_ELEMENT_ARRAY_BUFFER_ARB, facecount*sizeof(u16)*3, dl->renders[0].faces, GL_STATIC_DRAW_ARB);
+        // Make the texture from the sprite
+        glSpriteTextureN64(GL_TEXTURE_2D, texture, &(rdpq_texparms_t){
+            .s.repeats = repeats, 
+            .s.mirror = mirrors, 
+            .t.repeats = repeatt,
+            .t.mirror = mirrort
+        });
+    }
 
-        // Now generate the display list
-        dl->guid_mdl = glGenLists(1);
-        glNewList(dl->guid_mdl, GL_COMPILE);
-        glBindBufferARB(GL_ARRAY_BUFFER_ARB, dl->guid_verts);
-        glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER_ARB, dl->guid_faces);
-        for (u32 j=0; j<dl->blockcount; j++)
+
+    /*==============================
+        sausage64_unload_texture
+        Unloads a texture created for OpenGL
+        @param The s64 texture to unload
+    ==============================*/
+
+    void sausage64_unload_texture(s64Texture* tex)
+    {
+        glDeleteTextures(1, tex->identifier);
+    }
+
+
+    /*==============================
+        sausage64_load_staticmodel
+        Generates the display lists for a
+        static OpenGL model
+        @param The pointer to the model data
+               to generate
+    ==============================*/
+
+    void sausage64_load_staticmodel(s64ModelData* mdldata)
+    {
+        u32 meshcount = mdldata->meshcount;
+
+        // Check that the model hasn't been initialized yet
+        if (mdldata->meshes[0].dl->guid_mdl != 0xFFFFFFFF)
+            return;
+
+        // Enable the array client states so that the display list can be built
+        glEnableClientState(GL_VERTEX_ARRAY);
+        glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+        glEnableClientState(GL_NORMAL_ARRAY);
+        glEnableClientState(GL_COLOR_ARRAY);
+
+        // Generate the buffers, and then assign them to the vert+face arrays
+        for (u32 i=0; i<meshcount; i++)
         {
-            s64RenderBlock* render = &dl->renders[j];
-            int fc = render->facecount;
-            if (render->material != NULL && render->material != s64_lastmat)
-                sausage64_loadmaterial(render->material);
-            glVertexPointer(3, GL_FLOAT, sizeof(f32)*11, (u8*)(0*sizeof(f32)));
-            glTexCoordPointer(2, GL_FLOAT, sizeof(f32)*11, (u8*)(3*sizeof(f32)));
-            glNormalPointer(GL_FLOAT, sizeof(f32)*11, (u8*)(5*sizeof(f32)));
-            glColorPointer(3, GL_FLOAT, sizeof(f32)*11, (u8*)(8*sizeof(f32)));
-            glDrawElements(GL_TRIANGLES, fc * 3, GL_UNSIGNED_SHORT, (u8*)(3*sizeof(u16)*(render->faces - dl->renders[0].faces)));
+            s64Gfx* dl = mdldata->meshes[i].dl;
+            u32 facecount = 0, vertcount = 0;
+
+            // Count the number of faces
+            for (u32 j=0; j<dl->blockcount; j++)
+            {
+                vertcount += dl->renders[j].vertcount;
+                facecount += dl->renders[j].facecount;
+            }
+
+            // Generate the array buffers
+            glGenBuffersARB(2, &dl->guid_verts);
+            glBindBufferARB(GL_ARRAY_BUFFER_ARB, dl->guid_verts);
+            glBufferDataARB(GL_ARRAY_BUFFER_ARB, vertcount*sizeof(f32)*11, dl->renders[0].verts, GL_STATIC_DRAW_ARB);
+            glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER_ARB, dl->guid_faces);
+            glBufferDataARB(GL_ELEMENT_ARRAY_BUFFER_ARB, facecount*sizeof(u16)*3, dl->renders[0].faces, GL_STATIC_DRAW_ARB);
+
+            // Now generate the display list
+            dl->guid_mdl = glGenLists(1);
+            glNewList(dl->guid_mdl, GL_COMPILE);
+            glBindBufferARB(GL_ARRAY_BUFFER_ARB, dl->guid_verts);
+            glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER_ARB, dl->guid_faces);
+            for (u32 j=0; j<dl->blockcount; j++)
+            {
+                s64RenderBlock* render = &dl->renders[j];
+                int fc = render->facecount;
+                if (render->material != NULL && render->material != s64_lastmat)
+                    sausage64_loadmaterial(render->material);
+                glVertexPointer(3, GL_FLOAT, sizeof(f32)*11, (u8*)(0*sizeof(f32)));
+                glTexCoordPointer(2, GL_FLOAT, sizeof(f32)*11, (u8*)(3*sizeof(f32)));
+                glNormalPointer(GL_FLOAT, sizeof(f32)*11, (u8*)(5*sizeof(f32)));
+                glColorPointer(3, GL_FLOAT, sizeof(f32)*11, (u8*)(8*sizeof(f32)));
+                glDrawElements(GL_TRIANGLES, fc * 3, GL_UNSIGNED_SHORT, (u8*)(3*sizeof(u16)*(render->faces - dl->renders[0].faces)));
+            }
+            glEndList();
         }
-        glEndList();
+        
+        // No need for this anymore
+        glDisableClientState(GL_VERTEX_ARRAY);
+        glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+        glDisableClientState(GL_NORMAL_ARRAY);
+        glDisableClientState(GL_COLOR_ARRAY);
+        s64_lastmat = NULL;
+    }
+
+
+    /*==============================
+        sausage64_load_staticmodel
+        Frees the memory used by the display 
+        lists of a static OpenGL model
+        @param The pointer to the model data
+               to free
+    ==============================*/
+
+    void sausage64_unload_staticmodel(s64ModelData* mdldata)
+    {
+        u32 meshcount = mdldata->meshcount;
+        for (u32 i=0; i<meshcount; i++)
+        {
+            s64Gfx* dl = mdldata->meshes[i].dl;
+            glDeleteBuffersARB(1, &dl->guid_mdl);
+            glDeleteBuffersARB(1, &dl->guid_verts);
+            glDeleteBuffersARB(1, &dl->guid_faces);
+            dl->guid_mdl = 0xFFFFFFFF;
+            dl->guid_verts = 0xFFFFFFFF;
+            dl->guid_faces = 0xFFFFFFFF;
+        }
+    }
+#endif
+
+typedef struct {
+    u16 header;
+    u16 count_meshes;
+    u16 count_anims;
+    u16 count_texes;
+    u32 offset_meshes;
+    u32 offset_anims;
+    u32 offset_texes;
+} BinFile_Header;
+
+#include "debug.h"
+
+s64ModelData* sausage64_load_binarymodel(u32 romstart, u32 size)
+{
+    OSMesg   dmamsg;
+    OSIoMesg iomsg;
+    OSMesgQueue msgq;
+    u32 left = size;
+    BinFile_Header header;
+    u8* data;
+    
+    // Reserve some memory for the file we're about to read
+    data = (u8*)memalign(16, size);
+    if (data == NULL)
+        return NULL;
+        
+    // Initialize the message queue and invalidate the data cache
+    osCreateMesgQueue(&msgq, &dmamsg, 1);
+    osInvalDCache((void*)data, size);
+
+    // Read from ROM
+    while (left > 0)
+    {
+        u32 readsize = left;
+        
+        // Limit the size to prevent audio stutters
+        if (readsize > 16384)
+            readsize = 16384;
+            
+        // Perform the read
+        osPiStartDma(&iomsg, OS_MESG_PRI_NORMAL, OS_READ, romstart+(size-left), data, readsize, &msgq);
+        (void)osRecvMesg(&msgq, &dmamsg, OS_MESG_BLOCK);
+        left -= readsize;
     }
     
-    // No need for this anymore
-    glDisableClientState(GL_VERTEX_ARRAY);
-    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-    glDisableClientState(GL_NORMAL_ARRAY);
-    glDisableClientState(GL_COLOR_ARRAY);
-    s64_lastmat = NULL;
+    // Validate
+    debug_printf("%02x %02x %hd %hd %hd\n", *data, *(data+1), *((u16*)(data+2)), *((u16*)(data+4)), *((u16*)(data+6)));
+    memcpy(&header, data, sizeof(BinFile_Header));
+    debug_printf("%04x %hd %hd %hd\n", header.header, header.count_meshes, header.count_anims, header.count_texes);
+    
+    return NULL;
 }
-
-
-/*==============================
-    sausage64_load_staticmodel
-    Frees the memory used by the display 
-    lists of a static OpenGL model
-    @param The pointer to the model data
-           to free
-==============================*/
-
-void sausage64_unload_staticmodel(s64ModelData* mdldata)
-{
-    u32 meshcount = mdldata->meshcount;
-    for (u32 i=0; i<meshcount; i++)
-    {
-        s64Gfx* dl = mdldata->meshes[i].dl;
-        glDeleteBuffersARB(1, &dl->guid_mdl);
-        glDeleteBuffersARB(1, &dl->guid_verts);
-        glDeleteBuffersARB(1, &dl->guid_faces);
-        dl->guid_mdl = 0xFFFFFFFF;
-        dl->guid_verts = 0xFFFFFFFF;
-        dl->guid_faces = 0xFFFFFFFF;
-    }
-}
-
 
 /*********************************
        Sausage64 Functions

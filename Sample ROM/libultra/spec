@@ -16,6 +16,13 @@ beginseg
 	include "$(ROOT)/usr/lib/PR/gspS2DEX2.fifo.o"
 endseg
 
+beginseg
+    name    "catherine_binary"
+    flags   RAW
+    after   "code"
+    include "catherineMdl.bin"
+endseg
+
 beginwave
 	name "sausage"
 	include "code"

@@ -7,12 +7,34 @@ Outputs the parsed data to a file
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 #include "main.h"
 #include "texture.h"
 #include "mesh.h"
 #include "animation.h"
 
 #define STRBUF_SIZE 512
+
+typedef struct {
+    uint16_t header;
+    uint16_t count_meshes;
+    uint16_t count_anims;
+    uint16_t count_texes;
+    uint32_t offset_meshes;
+    uint32_t offset_anims;
+    uint32_t offset_texes;
+} BinFile_Header;
+
+typedef struct {
+    uint32_t offset;
+    uint32_t size;
+} BinFile_TOC;
+
+typedef struct {
+    uint32_t vertdata_start;
+    uint32_t vertdata_size;
+} BinFile_TOC_Meshes;
+
 
 /*==============================
     write_output_text
@@ -229,6 +251,7 @@ void write_output_binary()
 {
     FILE* fp;
     char strbuff[STRBUF_SIZE];
+    BinFile_Header header;
     
     // Open the file
     sprintf(strbuff, "%s.bin", global_outputname);
@@ -236,8 +259,16 @@ void write_output_binary()
     if (fp == NULL)
         terminate("Error: Unable to open file for writing\n");
     
-    // TODO
+    // Write the file header
+    header.header        = 0x7364;
+    header.count_meshes  = list_meshes.size;
+    header.count_anims   = list_animations.size;
+    header.count_texes   = list_textures.size;
+    header.offset_meshes = 0;
+    header.offset_anims  = 0;
+    header.offset_texes  = 0;
+    fwrite(&header, sizeof(BinFile_Header), 1, fp);
         
-    if (!global_quiet) printf("Wrote output to '%s.bin' and '%s.h", global_outputname, global_outputname);
+    if (!global_quiet) printf("Wrote output to '%s.bin' and '%s.h'\n", global_outputname, global_outputname);
     fclose(fp);
 }

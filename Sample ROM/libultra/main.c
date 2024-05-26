@@ -9,7 +9,7 @@ Program entrypoint.
 #include "config.h"
 #include "stages.h"
 #include "debug.h"
-#include "catherineMdl_Extern.h"
+#include "models/binary/catherineMdl_Extern.h"
 
 
 /*********************************
@@ -23,7 +23,7 @@ static void callback_vsync(int tasksleft);
 NUContData contdata[1];
 
 // Half a megabyte of heap memory
-char heapmem[1024*512];     
+char heapmem[1024*512];
 
 
 /*==============================
@@ -70,7 +70,7 @@ void mainproc(void)
     debug_assert(InitHeap(heapmem, sizeof(heapmem)) != -1);
     
     debug_printf("Hello\n");
-    sausage64_load_binarymodel((u32)_catherine_binarySegmentRomStart, (u32)(_catherine_binarySegmentRomEnd - _catherine_binarySegmentRomStart));
+    sausage64_load_binarymodel((u32)_catherine_binarySegmentRomStart, (u32)(_catherine_binarySegmentRomEnd - _catherine_binarySegmentRomStart), NULL);
     debug_printf("Done\n");
         
     // Initialize stage 0

@@ -569,7 +569,7 @@ typedef struct {
 
 #include "debug.h"
 
-s64ModelData* sausage64_load_binarymodel(u32 romstart, u32 size)
+s64ModelData* sausage64_load_binarymodel(u32 romstart, u32 size, u32** textures)
 {
     OSMesg   dmamsg;
     OSIoMesg iomsg;
@@ -603,10 +603,12 @@ s64ModelData* sausage64_load_binarymodel(u32 romstart, u32 size)
     }
     
     // Validate
-    debug_printf("%02x %02x %hd %hd %hd\n", *data, *(data+1), *((u16*)(data+2)), *((u16*)(data+4)), *((u16*)(data+6)));
+    debug_printf("%02x %02x %hu %hu %hu\n", *(data+2), *(data+3), *((u16*)(data+2)), *((u16*)(data+4)), *((u16*)(data+6)));
     memcpy(&header, data, sizeof(BinFile_Header));
-    debug_printf("%04x %hd %hd %hd\n", header.header, header.count_meshes, header.count_anims, header.count_texes);
+    debug_printf("%04x %hu %hu %hu\n", header.header, header.count_meshes, header.count_anims, header.count_texes);
     
+    // Finish
+    free(data);
     return NULL;
 }
 

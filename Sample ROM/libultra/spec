@@ -20,7 +20,7 @@ beginseg
     name    "catherine_binary"
     flags   RAW
     after   "code"
-    include "catherineMdl.bin"
+    include "models/binary/catherineMdl.bin"
 endseg
 
 beginwave

@@ -2,6 +2,6 @@
 #define catherineMdl_Extern_H
 
     extern u8 _catherine_binarySegmentRomStart[];
-    extern u8 _catherine_binarySegmentRomEnd[]; 
+    extern u8 _catherine_binarySegmentRomEnd[];
 
 #endif

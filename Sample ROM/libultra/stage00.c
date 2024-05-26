@@ -10,8 +10,8 @@ Handles the first level of the game.
 #include "helper.h"
 #include "sausage64.h"
 #include "axisMdl.h"
-#include "catherineTex.h"
-#include "catherineMdl.h"
+#include "models/static/catherineTex.h"
+#include "models/static/catherineMdl.h"
 #include "debug.h"
 
 

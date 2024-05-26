@@ -19,22 +19,68 @@ typedef struct {
     uint16_t header;
     uint16_t count_meshes;
     uint16_t count_anims;
-    uint16_t count_texes;
     uint32_t offset_meshes;
     uint32_t offset_anims;
-    uint32_t offset_texes;
-} BinFile_Header;
+} BinFile;
 
 typedef struct {
-    uint32_t offset;
-    uint32_t size;
-} BinFile_TOC;
-
-typedef struct {
-    uint32_t vertdata_start;
+    uint32_t meshdata_offset;
+    uint32_t meshdata_size;
+    uint32_t vertdata_offset;
     uint32_t vertdata_size;
+    uint32_t dldata_offset;
+    uint32_t dldata_size;
+    uint32_t dldata_slotcount;
 } BinFile_TOC_Meshes;
 
+typedef struct {
+    int16_t parent;
+    uint8_t is_billboard;
+    char*   name;
+} BinFile_MeshData;
+
+typedef struct {
+    int16_t  pos[3];
+    uint16_t pad;
+    int16_t  tex[2];
+    uint8_t  color[4];
+} BinFile_UltraVert;
+
+typedef struct {
+    float pos[3];
+    float tex[2];
+    float normal[3];
+    float color[3];
+} BinFile_DragonVert;
+
+uint16_t swap_endian16(uint16_t val);
+uint32_t swap_endian32(uint32_t val);
+
+
+/*==============================
+    swap_endian16
+    Swaps the endianess of the data (16-bit)
+    @param  The data to swap the endianess of
+    @return The data with endianess swapped
+==============================*/
+
+uint16_t swap_endian16(uint16_t val)
+{
+    return ((val << 8) & 0xFF00) | ((val >> 8) & 0x00FF);
+}
+
+
+/*==============================
+    swap_endian32
+    Swaps the endianess of the data (32-bit)
+    @param  The data to swap the endianess of
+    @return The data with endianess swapped
+==============================*/
+
+uint32_t swap_endian32(uint32_t val)
+{
+    return ((val << 24)) | ((val << 8) & 0x00FF0000) | ((val >> 8) & 0x0000FF00) | ((val >> 24));
+}
 
 /*==============================
     write_output_text
@@ -249,9 +295,13 @@ void write_output_text()
 
 void write_output_binary()
 {
+    int i;
     FILE* fp;
+    listNode* curnode;
     char strbuff[STRBUF_SIZE];
-    BinFile_Header header;
+    BinFile bin;
+    BinFile_TOC_Meshes* toc_meshes;
+    BinFile_MeshData* meshdatas;
     
     // Open the file
     sprintf(strbuff, "%s.bin", global_outputname);
@@ -259,15 +309,55 @@ void write_output_binary()
     if (fp == NULL)
         terminate("Error: Unable to open file for writing\n");
     
+    // Generate the file header
+    bin.header        = swap_endian16(0x5364);
+    bin.count_meshes  = swap_endian16(list_meshes.size);
+    bin.count_anims   = swap_endian16(list_animations.size);
+
+    // Malloc stuff
+    toc_meshes = (BinFile_TOC_Meshes*)malloc(sizeof(BinFile_TOC_Meshes)*list_meshes.size);
+    meshdatas = (BinFile_MeshData*)malloc(sizeof(BinFile_MeshData)*list_meshes.size);
+
+    // Generate the mesh data
+    i = 0;
+    for (curnode = list_meshes.head; curnode != NULL; curnode = curnode->next)
+    {
+        int parent = 0;
+        s64Mesh* mesh = (s64Mesh*)curnode->data;
+
+        // Find the parent mesh
+        if (mesh->parent != NULL)
+        {
+            listNode* pnode;
+            for (pnode = list_meshes.head; pnode != NULL; pnode = pnode->next)
+            {
+                s64Mesh* p = (s64Mesh*)pnode->data;
+                if (!strcmp(p->name, mesh->parent))
+                    break;
+                parent++;
+            }
+        }
+        else
+            parent = -1;
+
+        // Assign the meshdata
+        meshdatas[i].parent = parent;
+        meshdatas[i].is_billboard = has_property(mesh, "Billboard");
+        meshdatas[i].name = mesh->name;
+
+        // Update the mesh data size
+        toc_meshes[i].meshdata_size = sizeof(BinFile_MeshData) - sizeof(char*) + strlen(meshdatas[i].name)+1;
+
+        // Create the vert data
+
+        // Done
+        i++;
+    }
+
     // Write the file header
-    header.header        = 0x7364;
-    header.count_meshes  = list_meshes.size;
-    header.count_anims   = list_animations.size;
-    header.count_texes   = list_textures.size;
-    header.offset_meshes = 0;
-    header.offset_anims  = 0;
-    header.offset_texes  = 0;
-    fwrite(&header, sizeof(BinFile_Header), 1, fp);
+    bin.offset_meshes = swap_endian32(0);
+    bin.offset_anims  = swap_endian32(0);
+    fwrite(&bin, sizeof(BinFile), 1, fp);
         
     if (!global_quiet) printf("Wrote output to '%s.bin' and '%s.h'\n", global_outputname, global_outputname);
     fclose(fp);

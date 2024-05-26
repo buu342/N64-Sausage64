@@ -214,7 +214,7 @@
         extern void sausage64_unload_staticmodel(s64ModelData* mdldata);
     #endif
     
-    s64ModelData* sausage64_load_binarymodel(u32 romstart, u32 size);
+    s64ModelData* sausage64_load_binarymodel(u32 romstart, u32 size, u32** textures);
 
     
     /*********************************

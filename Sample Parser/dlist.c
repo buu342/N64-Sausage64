@@ -7,10 +7,12 @@ Constructs a display list string for outputting later.
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 #include <math.h>
 #include "main.h"
 #include "texture.h"
 #include "mesh.h"
+#include "dlist.h"
 
 
 /*********************************
@@ -18,6 +20,362 @@ Constructs a display list string for outputting later.
 *********************************/
 
 #define STRBUF_SIZE 512
+#define dlist_commandstring(c, ...) (_dlist_commandstring(c, commands_f3dex2[c].argcount, ##__VA_ARGS__))
+
+const DListCommand commands_f3dex2[] = {
+    {DPFillRectangle, "DPFillRectangle", 4, 1},
+    {DPScisFillRectangle, "DPScisFillRectangle", 4, 1},
+    {DPFullSync, "DPFullSync", 0, 1},
+    {DPLoadSync, "DPLoadSync", 0, 1},
+    {DPTileSync, "DPTileSync", 0, 1},
+    {DPPipeSync, "DPPipeSync", 0, 1},
+    {DPLoadTLUT_pal16, "DPLoadTLUT_pal16", 2, 6},
+    {DPLoadTLUT_pal256, "DPLoadTLUT_pal256", 1, 6},
+    {DPLoadTextureBlock, "DPLoadTextureBlock", 12, 7},
+    {DPLoadTextureBlock_4b, "DPLoadTextureBlock_4b", 11, 7},
+    {DPLoadTextureTile, "DPLoadTextureTile", 16, 7},
+    {DPLoadTextureTile_4b, "DPLoadTextureTile_4b", 15, 7},
+    {DPLoadBlock, "DPLoadBlock", 5, 1},
+    {DPNoOp, "DPNoOp", 0, 1},
+    {DPNoOpTag, "DPNoOpTag", 1, 1},
+    {DPPipelineMode, "DPPipelineMode", 1, 1},
+    {DPSetBlendColor, "DPSetBlendColor", 4, 1},
+    {DPSetEnvColor, "DPSetEnvColor", 4, 1},
+    {DPSetFillColor, "DPSetFillColor", 1, 1},
+    {DPSetFogColor, "DPSetFogColor", 4, 1},
+    {DPSetPrimColor, "DPSetPrimColor", 6, 1},
+    {DPSetColorImage, "DPSetColorImage", 4, 1},
+    {DPSetDepthImage, "DPSetDepthImage", 1, 1},
+    {DPSetTextureImage, "DPSetTextureImage", 4, 1},
+    {DPSetHilite1Tile, "DPSetHilite1Tile", 4, 1},
+    {DPSetHilite2Tile, "DPSetHilite2Tile", 4, 1},
+    {DPSetAlphaCompare, "DPSetAlphaCompare", 1, 1},
+    {DPSetAlphaDither, "DPSetAlphaDither", 1, 1},
+    {DPSetColorDither, "DPSetColorDither", 1, 1},
+    {DPSetCombineMode, "DPSetCombineMode", 2, 1},
+    {DPSetCombineLERP, "DPSetCombineLERP", 16, 1},
+    {DPSetConvert, "DPSetConvert", 6, 1},
+    {DPSetTextureConvert, "DPSetTextureConvert", 1, 1},
+    {DPSetCycleType, "DPSetCycleType", 1, 1},
+    {DPSetDepthSource, "DPSetDepthSource", 1, 1},
+    {DPSetCombineKey, "DPSetCombineKey", 1, 1},
+    {DPSetKeyGB, "DPSetKeyGB", 6, 1},
+    {DPSetKeyR, "DPSetKeyR", 3, 1},
+    {DPSetPrimDepth, "DPSetPrimDepth", 2, 1},
+    {DPSetRenderMode, "DPSetRenderMode", 2, 1},
+    {DPSetScissor, "DPSetScissor", 5, 1},
+    {DPSetTextureDetail, "DPSetTextureDetail", 1, 1},
+    {DPSetTextureFilter, "DPSetTextureFilter", 1, 1},
+    {DPSetTextureLOD, "DPSetTextureLOD", 1, 1},
+    {DPSetTextureLUT, "DPSetTextureLUT", 1, 1},
+    {DPSetTexturePersp, "DPSetTexturePersp", 1, 1},
+    {DPSetTile, "DPSetTile", 12, 1},
+    {DPSetTileSize, "DPSetTileSize", 5, 1},
+    {SP1Triangle, "SP1Triangle", 4, 1},
+    {SP2Triangles, "SP2Triangles", 8, 1},
+    {SPBranchLessZ, "SPBranchLessZ", 6, 2},
+    {SPBranchLessZrg, "SPBranchLessZrg", 8, 2},
+    {SPBranchList, "SPBranchList", 1, 1},
+    {SPClipRatio, "SPClipRatio", 1, 4},
+    {SPCullDisplayList, "SPCullDisplayList", 2, 1},
+    {SPDisplayList, "SPDisplayList", 1, 1},
+    {SPEndDisplayList, "SPEndDisplayList", 0, 1},
+    {SPFogPosition, "SPFogPosition", 2, 1},
+    {SPForceMatrix, "SPForceMatrix", 1, 2},
+    {SPSetGeometryMode, "SPSetGeometryMode", 1, 1},
+    {SPClearGeometryMode, "SPClearGeometryMode", 1, 1},
+    {SPInsertMatrix, "SPInsertMatrix", 2, 1},
+    {SPLine3D, "SPLine3D", 3, 1},
+    {SPLineW3D, "SPLineW3D", 4, 1},
+    {SPLoadUcode, "SPLoadUcode", 2, 2},
+    {SPLoadUcodeL, "SPLoadUcodeL", 1, 2},
+    {SPLookAt, "SPLookAt", 1, 2},
+    {SPMatrix, "SPMatrix", 2, 1},
+    {SPModifyVertex, "SPModifyVertex", 3, 1},
+    {SPPerspNormalize, "SPPerspNormalize", 1, 1},
+    {SPPopMatrix, "SPPopMatrix", 1, 1},
+    {SPSegment, "SPSegment", 2, 1},
+    {SPSetLights0, "SPSetLights0", 1, 3},
+    {SPSetLights1, "SPSetLights1", 1, 3},
+    {SPSetLights2, "SPSetLights2", 1, 4},
+    {SPSetLights3, "SPSetLights3", 1, 5},
+    {SPSetLights4, "SPSetLights4", 1, 6},
+    {SPSetLights5, "SPSetLights5", 1, 7},
+    {SPSetLights6, "SPSetLights6", 1, 8},
+    {SPSetLights7, "SPSetLights7", 1, 9},
+    {SPSetStatus, "SPSetStatus", 2, 1},
+    {SPNumLights, "SPNumLights", 1, 1},
+    {SPLight, "SPLight", 2, 1},
+    {SPLightColor, "SPLightColor", 2, 2},
+    {SPTexture, "SPTexture", 5, 1},
+    {SPTextureRectangle, "SPTextureRectangle", 9, 3},
+    {SPScisTextureRectangle, "SPScisTextureRectangle", 9, 3},
+    {SPTextureRectangleFlip, "SPTextureRectangleFlip", 9, 3},
+    {SPVertex, "SPVertex", 3, 1},
+    {SPViewport, "SPViewport", 1, 1},
+    {SPBgRectCopy, "SPBgRectCopy", 1, 1},
+    {SPBgRect1Cyc, "SPBgRect1Cyc", 1, 1},
+    {SPObjRectangle, "SPObjRectangle", 1, 1},
+    {SPObjRectangleR, "SPObjRectangleR", 1, 1},
+    {SPObjSprite, "SPObjSprite", 1, 1},
+    {SPObjMatrix, "SPObjMatrix", 1, 1},
+    {SPObjSubMatrix, "SPObjSubMatrix", 1, 1},
+    {SPObjRenderMode, "SPObjRenderMode", 1, 1},
+    {SPObjLoadTxtr, "SPObjLoadTxtr", 1, 1},
+    {SPObjLoadTxRect, "SPObjLoadTxRect", 1, 1},
+    {SPObjLoadTxRectR, "SPObjLoadTxRectR", 1, 1},
+    {SPObjLoadTxSprite, "SPObjLoadTxSprite", 1, 1},
+    {SPSelectDL, "SPSelectDL", 4, 2},
+    {SPSelectBranchDL, "SPSelectBranchDL", 4, 2},
+};
+
+char strbuff_cmd[STRBUF_SIZE];
+n64Texture* lastTexture = NULL;
+
+char* _dlist_commandstring(DListCName c, int size, ...)
+{
+    va_list args;
+    va_start(args, size);
+    sprintf(strbuff_cmd, "    gs%s(", commands_f3dex2[c].name);
+    for (int i=0; i<size; i++)
+    {
+        strcat(strbuff_cmd, va_arg(args, char*));
+        if (i+1 != size)
+            strcat(strbuff_cmd, ", ");
+    }
+    strcat(strbuff_cmd, "),\n");
+    va_end(args);
+    return strbuff_cmd;
+}
+
+char* dlist_frommesh(s64Mesh* mesh)
+{
+    char strbuff[STRBUF_SIZE];
+    char* dlstrbuff = (char*)calloc(sizeof(char)*1024*1024*10, 1); // 10 megabyte string buffer
+    bool ismultimesh = (list_meshes.size > 1);
+    int vertindex = 0;
+
+    for (listNode* vcachenode = mesh->vertcache.head; vcachenode != NULL; vcachenode = vcachenode->next)
+    {
+        vertCache* vcache = (vertCache*)vcachenode->data;
+        listNode* prevfacenode = vcache->faces.head;
+        bool loadedverts = FALSE;
+        
+        // Cycle through all the faces
+        for (listNode* facenode = vcache->faces.head; facenode != NULL; facenode = facenode->next)
+        {
+            s64Face* face = (s64Face*)facenode->data;
+            n64Texture* tex = face->texture;
+            
+            // If we want to skip the initial display list setup, then change the value of our last texture to skip the next if statement
+            if (lastTexture == NULL && !global_initialload)
+                lastTexture = tex;
+        
+            // If a texture change was detected, load the new texture data
+            if (lastTexture != tex && tex->type != TYPE_OMIT)
+            {
+                int i;
+                bool pipesync = FALSE;
+                bool changedgeo = FALSE;
+                
+                // Check for different cycle type
+                if (lastTexture == NULL || strcmp(tex->cycle, lastTexture->cycle) != 0)
+                {
+                    strcat(dlstrbuff, dlist_commandstring(DPSetCycleType, tex->cycle));
+                    pipesync = TRUE;
+                }
+                
+                // Check for different render mode
+                if (lastTexture == NULL || strcmp(tex->rendermode1, lastTexture->rendermode1) != 0 || strcmp(tex->rendermode2, lastTexture->rendermode2) != 0)
+                {
+                    strcat(dlstrbuff, dlist_commandstring(DPSetRenderMode, tex->rendermode1, tex->rendermode2));
+                    pipesync = TRUE;
+                }
+                
+                // Check for different combine mode
+                if (lastTexture == NULL || strcmp(tex->combinemode1, lastTexture->combinemode1) != 0 || strcmp(tex->combinemode2, lastTexture->combinemode2) != 0)
+                {
+                    strcat(dlstrbuff, dlist_commandstring(DPSetCombineMode, tex->combinemode1, tex->combinemode2));
+                    pipesync = TRUE;
+                }
+                
+                // Check for different texture filter
+                if (lastTexture == NULL || strcmp(tex->texfilter, lastTexture->texfilter) != 0)
+                {
+                    strcat(dlstrbuff, dlist_commandstring(DPSetTextureFilter, tex->texfilter));
+                    pipesync = TRUE;
+                }
+                
+                // Check for different geometry mode
+                if (lastTexture != NULL)
+                {
+                    int flagcount_old = 0;
+                    int flagcount_new = 0;
+                    char* flags_old[MAXGEOFLAGS];
+                    char* flags_new[MAXGEOFLAGS];
+
+                    // Store the pointer to the flags somewhere to make the iteration easier
+                    for (i=0; i<MAXGEOFLAGS; i++)
+                    {
+                        if (tex->geomode[i][0] != '\0')
+                        {
+                            flags_new[flagcount_new] = tex->geomode[i];
+                            flagcount_new++;
+                        }
+                        if (lastTexture->geomode[i][0] != '\0')
+                        {
+                            flags_old[flagcount_old] = lastTexture->geomode[i];
+                            flagcount_old++;
+                        }
+                    }
+
+                    // Check if all the flags exist in this other texture
+                    if (flagcount_new == flagcount_old)
+                    {
+                        int j;
+                        bool hasthisflag = FALSE;
+                        for (i=0; i<flagcount_new; i++)
+                        {
+                            for (j=0; j<flagcount_old; j++)
+                            {
+                                if (!strcmp(flags_new[i], flags_old[j]))
+                                {
+                                    hasthisflag = TRUE;
+                                    break;
+                                }
+                            }
+                            if (!hasthisflag)
+                            {
+                                changedgeo = TRUE;
+                                break;
+                            }
+                        }
+                    }
+                    else
+                        changedgeo = TRUE;
+                }
+                else
+                    changedgeo = TRUE;
+                    
+                // If a geometry mode flag changed, then update the display list
+                if (changedgeo)
+                {
+                    bool appendline = FALSE;
+                
+                    // TODO: Smartly omit geometry flags commands based on what changed
+                    strcat(dlstrbuff, dlist_commandstring(SPClearGeometryMode, "0xFFFFFFFF"));
+                    strbuff[0] = '\0';
+                    for (i=0; i<MAXGEOFLAGS; i++)
+                    {
+                        if (tex->geomode[i][0] == '\0')
+                            continue;
+                        if (appendline)
+                        {
+                            strcat(strbuff, " | ");
+                            appendline = FALSE;
+                        }
+                        strcat(strbuff, tex->geomode[i]);
+                        appendline = TRUE;
+                    }
+                    strcat(dlstrbuff, dlist_commandstring(SPSetGeometryMode, strbuff));
+                }
+                
+                // Load the texture if it wasn't marked as DONTLOAD
+                if (!tex->dontload)
+                {
+                    char d1[32], d2[32], d3[32], d4[32];
+                    if (tex->type == TYPE_TEXTURE)
+                    {
+                        sprintf(d1, "%d", tex->data.image.w);
+                        sprintf(d2, "%d", tex->data.image.h);
+                        sprintf(d3, "%d", nearest_pow2(tex->data.image.w));
+                        sprintf(d4, "%d", nearest_pow2(tex->data.image.h));
+                        if (!strcmp(tex->data.image.colsize, "G_IM_SIZ_4b"))
+                        {
+                            strcat(dlstrbuff, dlist_commandstring(DPLoadTextureBlock_4b, 
+                                tex->name, tex->data.image.coltype, d1, d2, "0",
+                                tex->data.image.texmodes, tex->data.image.texmodet, d3, d4, "G_TX_NOLOD", "G_TX_NOLOD")
+                            );
+                        }
+                        else
+                        {
+                            strcat(dlstrbuff, dlist_commandstring(DPLoadTextureBlock, 
+                                tex->name, tex->data.image.coltype, tex->data.image.colsize, d1, d2, "0",
+                                tex->data.image.texmodes, tex->data.image.texmodet, d3, d4, "G_TX_NOLOD", "G_TX_NOLOD")
+                            );
+                        }
+                        pipesync = TRUE;
+                    }
+                    else if (tex->type == TYPE_PRIMCOL)
+                    {
+                        sprintf(d1, "%d", tex->data.color.r);
+                        sprintf(d2, "%d", tex->data.color.g);
+                        sprintf(d3, "%d", tex->data.color.b);
+                        strcat(dlstrbuff, dlist_commandstring(DPSetPrimColor, "0", "0", d1, d2, d3, "255"));
+                    }
+                }
+                
+                // Call a pipesync if needed
+                if (pipesync)
+                    strcat(dlstrbuff, dlist_commandstring(DPPipeSync));
+
+                // Update the last texture
+                lastTexture = tex;
+            }
+
+            // Load a new vertex block if it hasn't been
+            if (!loadedverts)
+            {
+                char d2[32];
+                sprintf(strbuff, "vtx_%s", global_modelname);
+                if (ismultimesh)
+                {
+                    strcat(strbuff, "_");
+                    strcat(strbuff, mesh->name);
+                }
+                strcat(strbuff, "+");
+                sprintf(d2, "%d", vertindex);
+                strcat(strbuff, d2);
+                sprintf(d2, "%d", vcache->verts.size);
+                strcat(dlstrbuff, dlist_commandstring(SPVertex, strbuff, d2, "0"));
+                vertindex += vcache->verts.size;
+                loadedverts = TRUE;
+            }
+            
+            // If we can, dump a 2Tri, otherwise dump a single triangle
+            if (!global_no2tri && facenode->next != NULL && ((s64Face*)facenode->next->data)->texture == lastTexture)
+            {
+                char d1[32], d2[32], d3[32], d4[32], d5[32], d6[32];
+                s64Face* prevface = face;
+                facenode = facenode->next;
+                face = (s64Face*)facenode->data;
+                sprintf(d1, "%d", list_index_from_data(&vcache->verts, prevface->verts[0]));
+                sprintf(d2, "%d", list_index_from_data(&vcache->verts, prevface->verts[1]));
+                sprintf(d3, "%d", list_index_from_data(&vcache->verts, prevface->verts[2]));
+                sprintf(d4, "%d", list_index_from_data(&vcache->verts, face->verts[0]));
+                sprintf(d5, "%d", list_index_from_data(&vcache->verts, face->verts[1]));
+                sprintf(d6, "%d", list_index_from_data(&vcache->verts, face->verts[2]));
+                strcat(dlstrbuff, dlist_commandstring(SP2Triangles, d1, d2, d3, "0", d4, d5, d6, "0"));
+            }
+            else
+            {
+                char d1[32], d2[32], d3[32];
+                sprintf(d1, "%d", list_index_from_data(&vcache->verts, face->verts[0]));
+                sprintf(d2, "%d", list_index_from_data(&vcache->verts, face->verts[1]));
+                sprintf(d3, "%d", list_index_from_data(&vcache->verts, face->verts[2]));
+                strcat(dlstrbuff, dlist_commandstring(SP1Triangle, d1, d2, d3, "0"));
+            }
+
+            prevfacenode = facenode;
+        }
+        
+        // Newline if we have another vertex block to load
+        if (vcachenode->next != NULL)
+            strcat(dlstrbuff, "\n");
+    }
+    strcat(dlstrbuff, dlist_commandstring(SPEndDisplayList));
+    return dlstrbuff;
+}
 
 
 /*==============================
@@ -29,8 +387,8 @@ Constructs a display list string for outputting later.
 void construct_dl()
 {
     FILE* fp;
+    char* dl;
     char strbuff[STRBUF_SIZE];
-    n64Texture* lastTexture = NULL;
     bool ismultimesh = (list_meshes.size > 1);
     
     // Open a temp file to write our display list to
@@ -114,206 +472,10 @@ void construct_dl()
         if (ismultimesh)
             fprintf(fp, "_%s", mesh->name);
         fprintf(fp, "[] = {\n");
-        vertindex = 0;
-        for (listNode* vcachenode = mesh->vertcache.head; vcachenode != NULL; vcachenode = vcachenode->next)
-        {
-            vertCache* vcache = (vertCache*)vcachenode->data;
-            listNode* prevfacenode = vcache->faces.head;
-            bool loadedverts = FALSE;
-            
-            // Cycle through all the faces
-            for (listNode* facenode = vcache->faces.head; facenode != NULL; facenode = facenode->next)
-            {
-                s64Face* face = (s64Face*)facenode->data;
-                n64Texture* tex = face->texture;
-                
-                // If we want to skip the initial display list setup, then change the value of our last texture to skip the next if statement
-                if (lastTexture == NULL && !global_initialload)
-                    lastTexture = tex;
-            
-                // If a texture change was detected, load the new texture data
-                if (lastTexture != tex && tex->type != TYPE_OMIT)
-                {
-                    int i;
-                    bool pipesync = FALSE;
-                    bool changedgeo = FALSE;
-                    
-                    // Check for different cycle type
-                    if (lastTexture == NULL || strcmp(tex->cycle, lastTexture->cycle) != 0)
-                    {
-                        fprintf(fp, "    gsDPSetCycleType(%s),\n", tex->cycle);
-                        pipesync = TRUE;
-                    }
-                    
-                    // Check for different render mode
-                    if (lastTexture == NULL || strcmp(tex->rendermode1, lastTexture->rendermode1) != 0 || strcmp(tex->rendermode2, lastTexture->rendermode2) != 0)
-                    {
-                        fprintf(fp, "    gsDPSetRenderMode(%s, %s),\n", tex->rendermode1, tex->rendermode2);
-                        pipesync = TRUE;
-                    }
-                    
-                    // Check for different combine mode
-                    if (lastTexture == NULL || strcmp(tex->combinemode1, lastTexture->combinemode1) != 0 || strcmp(tex->combinemode2, lastTexture->combinemode2) != 0)
-                    {
-                        fprintf(fp, "    gsDPSetCombineMode(%s, %s),\n", tex->combinemode1, tex->combinemode2);
-                        pipesync = TRUE;
-                    }
-                    
-                    // Check for different texture filter
-                    if (lastTexture == NULL || strcmp(tex->texfilter, lastTexture->texfilter) != 0)
-                    {
-                        fprintf(fp, "    gsDPSetTextureFilter(%s),\n", tex->texfilter);
-                        pipesync = TRUE;
-                    }
-                    
-                    // Check for different geometry mode
-                    if (lastTexture != NULL)
-                    {
-                        int flagcount_old = 0;
-                        int flagcount_new = 0;
-                        char* flags_old[MAXGEOFLAGS];
-                        char* flags_new[MAXGEOFLAGS];
-
-                        // Store the pointer to the flags somewhere to make the iteration easier
-                        for (i=0; i<MAXGEOFLAGS; i++)
-                        {
-                            if (tex->geomode[i][0] != '\0')
-                            {
-                                flags_new[flagcount_new] = tex->geomode[i];
-                                flagcount_new++;
-                            }
-                            if (lastTexture->geomode[i][0] != '\0')
-                            {
-                                flags_old[flagcount_old] = lastTexture->geomode[i];
-                                flagcount_old++;
-                            }
-                        }
-
-                        // Check if all the flags exist in this other texture
-                        if (flagcount_new == flagcount_old)
-                        {
-                            int j;
-                            bool hasthisflag = FALSE;
-                            for (i=0; i<flagcount_new; i++)
-                            {
-                                for (j=0; j<flagcount_old; j++)
-                                {
-                                    if (!strcmp(flags_new[i], flags_old[j]))
-                                    {
-                                        hasthisflag = TRUE;
-                                        break;
-                                    }
-                                }
-                                if (!hasthisflag)
-                                {
-                                    changedgeo = TRUE;
-                                    break;
-                                }
-                            }
-                        }
-                        else
-                            changedgeo = TRUE;
-                    }
-                    else
-                        changedgeo = TRUE;
-                        
-                    // If a geometry mode flag changed, then update the display list
-                    if (changedgeo)
-                    {
-                        bool appendline = FALSE;
-                    
-                        // TODO: Smartly omit geometry flags commands based on what changed
-                        fprintf(fp, "    gsSPClearGeometryMode(0xFFFFFFFF),\n");
-                        fprintf(fp, "    gsSPSetGeometryMode(");
-                        for (i=0; i<MAXGEOFLAGS; i++)
-                        {
-                            if (tex->geomode[i][0] == '\0')
-                                continue;
-                            if (appendline)
-                            {
-                                fprintf(fp, " | ");
-                                appendline = FALSE;
-                            }
-                            fprintf(fp, "%s", tex->geomode[i]);
-                            appendline = TRUE;
-                        }
-                        fprintf(fp, "),\n");
-                    }
-                    
-                    // Load the texture if it wasn't marked as DONTLOAD
-                    if (!tex->dontload)
-                    {
-                        if (tex->type == TYPE_TEXTURE)
-                        {
-                            if (!strcmp(tex->data.image.colsize, "G_IM_SIZ_4b"))
-                            {
-                                fprintf(fp, "    gsDPLoadTextureBlock_4b(%s, %s, %d, %d, 0, %s, %s, %d, %d, G_TX_NOLOD, G_TX_NOLOD),\n",
-                                    tex->name, tex->data.image.coltype, tex->data.image.w, tex->data.image.h, 
-                                    tex->data.image.texmodes, tex->data.image.texmodet, nearest_pow2(tex->data.image.w), nearest_pow2(tex->data.image.h)
-                                );
-                            }
-                            else
-                            {
-                                fprintf(fp, "    gsDPLoadTextureBlock(%s, %s, %s, %d, %d, 0, %s, %s, %d, %d, G_TX_NOLOD, G_TX_NOLOD),\n",
-                                    tex->name, tex->data.image.coltype, tex->data.image.colsize, tex->data.image.w, tex->data.image.h, 
-                                    tex->data.image.texmodes, tex->data.image.texmodet, nearest_pow2(tex->data.image.w), nearest_pow2(tex->data.image.h)
-                                );
-                            }
-                            pipesync = TRUE;
-                        }
-                        else if (tex->type == TYPE_PRIMCOL)
-                            fprintf(fp, "    gsDPSetPrimColor(0, 0, %d, %d, %d, 255),\n", tex->data.color.r, tex->data.color.g, tex->data.color.b);
-                    }
-                    
-                    // Call a pipesync if needed
-                    if (pipesync)
-                        fprintf(fp, "    gsDPPipeSync(),\n");
-
-                    // Update the last texture
-                    lastTexture = tex;
-                }
-
-                // Load a new vertex block if iut hasn't been
-                if (!loadedverts)
-                {
-                    fprintf(fp, "    gsSPVertex(vtx_%s", global_modelname);
-                    if (ismultimesh)
-                        fprintf(fp, "_%s", mesh->name);
-                    fprintf(fp, "+%d, %d, 0),\n", vertindex, vcache->verts.size);
-                    vertindex += vcache->verts.size;
-                    loadedverts = TRUE;
-                }
-                
-                // If we can, dump a 2Tri, otherwise dump a single triangle
-                if (!global_no2tri && facenode->next != NULL && ((s64Face*)facenode->next->data)->texture == lastTexture)
-                {
-                    s64Face* prevface = face;
-                    facenode = facenode->next;
-                    face = (s64Face*)facenode->data;
-                    fprintf(fp, "    gsSP2Triangles(%d, %d, %d, 0, %d, %d, %d, 0),\n", 
-                        list_index_from_data(&vcache->verts, prevface->verts[0]), 
-                        list_index_from_data(&vcache->verts, prevface->verts[1]), 
-                        list_index_from_data(&vcache->verts, prevface->verts[2]), 
-                        list_index_from_data(&vcache->verts, face->verts[0]), 
-                        list_index_from_data(&vcache->verts, face->verts[1]), 
-                        list_index_from_data(&vcache->verts, face->verts[2])
-                    );
-                }
-                else
-                    fprintf(fp, "    gsSP1Triangle(%d, %d, %d, 0),\n", 
-                        list_index_from_data(&vcache->verts, face->verts[0]), 
-                        list_index_from_data(&vcache->verts, face->verts[1]), 
-                        list_index_from_data(&vcache->verts, face->verts[2])
-                    );
-
-                prevfacenode = facenode;
-            }
-            
-            // Newline if we have another vertex block to load
-            if (vcachenode->next != NULL)
-                fprintf(fp, "\n");
-        }
-        fprintf(fp, "    gsSPEndDisplayList(),\n};\n\n");
+        dl = dlist_frommesh(mesh);
+        fprintf(fp, "%s", dl);
+        free(dl);
+        fprintf(fp, "};\n\n");
     }
     
     // State we finished

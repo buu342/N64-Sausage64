@@ -734,6 +734,7 @@ static void optimize_textureloads()
     // Solve the traveling salesman problem
     // Using nearest neighbor because I'm lazy
     // TODO: Use a better algorithm to make this even more optimized
+    // TODO: Texture loads take up more DL commands, prefer avoiding those than primcol
     for (int i=0; i<nodecount; i++)
     {
         int pathindex = 0;

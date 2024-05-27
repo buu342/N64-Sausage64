@@ -43,7 +43,7 @@ typedef struct {
     int16_t  pos[3];
     uint16_t pad;
     int16_t  tex[2];
-    uint8_t  color[4];
+    uint8_t  colornormal[4];
 } BinFile_UltraVert;
 
 typedef struct {
@@ -302,6 +302,7 @@ void write_output_binary()
     BinFile bin;
     BinFile_TOC_Meshes* toc_meshes;
     BinFile_MeshData* meshdatas;
+    void* vertdatas;
     
     // Open the file
     sprintf(strbuff, "%s.bin", global_outputname);
@@ -317,6 +318,11 @@ void write_output_binary()
     // Malloc stuff
     toc_meshes = (BinFile_TOC_Meshes*)malloc(sizeof(BinFile_TOC_Meshes)*list_meshes.size);
     meshdatas = (BinFile_MeshData*)malloc(sizeof(BinFile_MeshData)*list_meshes.size);
+    if (!global_opengl)
+        vertdatas = (BinFile_UltraVert**)malloc(sizeof(BinFile_UltraVert*)*list_meshes.size);
+    else
+        vertdatas = (BinFile_DragonVert**)malloc(sizeof(BinFile_DragonVert*)*list_meshes.size);
+    // TODO: Test Mallocs
 
     // Generate the mesh data
     i = 0;
@@ -349,6 +355,62 @@ void write_output_binary()
         toc_meshes[i].meshdata_size = sizeof(BinFile_MeshData) - sizeof(char*) + strlen(meshdatas[i].name)+1;
 
         // Create the vert data
+        if (!global_opengl)
+        {
+            int j = 0;
+            listNode* vertnode;
+            ((BinFile_UltraVert**)vertdatas)[i] = (BinFile_UltraVert*)malloc(sizeof(BinFile_UltraVert)*mesh->verts.size);
+            // TODO: Test Malloc
+
+            // Copy the vert data
+            // TODO: Check if G_LIGHTING is enabled. If it isn't, then copy vert colors instead of normals 
+            for (vertnode = mesh->verts.head; vertnode != NULL; vertnode = vertnode->next)
+            {
+                s64Vert* vert = (s64Vert*)vertnode->data;
+                ((BinFile_UltraVert**)vertdatas)[i][j].pos[0] = vert->pos.x;
+                ((BinFile_UltraVert**)vertdatas)[i][j].pos[1] = vert->pos.y;
+                ((BinFile_UltraVert**)vertdatas)[i][j].pos[2] = vert->pos.z;
+                ((BinFile_UltraVert**)vertdatas)[i][j].pad = 0;
+                ((BinFile_UltraVert**)vertdatas)[i][j].tex[0] = vert->UV.x;
+                ((BinFile_UltraVert**)vertdatas)[i][j].tex[1] = vert->UV.y;
+                ((BinFile_UltraVert**)vertdatas)[i][j].colornormal[0] = vert->normal.x;
+                ((BinFile_UltraVert**)vertdatas)[i][j].colornormal[1] = vert->normal.y;
+                ((BinFile_UltraVert**)vertdatas)[i][j].colornormal[2] = vert->normal.z;
+                ((BinFile_UltraVert**)vertdatas)[i][j].colornormal[3] = 0;
+                j++;
+            }
+
+            // Update the vert data size in the TOC
+            toc_meshes[i].vertdata_size = sizeof(BinFile_UltraVert)*mesh->verts.size;
+        }
+        else
+        {
+            int j = 0;
+            listNode* vertnode;
+            ((BinFile_DragonVert**)vertdatas)[i] = (BinFile_DragonVert*)malloc(sizeof(BinFile_DragonVert)*mesh->verts.size);
+            // TODO: Test Malloc
+
+            // Copy the vert data
+            for (vertnode = mesh->verts.head; vertnode != NULL; vertnode = vertnode->next)
+            {
+                s64Vert* vert = (s64Vert*)vertnode->data;
+                ((BinFile_DragonVert**)vertdatas)[i][j].pos[0] = vert->pos.x;
+                ((BinFile_DragonVert**)vertdatas)[i][j].pos[1] = vert->pos.y;
+                ((BinFile_DragonVert**)vertdatas)[i][j].pos[2] = vert->pos.z;
+                ((BinFile_DragonVert**)vertdatas)[i][j].tex[0] = vert->UV.x;
+                ((BinFile_DragonVert**)vertdatas)[i][j].tex[1] = vert->UV.y;
+                ((BinFile_DragonVert**)vertdatas)[i][j].normal[0] = vert->normal.x;
+                ((BinFile_DragonVert**)vertdatas)[i][j].normal[1] = vert->normal.y;
+                ((BinFile_DragonVert**)vertdatas)[i][j].normal[2] = vert->normal.z;
+                ((BinFile_DragonVert**)vertdatas)[i][j].color[0] = vert->color.x;
+                ((BinFile_DragonVert**)vertdatas)[i][j].color[1] = vert->color.y;
+                ((BinFile_DragonVert**)vertdatas)[i][j].color[2] = vert->color.z;
+                j++;
+            }
+
+            // Update the vert data size in the TOC
+            toc_meshes[i].vertdata_size = sizeof(BinFile_DragonVert)*mesh->verts.size;
+        }
 
         // Done
         i++;

@@ -14,6 +14,20 @@ Contains useful data structures
       Linked List Functions
 *********************************/
 
+
+/*==============================
+    list_new
+    Mallocs a new empty linked list
+    @returns The new list
+==============================*/
+
+linkedList* list_new()
+{
+    linkedList* list = (linkedList*)calloc(sizeof(linkedList), 1);
+    return list;
+}
+
+
 /*==============================
     list_append
     Appends data to a linked list
@@ -25,7 +39,7 @@ Contains useful data structures
 listNode* list_append(linkedList* list, void* data)
 {
     // Allocate memory for our new node
-    listNode* node = (listNode*)calloc(1, sizeof(listNode));
+    listNode* node = (listNode*)calloc(sizeof(listNode), 1);
     if (node == NULL)
         terminate("Error: Unable to allocate memory for linked list node\n");
     node->data = data;

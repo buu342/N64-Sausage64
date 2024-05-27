@@ -317,12 +317,17 @@ void write_output_binary()
 
     // Malloc stuff
     toc_meshes = (BinFile_TOC_Meshes*)malloc(sizeof(BinFile_TOC_Meshes)*list_meshes.size);
+    if (toc_meshes == NULL)
+        terminate("Error: Unable to malloc for TOC_Meshes\n");
     meshdatas = (BinFile_MeshData*)malloc(sizeof(BinFile_MeshData)*list_meshes.size);
+    if (meshdatas == NULL)
+        terminate("Error: Unable to malloc for MeshData\n");
     if (!global_opengl)
         vertdatas = (BinFile_UltraVert**)malloc(sizeof(BinFile_UltraVert*)*list_meshes.size);
     else
         vertdatas = (BinFile_DragonVert**)malloc(sizeof(BinFile_DragonVert*)*list_meshes.size);
-    // TODO: Test Mallocs
+    if (vertdatas == NULL)
+        terminate("Error: Unable to malloc for Verts\n");
 
     // Generate the mesh data
     i = 0;

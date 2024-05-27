@@ -20,8 +20,15 @@ Constructs a display list string for outputting later.
 *********************************/
 
 #define STRBUF_SIZE 512
-#define dlist_commandstring(c, ...) (_dlist_commandstring(c, commands_f3dex2[c].argcount, ##__VA_ARGS__))
 
+#define generate(c, ...) (generator(c, commands_f3dex2[c].argcount, ##__VA_ARGS__))
+
+
+/*********************************
+              Globals
+*********************************/
+
+// List of valid display list commands as of F3DEX2
 const DListCommand commands_f3dex2[] = {
     {DPFillRectangle, "DPFillRectangle", 4, 1},
     {DPScisFillRectangle, "DPScisFillRectangle", 4, 1},
@@ -129,32 +136,83 @@ const DListCommand commands_f3dex2[] = {
     {SPSelectBranchDL, "SPSelectBranchDL", 4, 2},
 };
 
-char strbuff_cmd[STRBUF_SIZE];
+// Global parsing state
 n64Texture* lastTexture = NULL;
 
-char* _dlist_commandstring(DListCName c, int size, ...)
+
+/*==============================
+    mallocstring
+    Creates a newly malloc'ed copy of a string
+    @param   The string to create
+    @returns A malloc'ed copy
+==============================*/
+
+static char* mallocstring(char* str)
 {
-    va_list args;
-    va_start(args, size);
-    sprintf(strbuff_cmd, "    gs%s(", commands_f3dex2[c].name);
-    for (int i=0; i<size; i++)
-    {
-        strcat(strbuff_cmd, va_arg(args, char*));
-        if (i+1 != size)
-            strcat(strbuff_cmd, ", ");
-    }
-    strcat(strbuff_cmd, "),\n");
-    va_end(args);
-    return strbuff_cmd;
+    char* ret = (char*)malloc(sizeof(char)*(strlen(str)+1));
+    strcpy(ret, str);
+    return ret;
 }
 
-char* dlist_frommesh(s64Mesh* mesh)
+
+/*==============================
+    _dlist_commandstring
+    Creates a static display list command
+    string from a dlist command.
+    Don't use directly, use the macro
+    @param   The display list command name
+    @param   The number of arguments
+    @param   Variable arguments
+    @returns A malloc'ed string
+==============================*/
+
+static void* _dlist_commandstring(DListCName c, int size, ...)
+{
+    va_list args;
+    char strbuff[STRBUF_SIZE];
+    va_start(args, size);
+    sprintf(strbuff, "    gs%s(", commands_f3dex2[c].name);
+    for (int i=0; i<size; i++)
+    {
+        strcat(strbuff, va_arg(args, char*));
+        if (i+1 != size)
+            strcat(strbuff, ", ");
+    }
+    strcat(strbuff, "),\n");
+    va_end(args);
+    return mallocstring(strbuff);
+}
+
+static void* _dlist_commandbinary(DListCName c, int size, ...)
+{
+    return 0;
+}
+
+/*==============================
+    dlist_frommesh
+    Constructs a display list from a single mesh
+    @param   The mesh to build a DL of
+    @param   Whether the DL should be binary
+    @returns A linked list with the DL data
+==============================*/
+
+linkedList* dlist_frommesh(s64Mesh* mesh, char isbinary)
 {
     char strbuff[STRBUF_SIZE];
-    char* dlstrbuff = (char*)calloc(sizeof(char)*1024*1024*10, 1); // 10 megabyte string buffer
+    linkedList* out = list_new();
     bool ismultimesh = (list_meshes.size > 1);
     int vertindex = 0;
+    if (out == NULL)
+        terminate("Error: Unable to malloc for output list\n");
+    void* (*generator)(DListCName c, int size, ...);
 
+    // Select the generation function
+    if (isbinary)
+        generator = &_dlist_commandbinary;
+    else
+        generator = &_dlist_commandstring;
+
+    // Loop through the vertex caches
     for (listNode* vcachenode = mesh->vertcache.head; vcachenode != NULL; vcachenode = vcachenode->next)
     {
         vertCache* vcache = (vertCache*)vcachenode->data;
@@ -181,28 +239,28 @@ char* dlist_frommesh(s64Mesh* mesh)
                 // Check for different cycle type
                 if (lastTexture == NULL || strcmp(tex->cycle, lastTexture->cycle) != 0)
                 {
-                    strcat(dlstrbuff, dlist_commandstring(DPSetCycleType, tex->cycle));
+                    list_append(out, generate(DPSetCycleType, tex->cycle));
                     pipesync = TRUE;
                 }
                 
                 // Check for different render mode
                 if (lastTexture == NULL || strcmp(tex->rendermode1, lastTexture->rendermode1) != 0 || strcmp(tex->rendermode2, lastTexture->rendermode2) != 0)
                 {
-                    strcat(dlstrbuff, dlist_commandstring(DPSetRenderMode, tex->rendermode1, tex->rendermode2));
+                    list_append(out, generate(DPSetRenderMode, tex->rendermode1, tex->rendermode2));
                     pipesync = TRUE;
                 }
                 
                 // Check for different combine mode
                 if (lastTexture == NULL || strcmp(tex->combinemode1, lastTexture->combinemode1) != 0 || strcmp(tex->combinemode2, lastTexture->combinemode2) != 0)
                 {
-                    strcat(dlstrbuff, dlist_commandstring(DPSetCombineMode, tex->combinemode1, tex->combinemode2));
+                    list_append(out, generate(DPSetCombineMode, tex->combinemode1, tex->combinemode2));
                     pipesync = TRUE;
                 }
                 
                 // Check for different texture filter
                 if (lastTexture == NULL || strcmp(tex->texfilter, lastTexture->texfilter) != 0)
                 {
-                    strcat(dlstrbuff, dlist_commandstring(DPSetTextureFilter, tex->texfilter));
+                    list_append(out, generate(DPSetTextureFilter, tex->texfilter));
                     pipesync = TRUE;
                 }
                 
@@ -263,7 +321,7 @@ char* dlist_frommesh(s64Mesh* mesh)
                     bool appendline = FALSE;
                 
                     // TODO: Smartly omit geometry flags commands based on what changed
-                    strcat(dlstrbuff, dlist_commandstring(SPClearGeometryMode, "0xFFFFFFFF"));
+                    list_append(out, generate(SPClearGeometryMode, "0xFFFFFFFF"));
                     strbuff[0] = '\0';
                     for (i=0; i<MAXGEOFLAGS; i++)
                     {
@@ -277,7 +335,7 @@ char* dlist_frommesh(s64Mesh* mesh)
                         strcat(strbuff, tex->geomode[i]);
                         appendline = TRUE;
                     }
-                    strcat(dlstrbuff, dlist_commandstring(SPSetGeometryMode, strbuff));
+                    list_append(out, generate(SPSetGeometryMode, strbuff));
                 }
                 
                 // Load the texture if it wasn't marked as DONTLOAD
@@ -292,14 +350,14 @@ char* dlist_frommesh(s64Mesh* mesh)
                         sprintf(d4, "%d", nearest_pow2(tex->data.image.h));
                         if (!strcmp(tex->data.image.colsize, "G_IM_SIZ_4b"))
                         {
-                            strcat(dlstrbuff, dlist_commandstring(DPLoadTextureBlock_4b, 
+                            list_append(out, generate(DPLoadTextureBlock_4b, 
                                 tex->name, tex->data.image.coltype, d1, d2, "0",
                                 tex->data.image.texmodes, tex->data.image.texmodet, d3, d4, "G_TX_NOLOD", "G_TX_NOLOD")
                             );
                         }
                         else
                         {
-                            strcat(dlstrbuff, dlist_commandstring(DPLoadTextureBlock, 
+                            list_append(out, generate(DPLoadTextureBlock, 
                                 tex->name, tex->data.image.coltype, tex->data.image.colsize, d1, d2, "0",
                                 tex->data.image.texmodes, tex->data.image.texmodet, d3, d4, "G_TX_NOLOD", "G_TX_NOLOD")
                             );
@@ -311,13 +369,13 @@ char* dlist_frommesh(s64Mesh* mesh)
                         sprintf(d1, "%d", tex->data.color.r);
                         sprintf(d2, "%d", tex->data.color.g);
                         sprintf(d3, "%d", tex->data.color.b);
-                        strcat(dlstrbuff, dlist_commandstring(DPSetPrimColor, "0", "0", d1, d2, d3, "255"));
+                        list_append(out, generate(DPSetPrimColor, "0", "0", d1, d2, d3, "255"));
                     }
                 }
                 
                 // Call a pipesync if needed
                 if (pipesync)
-                    strcat(dlstrbuff, dlist_commandstring(DPPipeSync));
+                    list_append(out, generate(DPPipeSync));
 
                 // Update the last texture
                 lastTexture = tex;
@@ -337,7 +395,7 @@ char* dlist_frommesh(s64Mesh* mesh)
                 sprintf(d2, "%d", vertindex);
                 strcat(strbuff, d2);
                 sprintf(d2, "%d", vcache->verts.size);
-                strcat(dlstrbuff, dlist_commandstring(SPVertex, strbuff, d2, "0"));
+                list_append(out, generate(SPVertex, strbuff, d2, "0"));
                 vertindex += vcache->verts.size;
                 loadedverts = TRUE;
             }
@@ -355,7 +413,7 @@ char* dlist_frommesh(s64Mesh* mesh)
                 sprintf(d4, "%d", list_index_from_data(&vcache->verts, face->verts[0]));
                 sprintf(d5, "%d", list_index_from_data(&vcache->verts, face->verts[1]));
                 sprintf(d6, "%d", list_index_from_data(&vcache->verts, face->verts[2]));
-                strcat(dlstrbuff, dlist_commandstring(SP2Triangles, d1, d2, d3, "0", d4, d5, d6, "0"));
+                list_append(out, generate(SP2Triangles, d1, d2, d3, "0", d4, d5, d6, "0"));
             }
             else
             {
@@ -363,18 +421,18 @@ char* dlist_frommesh(s64Mesh* mesh)
                 sprintf(d1, "%d", list_index_from_data(&vcache->verts, face->verts[0]));
                 sprintf(d2, "%d", list_index_from_data(&vcache->verts, face->verts[1]));
                 sprintf(d3, "%d", list_index_from_data(&vcache->verts, face->verts[2]));
-                strcat(dlstrbuff, dlist_commandstring(SP1Triangle, d1, d2, d3, "0"));
+                list_append(out, generate(SP1Triangle, d1, d2, d3, "0"));
             }
 
             prevfacenode = facenode;
         }
         
         // Newline if we have another vertex block to load
-        if (vcachenode->next != NULL)
-            strcat(dlstrbuff, "\n");
+        if (!isbinary && vcachenode->next != NULL)
+            list_append(out, mallocstring("\n"));
     }
-    strcat(dlstrbuff, dlist_commandstring(SPEndDisplayList));
-    return dlstrbuff;
+    list_append(out, generate(SPEndDisplayList));
+    return out;
 }
 
 
@@ -382,12 +440,13 @@ char* dlist_frommesh(s64Mesh* mesh)
     construct_dl
     Constructs a display list and stores it
     in a temporary file
+    @param Whether the DL should be binary
 ==============================*/
 
-void construct_dl()
+void construct_dl(char isbinary)
 {
     FILE* fp;
-    char* dl;
+    linkedList* dl;
     char strbuff[STRBUF_SIZE];
     bool ismultimesh = (list_meshes.size > 1);
     
@@ -472,9 +531,10 @@ void construct_dl()
         if (ismultimesh)
             fprintf(fp, "_%s", mesh->name);
         fprintf(fp, "[] = {\n");
-        dl = dlist_frommesh(mesh);
-        fprintf(fp, "%s", dl);
-        free(dl);
+        dl = dlist_frommesh(mesh, 0);
+        for (listNode* dlnode = dl->head; dlnode != NULL; dlnode = dlnode->next)
+            fprintf(fp, "%s", (char*)dlnode->data);
+        list_destroy_deep(dl);
         fprintf(fp, "};\n\n");
     }
     

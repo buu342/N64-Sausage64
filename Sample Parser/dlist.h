@@ -1,6 +1,8 @@
 #ifndef _SAUSN64_DLIST_H
 #define _SAUSN64_DLIST_H
 
+    #include "mesh.h"
+
     typedef enum {
         DPFillRectangle = 0,
         DPScisFillRectangle,
@@ -117,6 +119,7 @@
 
     extern const DListCommand commands_f3dex2[];
 
-    extern void construct_dl();
+    extern linkedList* dlist_frommesh(s64Mesh* mesh, char isbinary);
+    extern void        construct_dl(char isbinary);
     
 #endif

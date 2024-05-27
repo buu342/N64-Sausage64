@@ -98,7 +98,7 @@ int main(int argc, char* argv[])
     {
         // Construct a display list
         if (!global_opengl)
-            construct_dl();
+            construct_dl(FALSE);
         else
             construct_opengl();
         write_output_text();

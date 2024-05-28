@@ -9,7 +9,6 @@ Program entrypoint.
 #include "config.h"
 #include "stages.h"
 #include "debug.h"
-#include "models/binary/catherineMdl_Extern.h"
 
 
 /*********************************
@@ -69,10 +68,6 @@ void mainproc(void)
     // Initialize the heap
     debug_assert(InitHeap(heapmem, sizeof(heapmem)) != -1);
     
-    debug_printf("Hello\n");
-    sausage64_load_binarymodel((u32)_catherine_binarySegmentRomStart, (u32)(_catherine_binarySegmentRomEnd - _catherine_binarySegmentRomStart), NULL);
-    debug_printf("Done\n");
-        
     // Initialize stage 0
     stage00_init();
         

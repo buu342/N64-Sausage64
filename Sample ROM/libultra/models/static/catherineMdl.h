@@ -72,7 +72,6 @@ static Vtx vtx_Catherine_Bang[] = {
 };
 
 static Gfx gfx_Catherine_Bang[] = {
-    gsSPVertex(vtx_Catherine_Bang+0, 10, 0),
     gsDPSetCycleType(G_CYC_1CYCLE),
     gsDPSetRenderMode(G_RM_AA_ZB_OPA_SURF, G_RM_AA_ZB_OPA_SURF2),
     gsDPSetCombineMode(G_CC_PRIMLITE, G_CC_PRIMLITE),
@@ -81,6 +80,7 @@ static Gfx gfx_Catherine_Bang[] = {
     gsSPSetGeometryMode(G_SHADE | G_ZBUFFER | G_CULL_BACK | G_SHADING_SMOOTH | G_LIGHTING),
     gsDPSetPrimColor(0, 0, 175, 42, 44, 255),
     gsDPPipeSync(),
+    gsSPVertex(vtx_Catherine_Bang+0, 10, 0),
     gsSP2Triangles(0, 1, 2, 0, 0, 3, 1, 0),
     gsSP2Triangles(1, 3, 4, 0, 5, 2, 6, 0),
     gsSP2Triangles(0, 2, 5, 0, 0, 5, 3, 0),
@@ -230,9 +230,9 @@ static Vtx vtx_Catherine_Head[] = {
 };
 
 static Gfx gfx_Catherine_Head[] = {
-    gsSPVertex(vtx_Catherine_Head+0, 15, 0),
     gsDPSetCombineMode(G_CC_MODULATEIDECALA, G_CC_MODULATEIDECALA),
     gsDPPipeSync(),
+    gsSPVertex(vtx_Catherine_Head+0, 15, 0),
     gsSP2Triangles(0, 1, 2, 0, 3, 0, 4, 0),
     gsSP2Triangles(5, 0, 6, 0, 4, 0, 2, 0),
     gsSP2Triangles(1, 0, 7, 0, 1, 7, 8, 0),

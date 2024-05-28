@@ -15,7 +15,7 @@ Handles the parsing and creation of meshes
 /*==============================
     add_mesh
     Creates a mesh object and adds it to the global list of meshes
-    @param The name of the mesh
+    @param   The name of the mesh
     @returns A pointer to the created mesh
 ==============================*/
 
@@ -41,7 +41,7 @@ s64Mesh* add_mesh(char* name)
 /*==============================
     add_vertex
     Creates a vertex object and adds it to a mesh's list of vertices
-    @param A pointer to the mesh
+    @param   A pointer to the mesh
     @returns A pointer to the created vertex
 ==============================*/
 
@@ -58,7 +58,7 @@ s64Vert* add_vertex(s64Mesh* mesh)
 /*==============================
     add_face
     Creates a face object and adds it to a mesh's list of faces
-    @param A pointer to the mesh
+    @param   A pointer to the mesh
     @returns A pointer to the created face
 ==============================*/
 
@@ -75,7 +75,7 @@ s64Face* add_face(s64Mesh* mesh)
 /*==============================
     find_mesh
     Searches through the list of meshes for a mesh with the specified name
-    @param The mesh name
+    @param   The mesh name
     @returns The requested s64Mesh, or NULL if none was found 
 ==============================*/
 
@@ -101,8 +101,8 @@ s64Mesh* find_mesh(char* name)
 /*==============================
     find_vert
     Returns a pointer to the vertex object from a given index
-    @param The mesh to search
-    @param The vertex index to find
+    @param   The mesh to search
+    @param   The vertex index to find
     @returns A pointer to the corresponding s64Vert, or NULL
 ==============================*/
 
@@ -118,8 +118,8 @@ s64Vert* find_vert(s64Mesh* mesh, int index)
 /*==============================
     find_texture_fromvert
     Returns the texture used by a vertex
-    @param The list of faces
-    @param The vertex to search for
+    @param   The list of faces
+    @param   The vertex to search for
     @returns The texture assigned to the FIRST face with the given vertex, or NULL if none is found
 ==============================*/
 
@@ -141,8 +141,8 @@ n64Texture* find_texture_fromvert(linkedList* faces, s64Vert* vert)
 /*==============================
     has_property
     Checks whether the mesh has a given property
-    @param The mesh pointer to check
-    @param The property to check
+    @param   The mesh pointer to check
+    @param   The property to check
     @returns The requested s64Mesh, or NULL if none was found 
 ==============================*/
 

@@ -446,3 +446,36 @@ bool tex_hasgeoflag(n64Texture* tex, char* flag)
             return TRUE;
     return FALSE;
 }
+
+
+/*==============================
+    get_validtexindex
+    Since a list of textures contains multiple textures
+    including stuff that has the OMIT flag or that is a 
+    PRIMCOLOR, use this to find the index of valid textures
+    only.
+    @param   The list of textures to iterate
+    @param   The name of the texture to validate
+    @returns The valid texture index, or -1
+==============================*/
+
+int get_validtexindex(linkedList* textures, char* name)
+{
+    int index = 0;
+    listNode* texnode;
+    
+    // Iterate through the mesh list
+    for (texnode = textures->head; texnode != NULL; texnode = texnode->next)
+    {
+        n64Texture* tex = (n64Texture*)texnode->data;
+        if (tex->type == TYPE_TEXTURE)
+        {
+            if (tex->dontload)
+                continue;
+            if (!strcmp(tex->name, name))
+                return index;
+            index++;
+        }
+    }
+    return -1;
+}

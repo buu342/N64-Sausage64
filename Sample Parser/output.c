@@ -12,6 +12,7 @@ Outputs the parsed data to a file
 #include "texture.h"
 #include "mesh.h"
 #include "animation.h"
+#include "dlist.h"
 
 #define STRBUF_SIZE 512
 
@@ -53,34 +54,6 @@ typedef struct {
     float color[3];
 } BinFile_DragonVert;
 
-uint16_t swap_endian16(uint16_t val);
-uint32_t swap_endian32(uint32_t val);
-
-
-/*==============================
-    swap_endian16
-    Swaps the endianess of the data (16-bit)
-    @param  The data to swap the endianess of
-    @return The data with endianess swapped
-==============================*/
-
-uint16_t swap_endian16(uint16_t val)
-{
-    return ((val << 8) & 0xFF00) | ((val >> 8) & 0x00FF);
-}
-
-
-/*==============================
-    swap_endian32
-    Swaps the endianess of the data (32-bit)
-    @param  The data to swap the endianess of
-    @return The data with endianess swapped
-==============================*/
-
-uint32_t swap_endian32(uint32_t val)
-{
-    return ((val << 24)) | ((val << 8) & 0x00FF0000) | ((val >> 8) & 0x0000FF00) | ((val >> 24));
-}
 
 /*==============================
     write_output_text

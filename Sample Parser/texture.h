@@ -122,5 +122,6 @@
     extern n64Texture* request_texture(char* name);
     extern void        tex_setflag(n64Texture* tex, char* flag);
     extern bool        tex_hasgeoflag(n64Texture* tex, char* flag);
+    extern int         get_validtexindex(linkedList* textures, char* name);
     
 #endif

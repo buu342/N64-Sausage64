@@ -80,9 +80,13 @@ static char usb_buffer[USB_BUFFER_SIZE];
     stage00_init
     Initialize the stage
 ==============================*/
-
+#include "models/binary/catherineMdl_extern.h"
 void stage00_init(void)
 {
+    debug_printf("Hello\n");
+    sausage64_load_binarymodel((u32)_catherine_binarySegmentRomStart, (u32)(_catherine_binarySegmentRomEnd - _catherine_binarySegmentRomStart), NULL);
+    debug_printf("Done\n");
+
     // Initialize Catherine
     catherine = sausage64_inithelper(modeltorender);
     debug_assert(catherine != NULL);
@@ -96,7 +100,6 @@ void stage00_init(void)
     #else
         catherine_animspeed = 0.5;
     #endif
-    
     
     // Initialize the face animation
     facetick = 60;

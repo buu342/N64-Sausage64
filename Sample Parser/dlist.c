@@ -42,6 +42,7 @@ const DListCName supported_binary[] = {
     SPVertex,
     SP1Triangle,
     SP2Triangles,
+    DPPipeSync,
     SPEndDisplayList
 }; 
 
@@ -159,6 +160,8 @@ static void* _dlist_commandbinary(DListCName c, int size, ...)
     switch (c)
     {
         // TODO: Compact LoadTextureBlock
+        // TODO: Compact SP1Triangle
+        // TODO: Compact SP2Triangles
         case DPSetCombineMode: // Since CC Mode is 16 arguments (64 bytes), we're gonna compact the data as all CC mode argument numbers fit in a single byte
             datasize = 4 + 1;
             binarydata = (int*)malloc(sizeof(int)*datasize);
@@ -192,7 +195,7 @@ static void* _dlist_commandbinary(DListCName c, int size, ...)
                 }
                 break;
             case DPSetCombineMode:
-                memcpy(&binarydata[1+i*2], gbi_resolveccmode(arg)+i, 8);
+                memcpy(&binarydata[1+i*2], gbi_resolveccmode(arg), 8);
                 parsed = TRUE;
                 break;
             case SPVertex:
@@ -229,7 +232,7 @@ static void* _dlist_commandbinary(DListCName c, int size, ...)
         printf("%s, ", va_arg(args2, char*));
     printf("into ");
     for (int i=0; i<datasize; i++)
-        printf("%08x", binarydata[i]);
+        printf("%08x ", binarydata[i]);
     printf("\n");
     va_end(args2);
 
@@ -486,13 +489,12 @@ linkedList* dlist_frommesh(s64Mesh* mesh, char isbinary)
 
 
 /*==============================
-    construct_dl
+    construct_dltext
     Constructs a display list and stores it
     in a temporary file
-    @param Whether the DL should be binary
 ==============================*/
 
-void construct_dl(char isbinary)
+void construct_dltext()
 {
     FILE* fp;
     linkedList* dl;
@@ -580,7 +582,7 @@ void construct_dl(char isbinary)
         if (ismultimesh)
             fprintf(fp, "_%s", mesh->name);
         fprintf(fp, "[] = {\n");
-        dl = dlist_frommesh(mesh, 0);
+        dl = dlist_frommesh(mesh, FALSE);
         for (listNode* dlnode = dl->head; dlnode != NULL; dlnode = dlnode->next)
             fprintf(fp, "%s", (char*)dlnode->data);
         list_destroy_deep(dl);

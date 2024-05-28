@@ -11,8 +11,6 @@ Program entrypoint
 #include "texture.h"
 #include "parser.h"
 #include "optimizer.h"
-#include "dlist.h"
-#include "opengl.h"
 #include "output.h"
 
 
@@ -95,14 +93,7 @@ int main(int argc, char* argv[])
     
     // Save our model data to a file
     if (!global_binaryout)
-    {
-        // Construct a display list
-        if (!global_opengl)
-            construct_dl(FALSE);
-        else
-            construct_opengl();
         write_output_text();
-    }
     else
         write_output_binary();
     return 0;

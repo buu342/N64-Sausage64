@@ -13,6 +13,7 @@ Outputs the parsed data to a file
 #include "mesh.h"
 #include "animation.h"
 #include "dlist.h"
+#include "opengl.h"
 
 #define STRBUF_SIZE 512
 
@@ -131,6 +132,12 @@ void write_output_text()
         }
         fputs("\n", fp);
     }
+
+    // Construct a text display list
+    if (!global_opengl)
+        construct_dltext();
+    else
+        construct_opengl();
     
     // Dump our temporary file into our final file, and then remove it after we're done
     sprintf(strbuff, "temp_%s", global_outputname);
@@ -388,6 +395,17 @@ void write_output_binary()
 
             // Update the vert data size in the TOC
             toc_meshes[i].vertdata_size = sizeof(BinFile_DragonVert)*mesh->verts.size;
+        }
+
+        // Create the display list
+        if (!global_opengl)
+        {
+            linkedList* binarydl = dlist_frommesh(mesh, TRUE);
+            free(binarydl);
+        }
+        else
+        {
+
         }
 
         // Done

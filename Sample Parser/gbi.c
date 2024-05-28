@@ -458,15 +458,17 @@ uint8_t* gbi_resolveccmode(char* ccmode)
 
 int32_t gbi_resolvemacro(char* macro)
 {
-    int32_t ret = 0;
+    char* strptr;
     char* macrocpy = malloc(sizeof(char)*(strlen(macro)+1));
-    char* strptr = strtok (macrocpy,"|");
+    int32_t ret = 0;
+    strcpy(macrocpy, macro);
+    strptr = strtok (macrocpy," |");
     while (strptr != NULL)
     {
         for (int i=0; i<sizeof(macros_f3dex2)/sizeof(macros_f3dex2[0]); i++)
-            if (!strcmp(macros_f3dex2[i].str, macro))
+            if (!strcmp(macros_f3dex2[i].str, strptr))
                 ret |= macros_f3dex2[i].value;
-        strptr = strtok (NULL, "|");
+        strptr = strtok (NULL, " |");
     }
     free(macrocpy);
     return ret;

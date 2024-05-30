@@ -3,6 +3,13 @@
 
     #include <stdint.h>
     #include "mesh.h"
+    #include "gbi.h"
+
+    typedef struct {
+        DListCName cmd;
+        uint32_t size;
+        uint32_t* data;
+    } DLCBinary;
 
     extern uint16_t    swap_endian16(uint16_t val);
     extern uint32_t    swap_endian32(uint32_t val);

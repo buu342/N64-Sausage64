@@ -379,10 +379,10 @@
     } GBIConstants;
 
     typedef struct {
-        DListCName id;
-        char* name;
-        int argcount;
-        int size;
+        DListCName id; // The command name as an enum
+        char* name;    // The command name as a string
+        int argcount;  // The number or arguments the command takes in
+        int size;      // The numer of Gfx slots the command occupies
     } DListCommand;
 
     typedef struct {

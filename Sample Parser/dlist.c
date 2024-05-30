@@ -13,7 +13,6 @@ Constructs a display list string for outputting later.
 #include "texture.h"
 #include "mesh.h"
 #include "dlist.h"
-#include "gbi.h"
 
 /*********************************
               Macros
@@ -134,13 +133,11 @@ static void* _dlist_commandstring(DListCName c, int size, ...)
 static void* _dlist_commandbinary(DListCName c, int size, ...)
 {
     char supported = 0;
-    va_list args, args2;
-    char strbuff[STRBUF_SIZE];
-    int* binarydata;
-    int datasize = size+1;
-    DListCName override = c;
+    va_list args;
+    //va_list args2;
+    DLCBinary* binarydata;
     va_start(args, size);
-    va_copy(args2, args);
+    //va_copy(args2, args);
 
     // Check the command is supported
     for (int i=0; i<sizeof(supported_binary)/sizeof(supported_binary[0]); i++)
@@ -153,38 +150,43 @@ static void* _dlist_commandbinary(DListCName c, int size, ...)
     }
     if (!supported)
     {
+        char strbuff[STRBUF_SIZE];
         sprintf(strbuff, "Unsupported Binary DL command %s", commands_f3dex2[c].name);
         terminate(strbuff);
     }
 
     // Malloc the binary data
+    binarydata = (DLCBinary*)calloc(sizeof(DLCBinary), 1);
+    if (binarydata == NULL)
+        terminate("Unable to malloc binary data struct");
+    binarydata->cmd = c;
+    binarydata->size = size;
     switch (c)
     {
         case DPLoadTextureBlock_4b:
         case DPLoadTextureBlock: // Compact into 1 word for texture index, 2 bytes for fmt+siz (siz is zero for _4b), two words for width + height, 7 bytes for everything else
-            datasize = 4 + 1;
+            binarydata->size = 4;
             break;
         case SPVertex: // Compact the offset into 1 word, and the other two arguments into 2 bytes
-            datasize = 1 + 1;
+            binarydata->size = 1;
             break;
         case SP1Triangle: // All arguments for 1Triangle fit in 1 dword
-            datasize = 1 + 1;
+            binarydata->size = 1;
             break;
         case SP2Triangles: // All arguments for 2Triangles fit in 2 dwords
-            datasize = 2 + 1;
+            binarydata->size = 2;
             break;
         case DPSetPrimColor: // Compact Primcolor into 1 dword for l and m, 1 dword for color
-            datasize = 2 + 1;
+            binarydata->size = 2;
             break;
         case DPSetCombineMode: // Each Combine argument is up to 255, so we can compact everything in 4 dwords
-            datasize = 4 + 1;
-            override = DPSetCombineLERP;
+            binarydata->size = 4;
+            binarydata->cmd = DPSetCombineLERP;
             break;
     }
-    binarydata = (int*)calloc(sizeof(int)*datasize, 1);
-    if (binarydata == NULL)
+    binarydata->data = (uint32_t*)calloc(sizeof(uint32_t)*binarydata->size, 1);
+    if (binarydata->data  == NULL)
         terminate("Unable to malloc binary data buffer");
-    binarydata[0] = swap_endian32(override);
 
     // Go through each argument
     for (int i=0; i<size; i++)
@@ -199,7 +201,7 @@ static void* _dlist_commandbinary(DListCName c, int size, ...)
             case DPLoadTextureBlock:
                 if (i == 0) // First argument is the texture name, we just want the texture index
                 {
-                    *(((uint16_t*)(&binarydata[1]))) = swap_endian16(get_validtexindex(&list_textures, arg));
+                    *(((uint16_t*)(&binarydata->data[0]))) = swap_endian16(get_validtexindex(&list_textures, arg));
                 }
                 else
                 {
@@ -208,34 +210,34 @@ static void* _dlist_commandbinary(DListCName c, int size, ...)
                     if (i >= 2 && c == DPLoadTextureBlock_4b)
                         realindex++;
                     if (realindex == 1 || realindex == 2)
-                        ((uint8_t*)binarydata)[6+(realindex-1)] = gbi_resolvemacro(arg);
+                        ((uint8_t*)binarydata->data)[2+(realindex-1)] = gbi_resolvemacro(arg);
                     else if (realindex == 3 || realindex == 4)
-                        ((uint16_t*)binarydata)[4+(realindex-3)] = swap_endian16(atoi(arg));
+                        ((uint16_t*)binarydata->data)[2+(realindex-3)] = swap_endian16(atoi(arg));
                     else
                     {
                         if (strlen(arg) > 2 && arg[0] == 'G' && arg[1] == '_')
                             argval = gbi_resolvemacro(arg);
                         else
                             argval = atoi(arg);
-                        ((uint8_t*)binarydata)[12+(realindex-5)] = argval;
+                        ((uint8_t*)binarydata->data)[8+(realindex-5)] = argval;
                     }
                 }
                 parsed = TRUE;
                 break;
             case SP2Triangles:
             case SP1Triangle:
-                *(((uint8_t*)(&binarydata[1]))+i) = (uint8_t)atoi(arg);
+                *(((uint8_t*)(&binarydata->data[0]))+i) = (uint8_t)atoi(arg);
                 parsed = TRUE;
                 break;
             case DPSetPrimColor:
                 if (i == 0 || i == 1)
-                    *(((int16_t*)(&binarydata[1]))+i) = swap_endian16(atoi(arg));
+                    *(((int16_t*)(&binarydata->data[0]))+i) = swap_endian16(atoi(arg));
                 else
-                    *(((uint8_t*)(&binarydata[2]))+(i-2)) = (uint8_t)atoi(arg);
+                    *(((uint8_t*)(&binarydata->data[1]))+(i-2)) = (uint8_t)atoi(arg);
                 parsed = TRUE;
                 break;
             case DPSetCombineMode:
-                memcpy(&binarydata[1+i*2], gbi_resolveccmode(arg), 8);
+                memcpy(&binarydata->data[i*2], gbi_resolveccmode(arg), 8);
                 parsed = TRUE;
                 break;
             case SPVertex:
@@ -244,10 +246,10 @@ static void* _dlist_commandbinary(DListCName c, int size, ...)
                     char* curchar = arg;
                     while (*curchar != '+')
                         curchar++;
-                    *((uint16_t*)(&binarydata[1])) = swap_endian16(atoi(curchar+1));
+                    ((uint16_t*)binarydata->data)[0] = swap_endian16(atoi(curchar+1));
                 }
                 else
-                    ((uint8_t*)binarydata)[6+(i-1)] = atoi(arg);
+                    ((uint8_t*)binarydata->data)[2+(i-1)] = atoi(arg);
                 parsed = TRUE;
                 break;
         }
@@ -262,21 +264,20 @@ static void* _dlist_commandbinary(DListCName c, int size, ...)
                 argval = strtol(arg, NULL, 16);
             else
                 argval = atoi(arg);
-            binarydata[i+1] = swap_endian32(argval);
+            binarydata->data[i] = swap_endian32(argval);
         }
     }
     va_end(args);
 
     // Debugging printf
-    // Don't forget to get rid of args2
-    printf("Turned %s with ", commands_f3dex2[c].name);
-    for (int i=0; i<size; i++)
-        printf("%s, ", va_arg(args2, char*));
-    printf("into ");
-    for (int i=0; i<datasize; i++)
-        printf("%08x ", binarydata[i]);
-    printf("\n");
-    va_end(args2);
+    //printf("Turned %s with ", commands_f3dex2[c].name);
+    //for (int i=0; i<size; i++)
+    //    printf("%s, ", va_arg(args2, char*));
+    //printf("into %08x ", swap_endian32(c));
+    //for (int i=0; i<binarydata->size; i++)
+    //    printf("%08x ", binarydata->data[i]);
+    //printf("\n");
+    //va_end(args2);
 
     return binarydata;
 }

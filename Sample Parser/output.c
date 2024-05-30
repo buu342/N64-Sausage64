@@ -8,6 +8,7 @@ Outputs the parsed data to a file
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <math.h>
 #include "main.h"
 #include "texture.h"
 #include "mesh.h"
@@ -15,10 +16,13 @@ Outputs the parsed data to a file
 #include "dlist.h"
 #include "opengl.h"
 
+#define BINARY_VERSION 0
 #define STRBUF_SIZE 512
 
+#define member_size(type, member) (sizeof( ((type *)0)->member ))
+
 typedef struct {
-    uint16_t header;
+    uint32_t header;
     uint16_t count_meshes;
     uint16_t count_anims;
     uint32_t offset_meshes;
@@ -36,8 +40,8 @@ typedef struct {
 } BinFile_TOC_Meshes;
 
 typedef struct {
-    int16_t parent;
     uint8_t is_billboard;
+    int16_t parent;
     char*   name;
 } BinFile_MeshData;
 
@@ -282,7 +286,11 @@ void write_output_binary()
     BinFile bin;
     BinFile_TOC_Meshes* toc_meshes;
     BinFile_MeshData* meshdatas;
+    uint32_t** dldatas;
     void* vertdatas;
+    int* vtotal;
+    uint32_t totalsize_header = sizeof(BinFile);
+    uint32_t totalsize_meshdata = 0;
     
     // Open the file
     sprintf(strbuff, "%s.bin", global_outputname);
@@ -291,9 +299,9 @@ void write_output_binary()
         terminate("Error: Unable to open file for writing\n");
     
     // Generate the file header
-    bin.header        = swap_endian16(0x5364);
-    bin.count_meshes  = swap_endian16(list_meshes.size);
-    bin.count_anims   = swap_endian16(list_animations.size);
+    bin.header        = (('S' << 24) | ('6' << 16) | ('4' << 8) | BINARY_VERSION);
+    bin.count_meshes  = list_meshes.size;
+    bin.count_anims   = list_animations.size;
 
     // Malloc stuff
     toc_meshes = (BinFile_TOC_Meshes*)malloc(sizeof(BinFile_TOC_Meshes)*list_meshes.size);
@@ -308,6 +316,13 @@ void write_output_binary()
         vertdatas = (BinFile_DragonVert**)malloc(sizeof(BinFile_DragonVert*)*list_meshes.size);
     if (vertdatas == NULL)
         terminate("Error: Unable to malloc for Verts\n");
+    dldatas = (uint32_t**)malloc(sizeof(uint32_t*)*list_meshes.size);
+    totalsize_meshdata += sizeof(uint32_t*)*list_meshes.size;
+    if (dldatas == NULL)
+        terminate("Error: Unable to malloc for DLData\n");
+    vtotal = (int*)malloc(sizeof(int)*list_meshes.size);
+    if (vtotal == NULL)
+        terminate("Error: Unable to malloc for vtotal\n");
 
     // Generate the mesh data
     i = 0;
@@ -336,44 +351,102 @@ void write_output_binary()
         meshdatas[i].is_billboard = has_property(mesh, "Billboard");
         meshdatas[i].name = mesh->name;
 
-        // Update the mesh data size
-        toc_meshes[i].meshdata_size = sizeof(BinFile_MeshData) - sizeof(char*) + strlen(meshdatas[i].name)+1;
+        // Update the mesh data size and offset
+        toc_meshes[i].meshdata_size = member_size(BinFile_MeshData, parent) 
+                                    + member_size(BinFile_MeshData, is_billboard)
+                                    + strlen(meshdatas[i].name)+1;
+        toc_meshes[i].meshdata_offset = 0xFFFFFFFF;//totalsize_header + sizeof(BinFile_TOC_Meshes) + totalsize_meshdata;
 
         // Create the vert data
         if (!global_opengl)
         {
             int j = 0;
-            listNode* vertnode;
-            ((BinFile_UltraVert**)vertdatas)[i] = (BinFile_UltraVert*)malloc(sizeof(BinFile_UltraVert)*mesh->verts.size);
-            // TODO: Test Malloc
+            listNode* vcachenode;
 
-            // Copy the vert data
-            // TODO: Check if G_LIGHTING is enabled. If it isn't, then copy vert colors instead of normals 
-            for (vertnode = mesh->verts.head; vertnode != NULL; vertnode = vertnode->next)
+            // Get the total vert count
+            vtotal[i] = 0;
+            for (vcachenode = mesh->vertcache.head; vcachenode != NULL; vcachenode = vcachenode->next)
             {
-                s64Vert* vert = (s64Vert*)vertnode->data;
-                ((BinFile_UltraVert**)vertdatas)[i][j].pos[0] = vert->pos.x;
-                ((BinFile_UltraVert**)vertdatas)[i][j].pos[1] = vert->pos.y;
-                ((BinFile_UltraVert**)vertdatas)[i][j].pos[2] = vert->pos.z;
-                ((BinFile_UltraVert**)vertdatas)[i][j].pad = 0;
-                ((BinFile_UltraVert**)vertdatas)[i][j].tex[0] = vert->UV.x;
-                ((BinFile_UltraVert**)vertdatas)[i][j].tex[1] = vert->UV.y;
-                ((BinFile_UltraVert**)vertdatas)[i][j].colornormal[0] = vert->normal.x;
-                ((BinFile_UltraVert**)vertdatas)[i][j].colornormal[1] = vert->normal.y;
-                ((BinFile_UltraVert**)vertdatas)[i][j].colornormal[2] = vert->normal.z;
-                ((BinFile_UltraVert**)vertdatas)[i][j].colornormal[3] = 0;
-                j++;
+                vertCache* vcache = (vertCache*)vcachenode->data;
+                listNode* vertnode;
+                
+                // Cycle through all the verts
+                for (vertnode = vcache->verts.head; vertnode != NULL; vertnode = vertnode->next)
+                    vtotal[i]++;
             }
 
-            // Update the vert data size in the TOC
-            toc_meshes[i].vertdata_size = sizeof(BinFile_UltraVert)*mesh->verts.size;
+            ((BinFile_UltraVert**)vertdatas)[i] = (BinFile_UltraVert*)malloc(sizeof(BinFile_UltraVert)*vtotal[i]);
+            if (((BinFile_UltraVert**)vertdatas)[i] == NULL)
+                terminate("Error: Unable to malloc for vert data\n");
+
+            // Copy the vert data by cycling through the vcache blocks
+            for (vcachenode = mesh->vertcache.head; vcachenode != NULL; vcachenode = vcachenode->next)
+            {
+                vertCache* vcache = (vertCache*)vcachenode->data;
+                listNode* vertnode;
+                
+                // Cycle through all the verts
+                for (vertnode = vcache->verts.head; vertnode != NULL; vertnode = vertnode->next)
+                {
+                    int texturew = 0, textureh = 0;
+                    s64Vert* vert = (s64Vert*)vertnode->data;
+                    n64Texture* tex = find_texture_fromvert(&vcache->faces, vert);
+                    Vector3D normorcol = {0, 0, 0};
+                    
+                    // Ensure the texture is valid
+                    if (tex == NULL)
+                        terminate("Error: Inconsistent face/vertex texture information\n");
+                    
+                    // Retrieve texture/normal/color data for this vertex
+                    switch (tex->type)
+                    {
+                        case TYPE_TEXTURE:
+                            // Get the texture size
+                            texturew = (tex->data).image.w;
+                            textureh = (tex->data).image.h;
+                            
+                            // Intentional fallthrough
+                        case TYPE_PRIMCOL:
+                            // Pick vertex normals or vertex colors, depending on the texture flag
+                            if (tex_hasgeoflag(tex, "G_LIGHTING"))
+                                normorcol = vector_scale(vert->normal, 127);
+                            else
+                                normorcol = vector_scale(vert->color, 255);
+                            break;
+                        case TYPE_OMIT:
+                            break;
+                    }
+
+                    // Dump the vert data
+                    ((BinFile_UltraVert**)vertdatas)[i][j].pos[0] = round(vert->pos.x);
+                    ((BinFile_UltraVert**)vertdatas)[i][j].pos[1] = round(vert->pos.y);
+                    ((BinFile_UltraVert**)vertdatas)[i][j].pos[2] = round(vert->pos.z);
+                    ((BinFile_UltraVert**)vertdatas)[i][j].pad = 0;
+                    ((BinFile_UltraVert**)vertdatas)[i][j].tex[0] = float_to_s10p5(vert->UV.x*texturew);
+                    ((BinFile_UltraVert**)vertdatas)[i][j].tex[1] = float_to_s10p5(vert->UV.y*textureh);
+                    ((BinFile_UltraVert**)vertdatas)[i][j].colornormal[0] = round(normorcol.x);
+                    ((BinFile_UltraVert**)vertdatas)[i][j].colornormal[1] = round(normorcol.y);
+                    ((BinFile_UltraVert**)vertdatas)[i][j].colornormal[2] = round(normorcol.z);
+                    ((BinFile_UltraVert**)vertdatas)[i][j].colornormal[3] = 255;
+                    j++;
+                }
+            }
+
+            // Update the vert data size and offset in the TOC
+            toc_meshes[i].vertdata_size = (member_size(BinFile_UltraVert, pos)
+                                        + member_size(BinFile_UltraVert, pad) 
+                                        + member_size(BinFile_UltraVert, tex)
+                                        + member_size(BinFile_UltraVert, colornormal)
+                                        )*vtotal[i];
+            toc_meshes[i].vertdata_offset = 0xFFFFFFFF;//totalsize_header + sizeof(BinFile_TOC_Meshes) + totalsize_meshdata;
         }
         else
         {
-            int j = 0;
+            /*int j = 0;
             listNode* vertnode;
-            ((BinFile_DragonVert**)vertdatas)[i] = (BinFile_DragonVert*)malloc(sizeof(BinFile_DragonVert)*mesh->verts.size);
-            // TODO: Test Malloc
+            ((BinFile_DragonVert**)vertdatas)[i] = (BinFile_DragonVert*)malloc(sizeof(BinFile_DragonVert)*vtotal);
+            if (((BinFile_DragonVert**)vertdatas)[i] == NULL)
+                terminate("Error: Unable to malloc for vert data\n");
 
             // Copy the vert data
             for (vertnode = mesh->verts.head; vertnode != NULL; vertnode = vertnode->next)
@@ -394,28 +467,123 @@ void write_output_binary()
             }
 
             // Update the vert data size in the TOC
-            toc_meshes[i].vertdata_size = sizeof(BinFile_DragonVert)*mesh->verts.size;
+            //toc_meshes[i].vertdata_size = sizeof(BinFile_DragonVert)*vtotal;
+            */
         }
+        totalsize_meshdata += toc_meshes[i].vertdata_size;
 
         // Create the display list
         if (!global_opengl)
         {
-            linkedList* binarydl = dlist_frommesh(mesh, TRUE);
-            free(binarydl);
+            int offset = 0;
+            int finalsize = 0;
+            int slotcount = 0;
+            listNode* dllnode;
+            linkedList* dllist = dlist_frommesh(mesh, TRUE);
+
+            // Count the finalsize and slotcount
+            for (dllnode = dllist->head; dllnode != NULL; dllnode = dllnode->next)
+            {
+                DLCBinary* bindl = (DLCBinary*)dllnode->data;
+                finalsize += (1 + bindl->size)*sizeof(uint32_t);
+                slotcount += commands_f3dex2[bindl->cmd].size;
+            }
+
+            // Update the TOC
+            toc_meshes[i].dldata_size = finalsize;
+            toc_meshes[i].dldata_slotcount = slotcount;
+            toc_meshes[i].dldata_offset = 0xFFFFFFFF;
+
+            // Malloc the final data buffer
+            dldatas[i] = (uint32_t*)calloc(finalsize, 1);
+            if (dldatas[i] == NULL)
+                terminate("Error: Unable to malloc for DLData\n");
+
+            // Copy the binary list to the final data buffer
+            for (dllnode = dllist->head; dllnode != NULL; dllnode = dllnode->next)
+            {
+                DLCBinary* bindl = (DLCBinary*)dllnode->data;
+                dldatas[i][offset] = swap_endian32(bindl->cmd);
+                offset++;
+                memcpy(&dldatas[i][offset], bindl->data, sizeof(uint32_t)*bindl->size);
+                offset += bindl->size;
+            }
+
+            // Cleanup memory
+            for (dllnode = dllist->head; dllnode != NULL; dllnode = dllnode->next)
+                free(((DLCBinary*)dllnode->data)->data);
+            list_destroy_deep(dllist);
         }
         else
         {
 
         }
+        totalsize_meshdata += toc_meshes[i].dldata_size;
 
         // Done
         i++;
     }
 
+    // Actually start writing the file now
+
     // Write the file header
-    bin.offset_meshes = swap_endian32(0);
-    bin.offset_anims  = swap_endian32(0);
-    fwrite(&bin, sizeof(BinFile), 1, fp);
+    bin.header        = swap_endian32(bin.header);
+    bin.count_meshes  = swap_endian16(bin.count_meshes);
+    bin.count_anims   = swap_endian16(bin.count_anims);
+    bin.offset_meshes = swap_endian32(16);
+    bin.offset_anims  = swap_endian32(totalsize_meshdata);
+    fwrite(&bin.header, member_size(BinFile, header), 1, fp);
+    fwrite(&bin.count_meshes, member_size(BinFile, count_meshes), 1, fp);
+    fwrite(&bin.count_anims, member_size(BinFile, count_anims), 1, fp);
+    fwrite(&bin.offset_meshes, member_size(BinFile, offset_meshes), 1, fp);
+    fwrite(&bin.offset_anims, member_size(BinFile, offset_anims), 1, fp);
+
+    // Write the mesh TOCs
+    for (i=0; i<list_meshes.size; i++)
+    {
+        toc_meshes[i].meshdata_offset = swap_endian32(toc_meshes[i].meshdata_offset);
+        toc_meshes[i].meshdata_size = swap_endian32(toc_meshes[i].meshdata_size);
+        toc_meshes[i].vertdata_offset = swap_endian32(toc_meshes[i].vertdata_offset);
+        toc_meshes[i].vertdata_size = swap_endian32(toc_meshes[i].vertdata_size);
+        toc_meshes[i].dldata_offset = swap_endian32(toc_meshes[i].dldata_offset);
+        toc_meshes[i].dldata_size = swap_endian32(toc_meshes[i].dldata_size);
+        toc_meshes[i].dldata_slotcount = swap_endian32(toc_meshes[i].dldata_slotcount);
+        fwrite(&toc_meshes[i].meshdata_offset, member_size(BinFile_TOC_Meshes, meshdata_offset), 1, fp);
+        fwrite(&toc_meshes[i].meshdata_size, member_size(BinFile_TOC_Meshes, meshdata_size), 1, fp);
+        fwrite(&toc_meshes[i].vertdata_offset, member_size(BinFile_TOC_Meshes, vertdata_offset), 1, fp);
+        fwrite(&toc_meshes[i].vertdata_size, member_size(BinFile_TOC_Meshes, vertdata_size), 1, fp);
+        fwrite(&toc_meshes[i].dldata_offset, member_size(BinFile_TOC_Meshes, dldata_offset), 1, fp);
+        fwrite(&toc_meshes[i].dldata_size, member_size(BinFile_TOC_Meshes, dldata_size), 1, fp);
+        fwrite(&toc_meshes[i].dldata_slotcount, member_size(BinFile_TOC_Meshes, dldata_slotcount), 1, fp);
+    }
+
+    // Write the mesh data + verts + dl
+    for (i=0; i<list_meshes.size; i++)
+    {
+        meshdatas[i].parent = swap_endian16(meshdatas[i].parent);
+        fwrite(&meshdatas[i].parent, member_size(BinFile_MeshData, parent), 1, fp);
+        fwrite(&meshdatas[i].is_billboard, member_size(BinFile_MeshData, is_billboard), 1, fp);
+        fwrite(meshdatas[i].name, strlen(meshdatas[i].name)+1, 1, fp);
+        if (!global_opengl)
+        {
+            for (int j=0; j<vtotal[i]; j++)
+            {
+                ((BinFile_UltraVert**)vertdatas)[i][j].pos[0] = swap_endian16(((BinFile_UltraVert**)vertdatas)[i][j].pos[0]);
+                ((BinFile_UltraVert**)vertdatas)[i][j].pos[1] = swap_endian16(((BinFile_UltraVert**)vertdatas)[i][j].pos[1]);
+                ((BinFile_UltraVert**)vertdatas)[i][j].pos[2] = swap_endian16(((BinFile_UltraVert**)vertdatas)[i][j].pos[2]);
+                ((BinFile_UltraVert**)vertdatas)[i][j].pad = swap_endian16(((BinFile_UltraVert**)vertdatas)[i][j].pad);
+                ((BinFile_UltraVert**)vertdatas)[i][j].tex[0] = swap_endian16(((BinFile_UltraVert**)vertdatas)[i][j].tex[0]);
+                ((BinFile_UltraVert**)vertdatas)[i][j].tex[1] = swap_endian16(((BinFile_UltraVert**)vertdatas)[i][j].tex[1]);
+                fwrite(&((BinFile_UltraVert**)vertdatas)[i][j].pos[0], member_size(BinFile_UltraVert, pos), 1, fp);
+                fwrite(&((BinFile_UltraVert**)vertdatas)[i][j].pad, member_size(BinFile_UltraVert, pad), 1, fp);
+                fwrite(&((BinFile_UltraVert**)vertdatas)[i][j].tex[0], member_size(BinFile_UltraVert, tex), 1, fp);
+                fwrite(&((BinFile_UltraVert**)vertdatas)[i][j].colornormal[0], member_size(BinFile_UltraVert, colornormal), 1, fp);
+            }
+            fwrite(dldatas[i], swap_endian32(toc_meshes[i].dldata_size), 1, fp);
+        }
+        else
+            fwrite(&((BinFile_DragonVert**)vertdatas)[i], swap_endian32(toc_meshes[i].vertdata_size), 1, fp);
+    }
         
     if (!global_quiet) printf("Wrote output to '%s.bin' and '%s.h'\n", global_outputname, global_outputname);
     fclose(fp);

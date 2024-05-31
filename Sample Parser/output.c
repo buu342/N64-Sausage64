@@ -289,8 +289,6 @@ void write_output_binary()
     uint32_t** dldatas;
     void* vertdatas;
     int* vtotal;
-    uint32_t totalsize_header = sizeof(BinFile);
-    uint32_t totalsize_meshdata = 0;
     
     // Open the file
     sprintf(strbuff, "%s.bin", global_outputname);
@@ -317,7 +315,6 @@ void write_output_binary()
     if (vertdatas == NULL)
         terminate("Error: Unable to malloc for Verts\n");
     dldatas = (uint32_t**)malloc(sizeof(uint32_t*)*list_meshes.size);
-    totalsize_meshdata += sizeof(uint32_t*)*list_meshes.size;
     if (dldatas == NULL)
         terminate("Error: Unable to malloc for DLData\n");
     vtotal = (int*)malloc(sizeof(int)*list_meshes.size);
@@ -355,7 +352,22 @@ void write_output_binary()
         toc_meshes[i].meshdata_size = member_size(BinFile_MeshData, parent) 
                                     + member_size(BinFile_MeshData, is_billboard)
                                     + strlen(meshdatas[i].name)+1;
-        toc_meshes[i].meshdata_offset = 0xFFFFFFFF;//totalsize_header + sizeof(BinFile_TOC_Meshes) + totalsize_meshdata;
+        if (i == 0)
+            toc_meshes[i].meshdata_offset = (member_size(BinFile, header) 
+                                        + member_size(BinFile, count_meshes)
+                                        + member_size(BinFile, count_anims)
+                                        + member_size(BinFile, offset_meshes)
+                                        + member_size(BinFile, offset_anims))
+                                        +(member_size(BinFile_TOC_Meshes, meshdata_offset)
+                                        + member_size(BinFile_TOC_Meshes, meshdata_size)
+                                        + member_size(BinFile_TOC_Meshes, vertdata_offset)
+                                        + member_size(BinFile_TOC_Meshes, vertdata_size)
+                                        + member_size(BinFile_TOC_Meshes, dldata_offset)
+                                        + member_size(BinFile_TOC_Meshes, dldata_size)
+                                        + member_size(BinFile_TOC_Meshes, dldata_slotcount))
+                                        *list_meshes.size;
+        else
+            toc_meshes[i].meshdata_offset += toc_meshes[i-1].dldata_offset + toc_meshes[i-1].dldata_size;
 
         // Create the vert data
         if (!global_opengl)
@@ -438,7 +450,6 @@ void write_output_binary()
                                         + member_size(BinFile_UltraVert, tex)
                                         + member_size(BinFile_UltraVert, colornormal)
                                         )*vtotal[i];
-            toc_meshes[i].vertdata_offset = 0xFFFFFFFF;//totalsize_header + sizeof(BinFile_TOC_Meshes) + totalsize_meshdata;
         }
         else
         {
@@ -470,7 +481,7 @@ void write_output_binary()
             //toc_meshes[i].vertdata_size = sizeof(BinFile_DragonVert)*vtotal;
             */
         }
-        totalsize_meshdata += toc_meshes[i].vertdata_size;
+        toc_meshes[i].vertdata_offset = toc_meshes[i].meshdata_offset + toc_meshes[i].meshdata_size;
 
         // Create the display list
         if (!global_opengl)
@@ -492,7 +503,7 @@ void write_output_binary()
             // Update the TOC
             toc_meshes[i].dldata_size = finalsize;
             toc_meshes[i].dldata_slotcount = slotcount;
-            toc_meshes[i].dldata_offset = 0xFFFFFFFF;
+            toc_meshes[i].dldata_offset = toc_meshes[i].vertdata_offset + toc_meshes[i].vertdata_size;
 
             // Malloc the final data buffer
             dldatas[i] = (uint32_t*)calloc(finalsize, 1);
@@ -518,7 +529,6 @@ void write_output_binary()
         {
 
         }
-        totalsize_meshdata += toc_meshes[i].dldata_size;
 
         // Done
         i++;
@@ -531,7 +541,7 @@ void write_output_binary()
     bin.count_meshes  = swap_endian16(bin.count_meshes);
     bin.count_anims   = swap_endian16(bin.count_anims);
     bin.offset_meshes = swap_endian32(16);
-    bin.offset_anims  = swap_endian32(totalsize_meshdata);
+    bin.offset_anims  = swap_endian32(toc_meshes[list_meshes.size-1].dldata_offset + toc_meshes[list_meshes.size-1].dldata_size);
     fwrite(&bin.header, member_size(BinFile, header), 1, fp);
     fwrite(&bin.count_meshes, member_size(BinFile, count_meshes), 1, fp);
     fwrite(&bin.count_anims, member_size(BinFile, count_anims), 1, fp);

@@ -153,7 +153,7 @@
         #ifndef LIBDRAGON
             Mtx* matrix;
         #endif
-        void  (*predraw)(u16);
+        u8    (*predraw)(u16);
         void  (*postdraw)(u16);
         void  (*animcallback)(u16);
         s64ModelData* mdldata;
@@ -296,7 +296,7 @@
         @param The pre draw function
     ==============================*/
     
-    extern void sausage64_set_predrawfunc(s64ModelHelper* mdl, void (*predraw)(u16));
+    extern void sausage64_set_predrawfunc(s64ModelHelper* mdl, u8 (*predraw)(u16));
     
     
     /*==============================

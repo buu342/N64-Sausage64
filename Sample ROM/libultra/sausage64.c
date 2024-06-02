@@ -684,7 +684,7 @@ s64ModelHelper* sausage64_inithelper(s64ModelData* mdldata)
     @param The pre draw function
 ==============================*/
 
-inline void sausage64_set_predrawfunc(s64ModelHelper* mdl, void (*predraw)(u16))
+inline void sausage64_set_predrawfunc(s64ModelHelper* mdl, u8 (*predraw)(u16))
 {
     mdl->predraw = predraw;
 }
@@ -1286,10 +1286,11 @@ void sausage64_lookat(s64ModelHelper* mdl, const u16 mesh, f32 dir[3], f32 amoun
         
         // Iterate through each mesh
         for (i=0; i<mcount; i++)
-        {           
+        {
             // Call the pre draw function
             if (mdl->predraw != NULL)
-                mdl->predraw(i);
+                if (!mdl->predraw(i))
+                    continue;
             
             // Draw this part of the model
             if (anim != NULL)
@@ -1335,10 +1336,11 @@ void sausage64_lookat(s64ModelHelper* mdl, const u16 mesh, f32 dir[3], f32 amoun
         for (i=0; i<mcount; i++)
         {
             s64Gfx* dl = mdl->mdldata->meshes[i].dl;
-
+            
             // Call the pre draw function
             if (mdl->predraw != NULL)
-                mdl->predraw(i);
+                if (!mdl->predraw(i))
+                    continue;
             
             // Draw this part of the model
             if (anim != NULL)

@@ -28,7 +28,7 @@ Handles the first level of the game.
 
 void draw_menu();
 void catherine_lookat();
-void catherine_predraw(u16 part);
+u8   catherine_predraw(u16 part);
 void catherine_animcallback(u16 anim);
 
 void matrix_inverse(float mat[4][4], float dest[4][4]);
@@ -80,7 +80,7 @@ static char usb_buffer[USB_BUFFER_SIZE];
     stage00_init
     Initialize the stage
 ==============================*/
-#include "models/binary/catherineMdl_extern.h"
+#include "models/binary/catherineMdl_Extern.h"
 void stage00_init(void)
 {
     debug_printf("Hello\n");
@@ -466,9 +466,10 @@ void draw_menu()
     catherine_predraw
     Called before Catherine is drawn
     @param The model segment being drawn
+    @return 0 to disable the model drawing, 1 otherwise
 ==============================*/
 
-void catherine_predraw(u16 part)
+u8 catherine_predraw(u16 part)
 {
     // Handle face drawing and lookat
     switch (part)
@@ -477,6 +478,7 @@ void catherine_predraw(u16 part)
             gDPLoadTextureBlock(glistp++, faceanim->faces[faceindex], G_IM_FMT_RGBA, G_IM_SIZ_16b, 32, 64, 0, G_TX_CLAMP, G_TX_CLAMP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
             break;
     }
+    return 1;
 }
 
 

@@ -26,7 +26,7 @@ Program entrypoint.
 
 void setup_scene();
 void setup_catherine();
-void catherine_predraw(u16 part);
+u8   catherine_predraw(u16 part);
 void scene_tick();
 void scene_render();
 void catherine_lookat();
@@ -369,10 +369,11 @@ void scene_render()
     This is needed since the model's face texture is not loaded
     automatically (due to the DONTLOAD flag). This instead allows
     us to swap the face dynamically (in this case, to let her blink).
-    @param The model segment being drawn
+    @param  The model segment being drawn
+    @return 0 to disable the model drawing, 1 otherwise
 ==============================*/
 
-void catherine_predraw(u16 part)
+u8 catherine_predraw(u16 part)
 {
     // Handle face drawing
     switch (part)
@@ -381,6 +382,7 @@ void catherine_predraw(u16 part)
             sausage64_loadmaterial(facemat);
             break;
     }
+    return 1;
 }
 
 

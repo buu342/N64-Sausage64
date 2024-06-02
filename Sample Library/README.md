@@ -64,7 +64,7 @@ void sausage64_set_animcallback(s64ModelHelper* mdl, void (*animcallback)(u16));
     @param The model helper pointer
     @param The pre draw function
 ==============================*/
-void sausage64_set_predrawfunc(s64ModelHelper* mdl, void (*predraw)(u16));
+void sausage64_set_predrawfunc(s64ModelHelper* mdl, u8 (*predraw)(u16));
 
 /*==============================
     sausage64_set_postdrawfunc
@@ -228,7 +228,7 @@ void sausage64_set_animcallback(s64ModelHelper* mdl, void (*animcallback)(u16));
     @param The model helper pointer
     @param The pre draw function
 ==============================*/
-void sausage64_set_predrawfunc(s64ModelHelper* mdl, void (*predraw)(u16));
+void sausage64_set_predrawfunc(s64ModelHelper* mdl, u8 (*predraw)(u16));
 
 /*==============================
     sausage64_set_postdrawfunc

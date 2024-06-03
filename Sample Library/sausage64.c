@@ -9,6 +9,7 @@ https://github.com/buu342/Blender-Sausage64
 #include "sausage64.h"
 #ifdef LIBDRAGON
     #include <math.h>
+    #include <rdpq_tex.h>
 #endif
 #include <stdlib.h>
 #include <malloc.h>

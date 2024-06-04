@@ -59,6 +59,25 @@ typedef struct {
     float color[3];
 } BinFile_DragonVert;
 
+typedef struct {
+    uint32_t animdata_offset;
+    uint32_t animdata_size;
+    uint32_t kfdata_offset;
+    uint32_t kfdata_size;
+} BinFile_TOC_Anims;
+
+typedef struct {
+    uint16_t kfcount;
+    uint16_t* kfindices;
+    char* name;
+} BinFile_AnimData;
+
+typedef struct {
+    float pos[3];
+    float rot[4];
+    float scale[3];
+} BinFile_KeyFrame;
+
 
 /*==============================
     write_output_text
@@ -289,6 +308,10 @@ void write_output_binary()
     uint32_t** dldatas;
     void* vertdatas;
     int* vtotal;
+    BinFile_TOC_Anims* toc_anims;
+    BinFile_AnimData* animdatas;
+    BinFile_KeyFrame** kfdatas;
+    int* kftotal;
     
     // Open the file
     sprintf(strbuff, "%s.bin", global_outputname);
@@ -320,6 +343,12 @@ void write_output_binary()
     vtotal = (int*)malloc(sizeof(int)*list_meshes.size);
     if (vtotal == NULL)
         terminate("Error: Unable to malloc for vtotal\n");
+    kftotal = (int*)malloc(sizeof(int)*list_animations.size);
+    if (kftotal == NULL)
+        terminate("Error: Unable to malloc for kftotal\n");
+    kfdatas = (BinFile_KeyFrame**)malloc(sizeof(BinFile_KeyFrame*)*list_animations.size);
+    if (kfdatas == NULL)
+        terminate("Error: Unable to malloc for KFDatas\n");
 
     // Generate the mesh data
     i = 0;
@@ -367,7 +396,7 @@ void write_output_binary()
                                         + member_size(BinFile_TOC_Meshes, dldata_slotcount))
                                         *list_meshes.size;
         else
-            toc_meshes[i].meshdata_offset += toc_meshes[i-1].dldata_offset + toc_meshes[i-1].dldata_size;
+            toc_meshes[i].meshdata_offset = toc_meshes[i-1].dldata_offset + toc_meshes[i-1].dldata_size;
 
         // Create the vert data
         if (!global_opengl)
@@ -534,14 +563,101 @@ void write_output_binary()
         i++;
     }
 
-    // Actually start writing the file now
+    // -------------- Animation Data --------------
+
+    // Update the header's animation offset
+    bin.offset_anims = toc_meshes[list_meshes.size-1].dldata_offset + toc_meshes[list_meshes.size-1].dldata_size;
+
+    // Create the animation TOC
+    toc_anims = (BinFile_TOC_Anims*)malloc(sizeof(BinFile_TOC_Anims)*list_animations.size);
+    if (toc_anims == NULL)
+        terminate("Error: Unable to malloc for TOC_Anims\n");
+    animdatas = (BinFile_AnimData*)malloc(sizeof(BinFile_AnimData)*list_animations.size);
+    if (animdatas == NULL)
+        terminate("Error: Unable to malloc for AnimData\n");
+    i = 0;
+    for (curnode = list_animations.head; curnode != NULL; curnode = curnode->next)
+    {
+        int j=0;
+        listNode* kfnode;
+        listNode* meshnode;
+        s64Anim* anim = (s64Anim*)curnode->data;
+
+        // Assign the animdatas
+        animdatas[i].kfcount = anim->keyframes.size;
+        animdatas[i].kfindices = (uint16_t*)malloc(sizeof(uint16_t)*anim->keyframes.size);
+        if (animdatas[i].kfindices == NULL)
+            terminate("Error: Unable to malloc for AnimData kfindices\n");
+        for (kfnode = anim->keyframes.head; kfnode != NULL; kfnode = kfnode->next)
+            animdatas[i].kfindices[j++] = ((s64Keyframe*)kfnode->data)->keyframe;
+        animdatas[i].name = anim->name;
+
+        // Assign some keyframe data
+        kftotal[i] = animdatas[i].kfcount*list_meshes.size;
+        for (kfnode = anim->keyframes.head; kfnode != NULL; kfnode = kfnode->next)
+        {
+            kfdatas[i] = (BinFile_KeyFrame*)malloc(sizeof(BinFile_KeyFrame)*kftotal[i]);
+            if (kfdatas[i] == NULL)
+                terminate("Error: Unable to malloc for AnimData kfdatas\n");
+        }
+
+        // Update the anim data size and offset
+        toc_anims[i].animdata_size = member_size(BinFile_AnimData, kfcount) 
+                                    + (sizeof(uint16_t)*animdatas[i].kfcount)
+                                    + strlen(animdatas[i].name)+1;
+        if (i == 0)
+            toc_anims[i].animdata_offset = bin.offset_anims +
+                                            (member_size(BinFile_TOC_Anims, animdata_offset) +
+                                            member_size(BinFile_TOC_Anims, animdata_size) +
+                                            member_size(BinFile_TOC_Anims, kfdata_offset) +
+                                            member_size(BinFile_TOC_Anims, kfdata_size))
+                                            *list_animations.size;
+        else
+            toc_anims[i].animdata_offset = toc_anims[i-1].kfdata_offset + toc_anims[i-1].kfdata_size;
+        toc_anims[i].kfdata_size = (member_size(BinFile_KeyFrame, pos) + member_size(BinFile_KeyFrame, rot) + member_size(BinFile_KeyFrame, scale))*animdatas[i].kfcount*list_meshes.size;
+        toc_anims[i].kfdata_offset = toc_anims[i].animdata_offset + toc_anims[i].animdata_size;
+        j=0;
+        for (kfnode = anim->keyframes.head; kfnode != NULL; kfnode = kfnode->next)
+        {
+            s64Keyframe* keyf = (s64Keyframe*)kfnode->data;
+            for (meshnode = list_meshes.head; meshnode != NULL; meshnode = meshnode->next) // Iterating meshes because they can be out of order to the frame data, due to texture sorting optimization
+            {
+                listNode* fdatanode;
+                for (fdatanode = keyf->framedata.head; fdatanode != NULL; fdatanode = fdatanode->next)
+                {
+                    s64Transform* fdata = (s64Transform*)fdatanode->data;
+                    if (meshnode->data == fdata->mesh)
+                    {
+                        kfdatas[i][j].pos[0] = fdata->translation.x;
+                        kfdatas[i][j].pos[1] = fdata->translation.y;
+                        kfdatas[i][j].pos[2] = fdata->translation.z;
+                        kfdatas[i][j].rot[0] = fdata->rotation.w;
+                        kfdatas[i][j].rot[1] = fdata->rotation.x;
+                        kfdatas[i][j].rot[2] = fdata->rotation.y;
+                        kfdatas[i][j].rot[3] = fdata->rotation.z;
+                        kfdatas[i][j].scale[0] = fdata->scale.x;
+                        kfdatas[i][j].scale[1] = fdata->scale.y;
+                        kfdatas[i][j].scale[2] = fdata->scale.z;
+                        j++;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Done
+        i++;
+    }
+
+
+    // -------------- Actually start writing the file now --------------
 
     // Write the file header
     bin.header        = swap_endian32(bin.header);
     bin.count_meshes  = swap_endian16(bin.count_meshes);
     bin.count_anims   = swap_endian16(bin.count_anims);
     bin.offset_meshes = swap_endian32(16);
-    bin.offset_anims  = swap_endian32(toc_meshes[list_meshes.size-1].dldata_offset + toc_meshes[list_meshes.size-1].dldata_size);
+    bin.offset_anims  = swap_endian32(bin.offset_anims);
     fwrite(&bin.header, member_size(BinFile, header), 1, fp);
     fwrite(&bin.count_meshes, member_size(BinFile, count_meshes), 1, fp);
     fwrite(&bin.count_anims, member_size(BinFile, count_anims), 1, fp);
@@ -570,13 +686,14 @@ void write_output_binary()
     // Write the mesh data + verts + dl
     for (i=0; i<list_meshes.size; i++)
     {
+        int j;
         meshdatas[i].parent = swap_endian16(meshdatas[i].parent);
         fwrite(&meshdatas[i].parent, member_size(BinFile_MeshData, parent), 1, fp);
         fwrite(&meshdatas[i].is_billboard, member_size(BinFile_MeshData, is_billboard), 1, fp);
         fwrite(meshdatas[i].name, strlen(meshdatas[i].name)+1, 1, fp);
         if (!global_opengl)
         {
-            for (int j=0; j<vtotal[i]; j++)
+            for (j=0; j<vtotal[i]; j++)
             {
                 ((BinFile_UltraVert**)vertdatas)[i][j].pos[0] = swap_endian16(((BinFile_UltraVert**)vertdatas)[i][j].pos[0]);
                 ((BinFile_UltraVert**)vertdatas)[i][j].pos[1] = swap_endian16(((BinFile_UltraVert**)vertdatas)[i][j].pos[1]);
@@ -594,7 +711,48 @@ void write_output_binary()
         else
             fwrite(&((BinFile_DragonVert**)vertdatas)[i], swap_endian32(toc_meshes[i].vertdata_size), 1, fp);
     }
-        
+
+    // Write the animation TOCs
+    for (i=0; i<list_animations.size; i++)
+    {
+        toc_anims[i].animdata_offset = swap_endian32(toc_anims[i].animdata_offset);
+        toc_anims[i].animdata_size = swap_endian32(toc_anims[i].animdata_size);
+        toc_anims[i].kfdata_offset = swap_endian32(toc_anims[i].kfdata_offset);
+        toc_anims[i].kfdata_size = swap_endian32(toc_anims[i].kfdata_size);
+        fwrite(&toc_anims[i].animdata_offset, member_size(BinFile_TOC_Anims, animdata_offset), 1, fp);
+        fwrite(&toc_anims[i].animdata_size, member_size(BinFile_TOC_Anims, animdata_size), 1, fp);
+        fwrite(&toc_anims[i].kfdata_offset, member_size(BinFile_TOC_Anims, kfdata_offset), 1, fp);
+        fwrite(&toc_anims[i].kfdata_size, member_size(BinFile_TOC_Anims, kfdata_size), 1, fp);
+    }
+
+    // Write the anim data + keyframes
+    for (i=0; i<list_animations.size; i++)
+    {
+        int j;
+        for (j=0; j<animdatas[i].kfcount; j++)
+            animdatas[i].kfindices[j] = swap_endian16(animdatas[i].kfindices[j]);
+        animdatas[i].kfcount = swap_endian16(animdatas[i].kfcount);
+        fwrite(&animdatas[i].kfcount, member_size(BinFile_AnimData, kfcount), 1, fp);
+        fwrite(animdatas[i].kfindices, sizeof(uint16_t)*swap_endian16(animdatas[i].kfcount), 1, fp);
+        fwrite(animdatas[i].name, strlen(animdatas[i].name)+1, 1, fp);
+        for (j=0; j<kftotal[i]; j++)
+        {
+            kfdatas[i][j].pos[0] = swap_endianfloat(kfdatas[i][j].pos[0]);
+            kfdatas[i][j].pos[1] = swap_endianfloat(kfdatas[i][j].pos[1]);
+            kfdatas[i][j].pos[2] = swap_endianfloat(kfdatas[i][j].pos[2]);
+            kfdatas[i][j].rot[0] = swap_endianfloat(kfdatas[i][j].rot[0]);
+            kfdatas[i][j].rot[1] = swap_endianfloat(kfdatas[i][j].rot[1]);
+            kfdatas[i][j].rot[2] = swap_endianfloat(kfdatas[i][j].rot[2]);
+            kfdatas[i][j].rot[3] = swap_endianfloat(kfdatas[i][j].rot[3]);
+            kfdatas[i][j].scale[0] = swap_endianfloat(kfdatas[i][j].scale[0]);
+            kfdatas[i][j].scale[1] = swap_endianfloat(kfdatas[i][j].scale[1]);
+            kfdatas[i][j].scale[2] = swap_endianfloat(kfdatas[i][j].scale[2]);
+            fwrite(&kfdatas[i][j].pos[0], member_size(BinFile_KeyFrame, pos), 1, fp);
+            fwrite(&kfdatas[i][j].rot[0], member_size(BinFile_KeyFrame, rot), 1, fp);
+            fwrite(&kfdatas[i][j].scale[0], member_size(BinFile_KeyFrame, scale), 1, fp);
+        }
+    }
+    
     if (!global_quiet) printf("Wrote output to '%s.bin' and '%s.h'\n", global_outputname, global_outputname);
     fclose(fp);
 }

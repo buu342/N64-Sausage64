@@ -76,6 +76,26 @@ uint32_t swap_endian32(uint32_t val)
 
 
 /*==============================
+    swap_endianfloat
+    Swaps the endianess of the data (32-bit float)
+    @param   The data to swap the endianess of
+    @returns The data with endianess swapped
+==============================*/
+
+float swap_endianfloat(float val)
+{
+   float ret;
+   uint8_t* swapfrom = (uint8_t*)&val;
+   uint8_t* swapto = (uint8_t*)&ret;
+   swapto[0] = swapfrom[3];
+   swapto[1] = swapfrom[2];
+   swapto[2] = swapfrom[1];
+   swapto[3] = swapfrom[0];
+   return ret;
+}
+
+
+/*==============================
     mallocstring
     Creates a newly malloc'ed copy of a string
     @param   The string to create

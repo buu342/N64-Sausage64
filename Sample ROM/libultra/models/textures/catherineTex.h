@@ -4,6 +4,8 @@
 Texture data generated via my texture converter, available at:
 https://github.com/buu342/GML-N64TextureConverter
 All textures are in 16-Bit RGBA format
+I also created a custom FaceAnim struct to allow for facial 
+aimations. This was done manually, not via the converter tool.
 ***************************************************************/
 
 

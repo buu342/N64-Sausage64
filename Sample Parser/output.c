@@ -16,13 +16,12 @@ Outputs the parsed data to a file
 #include "dlist.h"
 #include "opengl.h"
 
-#define BINARY_VERSION 0
 #define STRBUF_SIZE 512
 
 #define member_size(type, member) (sizeof( ((type *)0)->member ))
 
 typedef struct {
-    uint32_t header;
+    char header[4];
     uint16_t count_meshes;
     uint16_t count_anims;
     uint32_t offset_meshes;
@@ -40,8 +39,8 @@ typedef struct {
 } BinFile_TOC_Meshes;
 
 typedef struct {
-    uint8_t is_billboard;
     int16_t parent;
+    uint8_t is_billboard;
     char*   name;
 } BinFile_MeshData;
 
@@ -334,7 +333,10 @@ void write_output_binary()
         terminate("Error: Unable to open file for writing\n");
     
     // Generate the file header
-    bin.header        = (('S' << 24) | ('6' << 16) | ('4' << 8) | BINARY_VERSION);
+    bin.header[0]     = 'S';
+    bin.header[1]     = '6';
+    bin.header[2]     = '4';
+    bin.header[3]     = BINARY_VERSION;
     bin.count_meshes  = list_meshes.size;
     bin.count_anims   = list_animations.size;
 
@@ -667,7 +669,6 @@ void write_output_binary()
     // -------------- Actually start writing the binary file now --------------
 
     // Write the file header
-    bin.header        = swap_endian32(bin.header);
     bin.count_meshes  = swap_endian16(bin.count_meshes);
     bin.count_anims   = swap_endian16(bin.count_anims);
     bin.offset_meshes = swap_endian32(16);

@@ -10,6 +10,7 @@
 
     #define PROGRAM_NAME    "Arabiki64"
     #define PROGRAM_VERSION "1.4"
+    #define BINARY_VERSION  0
     
     
     /*********************************

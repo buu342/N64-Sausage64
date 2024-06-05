@@ -9,10 +9,10 @@ https://github.com/buu342/Blender-Sausage64
 #include "sausage64.h"
 #ifdef LIBDRAGON
     #include <math.h>
-    #include <rdpq_tex.h>
 #endif
 #include <stdlib.h>
 #include <malloc.h>
+#include <string.h>
 
 
 /*********************************
@@ -30,6 +30,13 @@ https://github.com/buu342/Blender-Sausage64
 
 
 /*********************************
+           Other Macros
+*********************************/
+
+#define BINARY_VERSION 0
+
+
+/*********************************
              Structs
 *********************************/
 
@@ -40,6 +47,138 @@ typedef struct {
     f32 y;
     f32 z;
 } s64Quat;
+
+// Binary model helper structs
+typedef struct {
+    char header[4];
+    u16 count_meshes;
+    u16 count_anims;
+    u32 offset_meshes;
+    u32 offset_anims;
+} BinFile_Header;
+
+typedef struct {
+    u32 meshdata_offset;
+    u32 meshdata_size;
+    u32 vertdata_offset;
+    u32 vertdata_size;
+    u32 dldata_offset;
+    u32 dldata_size;
+    u32 dldata_slotcount;
+} BinFile_TOC_Meshes;
+
+typedef struct {
+    s16   parent;
+    u8    is_billboard;
+    char* name;
+} BinFile_MeshData;
+
+typedef enum {
+    DPFillRectangle = 0,
+    DPScisFillRectangle,
+    DPFullSync,
+    DPLoadSync,
+    DPTileSync,
+    DPPipeSync,
+    DPLoadTLUT_pal16,
+    DPLoadTLUT_pal256,
+    DPLoadTextureBlock,
+    DPLoadTextureBlock_4b,
+    DPLoadTextureTile,
+    DPLoadTextureTile_4b,
+    DPLoadBlock,
+    DPNoOp,
+    DPNoOpTag,
+    DPPipelineMode,
+    DPSetBlendColor,
+    DPSetEnvColor,
+    DPSetFillColor,
+    DPSetFogColor,
+    DPSetPrimColor,
+    DPSetColorImage,
+    DPSetDepthImage,
+    DPSetTextureImage,
+    DPSetHilite1Tile,
+    DPSetHilite2Tile,
+    DPSetAlphaCompare,
+    DPSetAlphaDither,
+    DPSetColorDither,
+    DPSetCombineMode,
+    DPSetCombineLERP,
+    DPSetConvert,
+    DPSetTextureConvert,
+    DPSetCycleType,
+    DPSetDepthSource,
+    DPSetCombineKey,
+    DPSetKeyGB,
+    DPSetKeyR,
+    DPSetPrimDepth,
+    DPSetRenderMode,
+    DPSetScissor,
+    DPSetTextureDetail,
+    DPSetTextureFilter,
+    DPSetTextureLOD,
+    DPSetTextureLUT,
+    DPSetTexturePersp,
+    DPSetTile,
+    DPSetTileSize,
+    SP1Triangle,
+    SP2Triangles,
+    SPBranchLessZ,
+    SPBranchLessZrg,
+    SPBranchList,
+    SPClipRatio,
+    SPCullDisplayList,
+    SPDisplayList,
+    SPEndDisplayList,
+    SPFogPosition,
+    SPForceMatrix,
+    SPSetGeometryMode,
+    SPClearGeometryMode,
+    SPInsertMatrix,
+    SPLine3D,
+    SPLineW3D,
+    SPLoadUcode,
+    SPLoadUcodeL,
+    SPLookAt,
+    SPMatrix,
+    SPModifyVertex,
+    SPPerspNormalize,
+    SPPopMatrix,
+    SPSegment,
+    SPSetLights0,
+    SPSetLights1,
+    SPSetLights2,
+    SPSetLights3,
+    SPSetLights4,
+    SPSetLights5,
+    SPSetLights6,
+    SPSetLights7,
+    SPSetStatus,
+    SPNumLights,
+    SPLight,
+    SPLightColor,
+    SPTexture,
+    SPTextureRectangle,
+    SPScisTextureRectangle,
+    SPTextureRectangleFlip,
+    SPVertex,
+    SPViewport,
+    SPBgRectCopy,
+    SPBgRect1Cyc,
+    SPObjRectangle,
+    SPObjRectangleR,
+    SPObjSprite,
+    SPObjMatrix,
+    SPObjSubMatrix,
+    SPObjRenderMode,
+    SPObjLoadTxtr,
+    SPObjLoadTxRect,
+    SPObjLoadTxRectR,
+    SPObjLoadTxSprite,
+    SPSelectDL,
+    SPSelectBranchDL
+} DListCName;
 
 
 /*********************************
@@ -558,26 +697,28 @@ static inline void s64vec_rotate(f32 vec[3], s64Quat rot, f32 result[3])
     }
 #endif
 
-typedef struct {
-    u16 header;
-    u16 count_meshes;
-    u16 count_anims;
-    u16 count_texes;
-    u32 offset_meshes;
-    u32 offset_anims;
-    u32 offset_texes;
-} BinFile_Header;
-
 #include "debug.h"
-
 s64ModelData* sausage64_load_binarymodel(u32 romstart, u32 size, u32** textures)
 {
+    int i;
     OSMesg   dmamsg;
     OSIoMesg iomsg;
     OSMesgQueue msgq;
     u32 left = size;
-    BinFile_Header header;
     u8* data;
+    BinFile_Header header;
+    u32 mallocsize_strings = 0;
+    u32 mallocsize_verts = 0;
+    u32 mallocsize_gfx = 0;
+    u32 offset_strings = 0;
+    u32 offset_verts = 0;
+    u32 offset_gfx = 0;
+    char* strings = NULL;
+    Vtx* verts = NULL;
+    Gfx* dlists = NULL;
+    s64Mesh* meshes;
+    s64Animation* anims;
+    s64ModelData* mdl;
     
     // Reserve some memory for the file we're about to read
     data = (u8*)memalign(16, size);
@@ -592,25 +733,123 @@ s64ModelData* sausage64_load_binarymodel(u32 romstart, u32 size, u32** textures)
     while (left > 0)
     {
         u32 readsize = left;
+        u32 offset;
         
         // Limit the size to prevent audio stutters
         if (readsize > 16384)
             readsize = 16384;
             
         // Perform the read
-        osPiStartDma(&iomsg, OS_MESG_PRI_NORMAL, OS_READ, romstart+(size-left), data, readsize, &msgq);
+        offset = size - left;
+        osPiStartDma(&iomsg, OS_MESG_PRI_NORMAL, OS_READ, romstart+offset, data+offset, readsize, &msgq);
         (void)osRecvMesg(&msgq, &dmamsg, OS_MESG_BLOCK);
         left -= readsize;
     }
     
     // Validate
-    debug_printf("%02x %02x %hu %hu %hu\n", *(data+2), *(data+3), *((u16*)(data+2)), *((u16*)(data+4)), *((u16*)(data+6)));
-    memcpy(&header, data, sizeof(BinFile_Header));
-    debug_printf("%04x %hu %hu %hu\n", header.header, header.count_meshes, header.count_anims, header.count_texes);
+    header.header[0] = data[0];
+    header.header[1] = data[1];
+    header.header[2] = data[2];
+    header.header[3] = data[3];
+    if (header.header[0] != 'S' || header.header[1] != '6' || header.header[2] != '4' || header.header[3] != BINARY_VERSION)
+    {
+        free(data);
+        return NULL;
+    }
+    
+    // Get model data
+    header.count_meshes = ((u16*)data)[2];
+    header.count_anims = ((u16*)data)[3];
+    header.offset_meshes = ((u32*)data)[2];
+    header.offset_anims = ((u32*)data)[3];
+    
+    // To reduce memory fragmentation, we're going to iterate once through everything
+    // to calculate the size we'll need for all the data,
+    // and then the second iteration is when we'll actually populate the data structures
+    for (i=0; i<header.count_meshes; i++)
+    {
+        int toc_offset = header.offset_meshes + 0x1C*i;
+        BinFile_TOC_Meshes toc_mesh = {
+            *((u32*)&data[toc_offset+0*4]),
+            *((u32*)&data[toc_offset+1*4]),
+            *((u32*)&data[toc_offset+2*4]),
+            *((u32*)&data[toc_offset+3*4]),
+            *((u32*)&data[toc_offset+4*4]),
+            *((u32*)&data[toc_offset+5*4]),
+            *((u32*)&data[toc_offset+6*4]),
+        };
+        BinFile_MeshData meshdata = {
+            (((u16)data[toc_mesh.meshdata_offset])<<8) | data[toc_mesh.meshdata_offset+1],
+            data[toc_mesh.meshdata_offset+2],
+            (char*)&data[toc_mesh.meshdata_offset+3]
+        };
+        mallocsize_strings += strlen(meshdata.name)+1;
+        mallocsize_verts += toc_mesh.vertdata_size/16;
+        mallocsize_gfx += toc_mesh.dldata_slotcount;
+        debug_printf("Mesh %s -> %d %d %d\n", meshdata.name, strlen(meshdata.name)+1, toc_mesh.vertdata_size/16, toc_mesh.dldata_slotcount);
+    }
+    
+    // Perform the mallocs
+    mdl = (s64ModelData*)malloc(sizeof(s64ModelData));
+    meshes = (s64Mesh*)malloc(sizeof(s64Mesh)*header.count_meshes);
+    strings = (char*)malloc(sizeof(char)*mallocsize_strings);
+    verts = (Vtx*)malloc(sizeof(Vtx)*mallocsize_verts);
+    dlists = (Gfx*)malloc(sizeof(Gfx)*mallocsize_gfx);
+    debug_printf("%d %d %d\n", mallocsize_strings, mallocsize_verts, mallocsize_gfx);
+    if (mdl == NULL || meshes == NULL || strings == NULL || verts == NULL || dlists == NULL)
+    {
+        if (mdl != NULL) free(mdl);
+        if (meshes != NULL) free(meshes);
+        if (strings != NULL) free(strings);
+        if (verts != NULL) free(verts);
+        if (dlists != NULL) free(dlists);
+        free(data);
+        return NULL;
+    }
+    
+    // Now we will actually pull data
+    debug_printf("\nPulling data\n");
+    for (i=0; i<header.count_meshes; i++)
+    {
+        int toc_offset = header.offset_meshes + 0x1C*i;
+        BinFile_TOC_Meshes toc_mesh = {
+            *((u32*)&data[toc_offset+0*4]),
+            *((u32*)&data[toc_offset+1*4]),
+            *((u32*)&data[toc_offset+2*4]),
+            *((u32*)&data[toc_offset+3*4]),
+            *((u32*)&data[toc_offset+4*4]),
+            *((u32*)&data[toc_offset+5*4]),
+            *((u32*)&data[toc_offset+6*4]),
+        };
+        BinFile_MeshData meshdata = {
+            (((u16)data[toc_mesh.meshdata_offset])<<8) | data[toc_mesh.meshdata_offset+1],
+            data[toc_mesh.meshdata_offset+2],
+            (char*)&data[toc_mesh.meshdata_offset+3]
+        };
+        
+        // Copy the s64Mesh
+        *(u32*)&meshes[i].is_billboard = meshdata.is_billboard;
+        *(s32*)&meshes[i].parent = meshdata.parent;
+        (Gfx*)meshes[i].dl = dlists + offset_gfx;
+        meshes[i].name = strings+offset_strings;
+        strcpy(strings+offset_strings, meshdata.name);
+        offset_strings += strlen(meshes[i].name)+1;
+        
+        // Copy the vertex data
+        // It's aligned by design (Thanks SGI!), so we can just memcpy
+        memcpy(&verts[offset_verts], &data[toc_mesh.vertdata_offset], toc_mesh.vertdata_size);
+        offset_verts += toc_mesh.vertdata_size/16;
+        
+        // Generate the display list
+        offset_gfx += toc_mesh.dldata_slotcount;
+        
+        // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        debug_printf("Mesh %s %d %d\n", meshes[i].name, meshes[i].is_billboard, meshes[i].parent);
+    }
     
     // Finish
     free(data);
-    return NULL;
+    return mdl;
 }
 
 /*********************************
@@ -873,7 +1112,7 @@ void sausage64_advance_anim(s64ModelHelper* mdl, f32 tickamount)
 
 void sausage64_set_anim(s64ModelHelper* mdl, u16 anim)
 {
-    s64Animation* animdata = &mdl->mdldata->anims[anim];
+    const s64Animation* animdata = &mdl->mdldata->anims[anim];
     s64AnimPlay* const playing = &mdl->curanim;
     playing->animdata = animdata;
     playing->curkeyframe = 0;
@@ -1156,7 +1395,7 @@ void sausage64_lookat(s64ModelHelper* mdl, const u16 mesh, f32 dir[3], f32 amoun
     if (affectchildren)
     {
         int i;
-        s64ModelData* mdata = mdl->mdldata;
+        const s64ModelData* mdata = mdl->mdldata;
         s64Quat rotdiff = s64quat_difference(q, qt);
         for (i=0; i<mdata->meshcount; i++)  
         {

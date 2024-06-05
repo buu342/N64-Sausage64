@@ -17,7 +17,7 @@ beginseg
 endseg
 
 beginseg
-    name    "catherine_binary"
+    name    "Catherine"
     flags   RAW
     after   "code"
     include "models/binary/catherineMdl.bin"

@@ -79,6 +79,19 @@ typedef struct {
 
 
 /*==============================
+    align_32bits
+    Aligns a number to 32 bits
+    @param  The number to align
+    @return The aligned value
+==============================*/
+
+static int align_32bits(int num)
+{
+    return ((num + (4 - 1))/4)*4;
+}
+
+
+/*==============================
     write_header
     Writes the header data to a text file.
     @param The file pointer
@@ -392,25 +405,25 @@ void write_output_binary()
         meshdatas[i].parent = parent;
         meshdatas[i].is_billboard = has_property(mesh, "Billboard");
         meshdatas[i].name = mesh->name;
-
+ 
         // Update the mesh data size and offset
         toc_meshes[i].meshdata_size = member_size(BinFile_MeshData, parent) 
                                     + member_size(BinFile_MeshData, is_billboard)
                                     + strlen(meshdatas[i].name)+1;
         if (i == 0)
             toc_meshes[i].meshdata_offset = (member_size(BinFile, header) 
-                                        + member_size(BinFile, count_meshes)
-                                        + member_size(BinFile, count_anims)
-                                        + member_size(BinFile, offset_meshes)
-                                        + member_size(BinFile, offset_anims))
-                                        +(member_size(BinFile_TOC_Meshes, meshdata_offset)
-                                        + member_size(BinFile_TOC_Meshes, meshdata_size)
-                                        + member_size(BinFile_TOC_Meshes, vertdata_offset)
-                                        + member_size(BinFile_TOC_Meshes, vertdata_size)
-                                        + member_size(BinFile_TOC_Meshes, dldata_offset)
-                                        + member_size(BinFile_TOC_Meshes, dldata_size)
-                                        + member_size(BinFile_TOC_Meshes, dldata_slotcount))
-                                        *list_meshes.size;
+                                            + member_size(BinFile, count_meshes)
+                                            + member_size(BinFile, count_anims)
+                                            + member_size(BinFile, offset_meshes)
+                                            + member_size(BinFile, offset_anims))
+                                            +(member_size(BinFile_TOC_Meshes, meshdata_offset)
+                                            + member_size(BinFile_TOC_Meshes, meshdata_size)
+                                            + member_size(BinFile_TOC_Meshes, vertdata_offset)
+                                            + member_size(BinFile_TOC_Meshes, vertdata_size)
+                                            + member_size(BinFile_TOC_Meshes, dldata_offset)
+                                            + member_size(BinFile_TOC_Meshes, dldata_size)
+                                            + member_size(BinFile_TOC_Meshes, dldata_slotcount))
+                                            *list_meshes.size;
         else
             toc_meshes[i].meshdata_offset = toc_meshes[i-1].dldata_offset + toc_meshes[i-1].dldata_size;
 
@@ -526,7 +539,7 @@ void write_output_binary()
             //toc_meshes[i].vertdata_size = sizeof(BinFile_DragonVert)*vtotal;
             */
         }
-        toc_meshes[i].vertdata_offset = toc_meshes[i].meshdata_offset + toc_meshes[i].meshdata_size;
+        toc_meshes[i].vertdata_offset = toc_meshes[i].meshdata_offset + align_32bits(toc_meshes[i].meshdata_size);
 
         // Create the display list
         if (!global_opengl)
@@ -631,7 +644,7 @@ void write_output_binary()
         else
             toc_anims[i].animdata_offset = toc_anims[i-1].kfdata_offset + toc_anims[i-1].kfdata_size;
         toc_anims[i].kfdata_size = (member_size(BinFile_KeyFrame, pos) + member_size(BinFile_KeyFrame, rot) + member_size(BinFile_KeyFrame, scale))*animdatas[i].kfcount*list_meshes.size;
-        toc_anims[i].kfdata_offset = toc_anims[i].animdata_offset + toc_anims[i].animdata_size;
+        toc_anims[i].kfdata_offset = toc_anims[i].animdata_offset + align_32bits(toc_anims[i].animdata_size);
         j=0;
         for (kfnode = anim->keyframes.head; kfnode != NULL; kfnode = kfnode->next)
         {
@@ -702,10 +715,14 @@ void write_output_binary()
     for (i=0; i<list_meshes.size; i++)
     {
         int j;
+        int padding = align_32bits(swap_endian32(toc_meshes[i].meshdata_size)) - swap_endian32(toc_meshes[i].meshdata_size);
+        uint8_t padbytes[4] = {0};
         meshdatas[i].parent = swap_endian16(meshdatas[i].parent);
         fwrite(&meshdatas[i].parent, member_size(BinFile_MeshData, parent), 1, fp);
         fwrite(&meshdatas[i].is_billboard, member_size(BinFile_MeshData, is_billboard), 1, fp);
         fwrite(meshdatas[i].name, strlen(meshdatas[i].name)+1, 1, fp);
+        if (padding > 0)
+            fwrite(padbytes, padding, 1, fp); 
         if (!global_opengl)
         {
             for (j=0; j<vtotal[i]; j++)
@@ -744,12 +761,16 @@ void write_output_binary()
     for (i=0; i<list_animations.size; i++)
     {
         int j;
+        int padding = align_32bits(swap_endian32(toc_anims[i].animdata_size)) - swap_endian32(toc_anims[i].animdata_size);
+        uint8_t padbytes[4] = {0};
         for (j=0; j<animdatas[i].kfcount; j++)
             animdatas[i].kfindices[j] = swap_endian16(animdatas[i].kfindices[j]);
         animdatas[i].kfcount = swap_endian16(animdatas[i].kfcount);
         fwrite(&animdatas[i].kfcount, member_size(BinFile_AnimData, kfcount), 1, fp);
         fwrite(animdatas[i].kfindices, sizeof(uint16_t)*swap_endian16(animdatas[i].kfcount), 1, fp);
         fwrite(animdatas[i].name, strlen(animdatas[i].name)+1, 1, fp);
+        if (padding > 0)
+            fwrite(padbytes, padding, 0, fp); 
         for (j=0; j<kftotal[i]; j++)
         {
             kfdatas[i][j].pos[0] = swap_endianfloat(kfdatas[i][j].pos[0]);

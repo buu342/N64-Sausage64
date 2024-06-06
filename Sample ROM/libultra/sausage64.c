@@ -80,6 +80,19 @@ typedef struct {
     char* name;
 } BinFile_MeshData;
 
+typedef struct {
+    u32 animdata_offset;
+    u32 animdata_size;
+    u32 kfdata_offset;
+    u32 kfdata_size;
+} BinFile_TOC_Anims;
+
+typedef struct {
+    u16 kfcount;
+    u16* kfindices;
+    char* name;
+} BinFile_AnimData;
+
 
 /*********************************
              Enum
@@ -848,14 +861,22 @@ s64ModelData* sausage64_load_binarymodel(u32 romstart, u32 size, u32** textures)
     u32 mallocsize_strings = 0;
     u32 mallocsize_verts = 0;
     u32 mallocsize_gfx = 0;
+    u32 mallocsize_anims = 0;
+    u32 mallocsize_keyframes = 0;
+    u32 mallocsize_transforms = 0;
     u32 offset_strings = 0;
     u32 offset_verts = 0;
     u32 offset_gfx = 0;
+    u32 offset_anims = 0;
+    u32 offset_keyframes = 0;
+    u32 offset_transforms = 0;
     char* strings = NULL;
     Vtx* verts = NULL;
     Gfx* dlists = NULL;
     s64Mesh* meshes = NULL;
     s64Animation* anims = NULL;
+    s64KeyFrame* keyframes = NULL;
+    s64Transform* transforms = NULL;
     s64ModelData* mdl = NULL;
     
     // Reserve some memory for the file we're about to read
@@ -917,7 +938,7 @@ s64ModelData* sausage64_load_binarymodel(u32 romstart, u32 size, u32** textures)
             *((u32*)&data[toc_offset+6*4]),
         };
         BinFile_MeshData meshdata = {
-            (((u16)data[toc_mesh.meshdata_offset])<<8) | data[toc_mesh.meshdata_offset+1],
+            *((u16*)&data[toc_mesh.meshdata_offset]),
             data[toc_mesh.meshdata_offset+2],
             (char*)&data[toc_mesh.meshdata_offset+3]
         };
@@ -925,6 +946,25 @@ s64ModelData* sausage64_load_binarymodel(u32 romstart, u32 size, u32** textures)
         mallocsize_verts += toc_mesh.vertdata_size/16;
         mallocsize_gfx += toc_mesh.dldata_slotcount;
     }
+    /*for (i=0; i<header.count_anims; i++)
+    {
+        int toc_offset = header.offset_anims + 0x1C*i;
+        BinFile_TOC_Anims toc_anim = {
+            *((u32*)&data[toc_offset+0*4]),
+            *((u32*)&data[toc_offset+1*4]),
+            *((u32*)&data[toc_offset+2*4]),
+            *((u32*)&data[toc_offset+3*4]),
+        };
+        BinFile_AnimData animdata = {
+            *((u16*)&data[toc_mesh.meshdata_offset]),
+            data[toc_mesh.meshdata_offset+2],
+            (char*)&data[toc_mesh.meshdata_offset+3]
+        };
+        mallocsize_strings += strlen(animdata.name)+1;
+        mallocsize_anims += 0;
+        mallocsize_keyframes += 0;
+        mallocsize_transforms += 0;
+    }*/
     
     // Perform the mallocs
     mdl = (s64ModelData*)malloc(sizeof(s64ModelData));
@@ -932,6 +972,9 @@ s64ModelData* sausage64_load_binarymodel(u32 romstart, u32 size, u32** textures)
     strings = (char*)malloc(sizeof(char)*mallocsize_strings);
     verts = (Vtx*)malloc(sizeof(Vtx)*mallocsize_verts);
     dlists = (Gfx*)malloc(sizeof(Gfx)*mallocsize_gfx);
+    //anims = NULL;
+    //keyframes = NULL;
+    //transforms = NULL;
     if (mdl == NULL || meshes == NULL || strings == NULL || verts == NULL || dlists == NULL)
     {
         if (mdl != NULL) free(mdl);
@@ -957,9 +1000,9 @@ s64ModelData* sausage64_load_binarymodel(u32 romstart, u32 size, u32** textures)
             *((u32*)&data[toc_offset+6*4]),
         };
         BinFile_MeshData meshdata = {
-            (((u16)data[toc_mesh.meshdata_offset])<<8) | data[toc_mesh.meshdata_offset+1],
+            *((u16*)&data[toc_mesh.meshdata_offset]),
             data[toc_mesh.meshdata_offset+2],
-            (char*)&data[toc_mesh.meshdata_offset+3]
+            (char*)(&data[toc_mesh.meshdata_offset+3])
         };
         
         // Copy the s64Mesh
@@ -976,9 +1019,21 @@ s64ModelData* sausage64_load_binarymodel(u32 romstart, u32 size, u32** textures)
         
         // Generate the display list
         sausage64_gendlist((u32*)(&data[toc_mesh.dldata_offset]), &dlists[offset_gfx], &verts[offset_verts], textures);
+        *(s64Gfx*)&meshes[i].dl = dlists[offset_gfx];
+        
+        // Increment pointers
         offset_verts += toc_mesh.vertdata_size/16;
         offset_gfx += toc_mesh.dldata_slotcount;
     }
+    for (i=0; i<header.count_anims; i++)
+    {
+    }
+    
+    // Populate the model data
+    *(u16*)&mdl->meshcount = header.count_meshes;
+    *(u16*)&mdl->animcount = header.count_anims;
+    mdl->meshes = meshes;
+    mdl->anims = anims;
     
     // Finish
     free(data);

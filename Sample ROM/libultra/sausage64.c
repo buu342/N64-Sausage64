@@ -88,7 +88,7 @@ typedef struct {
 } BinFile_TOC_Anims;
 
 typedef struct {
-    u16 kfcount;
+    u32 kfcount;
     u16* kfindices;
     char* name;
 } BinFile_AnimData;
@@ -722,11 +722,6 @@ static inline void s64vec_rotate(f32 vec[3], s64Quat rot, f32 result[3])
     }
 #endif
 
-#include "debug.h"
-
-// DPLoadTextureBlock
-// DPLoadTextureBlock_4b
-
 static void sausage64_gendlist(u32* data, Gfx* dlist, Vtx* verts, u32** textures)
 {
     int i;
@@ -748,15 +743,21 @@ static void sausage64_gendlist(u32* data, Gfx* dlist, Vtx* verts, u32** textures
             case SPVertex:
                 args[0] = data[offset++];
                 gSPVertex(dlist++, verts + ((args[0] & 0xFFFF0000)>>16), (args[0] & 0x0000FF00)>>8, args[0] & 0x000000FF);
+                debug_printf("vert -> +%d %d %d\n", ((args[0] & 0xFFFF0000)>>16), (args[0] & 0x0000FF00)>>8, args[0] & 0x000000FF);
                 break;
             case SP1Triangle:
                 args[0] = data[offset++];
                 gSP1Triangle(dlist++, (args[0] & 0xFF000000)>>24, (args[0] & 0x00FF0000)>>16, (args[0] & 0x0000FF00)>>8, (args[0] & 0x000000FF));
+                debug_printf("1tri -> %d %d %d %d\n", (args[0] & 0xFF000000)>>24, (args[0] & 0x00FF0000)>>16, (args[0] & 0x0000FF00)>>8, (args[0] & 0x000000FF));
                 break;
             case SP2Triangles:
                 args[0] = data[offset++];
                 args[1] = data[offset++];
                 gSP2Triangles(dlist++, 
+                    (args[0] & 0xFF000000)>>24, (args[0] & 0x00FF0000)>>16, (args[0] & 0x0000FF00)>>8, (args[0] & 0x000000FF),
+                    (args[1] & 0xFF000000)>>24, (args[1] & 0x00FF0000)>>16, (args[1] & 0x0000FF00)>>8, (args[1] & 0x000000FF)
+                );
+                debug_printf("2tri -> %d %d %d %d %d %d %d %d\n", 
                     (args[0] & 0xFF000000)>>24, (args[0] & 0x00FF0000)>>16, (args[0] & 0x0000FF00)>>8, (args[0] & 0x000000FF),
                     (args[1] & 0xFF000000)>>24, (args[1] & 0x00FF0000)>>16, (args[1] & 0x0000FF00)>>8, (args[1] & 0x000000FF)
                 );
@@ -843,7 +844,7 @@ static void sausage64_gendlist(u32* data, Gfx* dlist, Vtx* verts, u32** textures
                 gSPEndDisplayList(dlist++);
                 return;
             default:
-                debug_printf("Warning: Unknown DL Command with ID %d\n", datablock);
+                //debug_printf("Warning: Unknown DL Command with ID %d\n", datablock);
                 break;
         }
     }
@@ -858,18 +859,12 @@ s64ModelData* sausage64_load_binarymodel(u32 romstart, u32 size, u32** textures)
     u32 left = size;
     u8* data;
     BinFile_Header header;
-    u32 mallocsize_strings = 0;
-    u32 mallocsize_verts = 0;
-    u32 mallocsize_gfx = 0;
-    u32 mallocsize_anims = 0;
-    u32 mallocsize_keyframes = 0;
-    u32 mallocsize_transforms = 0;
-    u32 offset_strings = 0;
-    u32 offset_verts = 0;
-    u32 offset_gfx = 0;
-    u32 offset_anims = 0;
-    u32 offset_keyframes = 0;
-    u32 offset_transforms = 0;
+    BinFile_TOC_Meshes* toc_meshes;
+    BinFile_MeshData* meshdatas;
+    BinFile_TOC_Anims* toc_anims;
+    BinFile_AnimData* animdatas;
+    u32 mallocsize_strings = 0, mallocsize_verts = 0, mallocsize_gfx = 0, mallocsize_keyframes = 0, mallocsize_transforms = 0;
+    u32 offset_strings = 0, offset_verts = 0, offset_gfx = 0, offset_keyframes = 0, offset_transforms = 0;
     char* strings = NULL;
     Vtx* verts = NULL;
     Gfx* dlists = NULL;
@@ -921,8 +916,21 @@ s64ModelData* sausage64_load_binarymodel(u32 romstart, u32 size, u32** textures)
     header.count_anims = ((u16*)data)[3];
     header.offset_meshes = ((u32*)data)[2];
     header.offset_anims = ((u32*)data)[3];
+    toc_meshes = (BinFile_TOC_Meshes*)malloc(sizeof(BinFile_TOC_Meshes)*header.count_meshes);
+    toc_anims = (BinFile_TOC_Anims*)malloc(sizeof(BinFile_TOC_Anims)*header.count_anims);
+    meshdatas = (BinFile_MeshData*)malloc(sizeof(BinFile_MeshData)*header.count_meshes);
+    animdatas = (BinFile_AnimData*)malloc(sizeof(BinFile_AnimData)*header.count_anims);
+    if (toc_meshes == NULL || toc_anims == NULL || meshdatas == NULL || animdatas == NULL)
+    {
+        if (toc_meshes != NULL) free(toc_meshes);
+        if (toc_anims != NULL) free(toc_anims);
+        if (meshdatas != NULL) free(meshdatas);
+        if (animdatas != NULL) free(animdatas);
+        free(data);
+        return NULL;
+    }
     
-    // To reduce memory fragmentation, we're going to iterate once through everything
+    // To reduce memory fragmentation, we're gfloatoing to iterate once through everything
     // to calculate the size we'll need for all the data,
     // and then the second iteration is when we'll actually populate the data structures
     for (i=0; i<header.count_meshes; i++)
@@ -945,10 +953,14 @@ s64ModelData* sausage64_load_binarymodel(u32 romstart, u32 size, u32** textures)
         mallocsize_strings += strlen(meshdata.name)+1;
         mallocsize_verts += toc_mesh.vertdata_size/16;
         mallocsize_gfx += toc_mesh.dldata_slotcount;
+        
+        // Copy the data
+        toc_meshes[i] = toc_mesh;
+        meshdatas[i] = meshdata;
     }
-    /*for (i=0; i<header.count_anims; i++)
+    for (i=0; i<header.count_anims; i++)
     {
-        int toc_offset = header.offset_anims + 0x1C*i;
+        int toc_offset = header.offset_anims + 0x10*i;
         BinFile_TOC_Anims toc_anim = {
             *((u32*)&data[toc_offset+0*4]),
             *((u32*)&data[toc_offset+1*4]),
@@ -956,15 +968,18 @@ s64ModelData* sausage64_load_binarymodel(u32 romstart, u32 size, u32** textures)
             *((u32*)&data[toc_offset+3*4]),
         };
         BinFile_AnimData animdata = {
-            *((u16*)&data[toc_mesh.meshdata_offset]),
-            data[toc_mesh.meshdata_offset+2],
-            (char*)&data[toc_mesh.meshdata_offset+3]
+            *((u32*)&data[toc_anim.animdata_offset]),
+            (u16*)&data[toc_anim.animdata_offset+2]
         };
+        animdata.name = (((char*)(animdata.kfindices)) + animdata.kfcount*sizeof(u16) + 2);
         mallocsize_strings += strlen(animdata.name)+1;
-        mallocsize_anims += 0;
-        mallocsize_keyframes += 0;
-        mallocsize_transforms += 0;
-    }*/
+        mallocsize_keyframes += animdata.kfcount;
+        mallocsize_transforms += animdata.kfcount*header.count_meshes;
+        
+        // Copy the data
+        toc_anims[i] = toc_anim;
+        animdatas[i] = animdata;
+    }
     
     // Perform the mallocs
     mdl = (s64ModelData*)malloc(sizeof(s64ModelData));
@@ -972,61 +987,74 @@ s64ModelData* sausage64_load_binarymodel(u32 romstart, u32 size, u32** textures)
     strings = (char*)malloc(sizeof(char)*mallocsize_strings);
     verts = (Vtx*)malloc(sizeof(Vtx)*mallocsize_verts);
     dlists = (Gfx*)malloc(sizeof(Gfx)*mallocsize_gfx);
-    //anims = NULL;
-    //keyframes = NULL;
-    //transforms = NULL;
-    if (mdl == NULL || meshes == NULL || strings == NULL || verts == NULL || dlists == NULL)
+    anims = (s64Animation*)malloc(sizeof(s64Animation)*header.count_anims);
+    keyframes = (s64KeyFrame*)malloc(sizeof(s64KeyFrame)*mallocsize_keyframes);
+    transforms = (s64Transform*)malloc(sizeof(s64Transform)*mallocsize_transforms);
+    if (mdl == NULL || meshes == NULL || strings == NULL || verts == NULL || dlists == NULL || anims == NULL || keyframes == NULL || transforms == NULL)
     {
         if (mdl != NULL) free(mdl);
         if (meshes != NULL) free(meshes);
         if (strings != NULL) free(strings);
         if (verts != NULL) free(verts);
         if (dlists != NULL) free(dlists);
+        if (anims != NULL) free(anims);
+        if (keyframes != NULL) free(keyframes);
+        if (transforms != NULL) free(transforms);
+        free(toc_meshes);
+        free(meshdatas);
+        free(toc_anims);
+        free(animdatas);
         free(data);
         return NULL;
     }
     
     // Now we will actually pull data
     for (i=0; i<header.count_meshes; i++)
-    {
-        int toc_offset = header.offset_meshes + 0x1C*i;
-        BinFile_TOC_Meshes toc_mesh = {
-            *((u32*)&data[toc_offset+0*4]),
-            *((u32*)&data[toc_offset+1*4]),
-            *((u32*)&data[toc_offset+2*4]),
-            *((u32*)&data[toc_offset+3*4]),
-            *((u32*)&data[toc_offset+4*4]),
-            *((u32*)&data[toc_offset+5*4]),
-            *((u32*)&data[toc_offset+6*4]),
-        };
-        BinFile_MeshData meshdata = {
-            *((u16*)&data[toc_mesh.meshdata_offset]),
-            data[toc_mesh.meshdata_offset+2],
-            (char*)(&data[toc_mesh.meshdata_offset+3])
-        };
-        
+    {        
         // Copy the s64Mesh
-        *(u32*)&meshes[i].is_billboard = meshdata.is_billboard;
-        *(s32*)&meshes[i].parent = meshdata.parent;
+        *(u32*)&meshes[i].is_billboard = meshdatas[i].is_billboard;
+        *(s32*)&meshes[i].parent = meshdatas[i].parent;
         (Gfx*)meshes[i].dl = &dlists[offset_gfx];
         meshes[i].name = strings+offset_strings;
-        strcpy(strings+offset_strings, meshdata.name);
-        offset_strings += strlen(meshes[i].name)+1;
+        strcpy(strings+offset_strings, meshdatas[i].name);
         
         // Copy the vertex data
         // It's aligned by design (Thanks SGI!), so we can just memcpy
-        memcpy(&verts[offset_verts], &data[toc_mesh.vertdata_offset], toc_mesh.vertdata_size);
+        memcpy(&verts[offset_verts], &data[toc_meshes[i].vertdata_offset], toc_meshes[i].vertdata_size);
         
         // Generate the display list
-        sausage64_gendlist((u32*)(&data[toc_mesh.dldata_offset]), &dlists[offset_gfx], &verts[offset_verts], textures);
-        *(s64Gfx*)&meshes[i].dl = dlists[offset_gfx];
+        debug_printf("%s\n", meshes[i].name);
+        sausage64_gendlist((u32*)(&data[toc_meshes[i].dldata_offset]), &dlists[offset_gfx], &verts[offset_verts], textures);
+        meshes[i].dl = &dlists[offset_gfx];
         
         // Increment pointers
-        offset_verts += toc_mesh.vertdata_size/16;
-        offset_gfx += toc_mesh.dldata_slotcount;
+        offset_strings += strlen(meshes[i].name)+1;
+        offset_verts += toc_meshes[i].vertdata_size/16;
+        offset_gfx += toc_meshes[i].dldata_slotcount;
     }
     for (i=0; i<header.count_anims; i++)
     {
+        int j;
+        // Copy the s64Animation
+        anims[i].name = strings+offset_strings;
+        strcpy(strings+offset_strings, animdatas[i].name);
+        *(u32*)&anims[i].keyframecount = animdatas[i].kfcount;
+        anims[i].keyframes = &keyframes[offset_keyframes];
+        
+        // Copy the s64KeyFrame
+        for (j=0; j<animdatas[i].kfcount; j++)
+        {
+            *(u32*)&keyframes[offset_keyframes + j].framenumber = animdatas[i].kfindices[j];
+            keyframes[offset_keyframes + j].framedata = &transforms[offset_transforms+j*header.count_meshes];
+        }
+        
+        // Memcpy the s64Transforms
+        memcpy(&transforms[offset_transforms], &data[toc_anims[i].kfdata_offset], toc_anims[i].kfdata_size);
+        
+        // Increment pointers
+        offset_strings += strlen(anims[i].name)+1;
+        offset_keyframes += animdatas[i].kfcount;
+        offset_transforms += header.count_meshes*animdatas[i].kfcount;
     }
     
     // Populate the model data
@@ -1036,8 +1064,30 @@ s64ModelData* sausage64_load_binarymodel(u32 romstart, u32 size, u32** textures)
     mdl->anims = anims;
     
     // Finish
+    free(toc_meshes);
+    free(meshdatas);
+    free(toc_anims);
+    free(animdatas);
     free(data);
     return mdl;
+}
+
+void sausage64_unload_binarymodel(s64ModelData* mdl)
+{
+    if (mdl->meshcount > 0)
+    {
+        free((char*)mdl->meshes[0].name);
+        free((s64Gfx*)mdl->meshes[0].dl);
+        // TODO: Missing a free for verts too
+        free((s64Mesh*)mdl->meshes);
+    }
+    if (mdl->animcount > 0)
+    {
+        free((s64Transform*)mdl->anims[0].keyframes[0].framedata);
+        free((s64KeyFrame*)mdl->anims[0].keyframes);
+        free((s64Animation*)mdl->anims);
+    }
+    free(mdl);
 }
 
 

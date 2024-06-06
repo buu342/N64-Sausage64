@@ -11,8 +11,7 @@ Handles the first level of the game.
 #include "sausage64.h"
 #include "axisMdl.h"
 #include "models/textures/catherineTex.h"
-//#include "models/static/catherineMdl.h"
-#include "models/binary/catherineMdl.h"
+#include "models/static/catherineMdl.h"
 #include "debug.h"
 
 
@@ -56,7 +55,7 @@ static float campos[3] = {0, -100, -300};
 static float camang[3] = {0, 0, -90};
 
 // Catherine
-s64ModelData* modeltorender;
+s64ModelData* modeltorender = MODEL_Catherine;
 s64ModelHelper* catherine;
 float catherine_animspeed;
 
@@ -81,11 +80,13 @@ static char usb_buffer[USB_BUFFER_SIZE];
     stage00_init
     Initialize the stage
 ==============================*/
-
+#include "models/binary/catherineMdl.h"
 void stage00_init(void)
 {
     u16* textures[TEXTURECOUNT_Catherine] = {tex_Back, tex_Boot, tex_Chest, tex_KnifeSheathe, tex_Pants};
-    modeltorender = sausage64_load_binarymodel((u32)_CatherineSegmentRomStart, (u32)(_CatherineSegmentRomEnd - _CatherineSegmentRomStart), (u32**)textures);
+    debug_printf("Hello\n");
+    sausage64_load_binarymodel((u32)_CatherineSegmentRomStart, (u32)(_CatherineSegmentRomEnd - _CatherineSegmentRomStart), (u32**)textures);
+    debug_printf("Done\n");
 
     // Initialize Catherine
     catherine = sausage64_inithelper(modeltorender);
@@ -359,7 +360,6 @@ void stage00_draw(void)
         catherine_lookat();
     
     // Draw catherine
-    gSPDisplayList(glistp++, modeltorender->meshes[0].dl);
     sausage64_drawmodel(&glistp, catherine);
     
     // Synchronize the RCP and CPU and specify that our display list has ended

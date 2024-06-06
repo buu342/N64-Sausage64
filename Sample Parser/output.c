@@ -66,7 +66,7 @@ typedef struct {
 } BinFile_TOC_Anims;
 
 typedef struct {
-    uint16_t kfcount;
+    uint32_t kfcount;
     uint16_t* kfindices;
     char* name;
 } BinFile_AnimData;
@@ -765,12 +765,12 @@ void write_output_binary()
         uint8_t padbytes[4] = {0};
         for (j=0; j<animdatas[i].kfcount; j++)
             animdatas[i].kfindices[j] = swap_endian16(animdatas[i].kfindices[j]);
-        animdatas[i].kfcount = swap_endian16(animdatas[i].kfcount);
+        animdatas[i].kfcount = swap_endian32(animdatas[i].kfcount);
         fwrite(&animdatas[i].kfcount, member_size(BinFile_AnimData, kfcount), 1, fp);
-        fwrite(animdatas[i].kfindices, sizeof(uint16_t)*swap_endian16(animdatas[i].kfcount), 1, fp);
+        fwrite(animdatas[i].kfindices, sizeof(uint16_t)*swap_endian32(animdatas[i].kfcount), 1, fp);
         fwrite(animdatas[i].name, strlen(animdatas[i].name)+1, 1, fp);
         if (padding > 0)
-            fwrite(padbytes, padding, 0, fp); 
+            fwrite(padbytes, padding, 1, fp); 
         for (j=0; j<kftotal[i]; j++)
         {
             kfdatas[i][j].pos[0] = swap_endianfloat(kfdatas[i][j].pos[0]);

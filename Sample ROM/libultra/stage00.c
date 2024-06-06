@@ -83,8 +83,9 @@ static char usb_buffer[USB_BUFFER_SIZE];
 #include "models/binary/catherineMdl.h"
 void stage00_init(void)
 {
+    u16* textures[TEXTURECOUNT_Catherine] = {tex_Back, tex_Boot, tex_Chest, tex_KnifeSheathe, tex_Pants};
     debug_printf("Hello\n");
-    sausage64_load_binarymodel((u32)_CatherineSegmentRomStart, (u32)(_CatherineSegmentRomEnd - _CatherineSegmentRomStart), NULL);
+    sausage64_load_binarymodel((u32)_CatherineSegmentRomStart, (u32)(_CatherineSegmentRomEnd - _CatherineSegmentRomStart), (u32**)textures);
     debug_printf("Done\n");
 
     // Initialize Catherine

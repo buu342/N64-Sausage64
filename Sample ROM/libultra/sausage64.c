@@ -722,6 +722,16 @@ static inline void s64vec_rotate(f32 vec[3], s64Quat rot, f32 result[3])
     }
 #endif
 
+
+/*==============================
+    sausage64_gendlist
+    Generate a display list from a binary block of data
+    @param The data to read
+    @param The display list to fill
+    @param The list of verts to use
+    @param The list of textures to use
+==============================*/
+
 static void sausage64_gendlist(u32* data, Gfx* dlist, Vtx* verts, u32** textures)
 {
     int i;
@@ -731,7 +741,6 @@ static void sausage64_gendlist(u32* data, Gfx* dlist, Vtx* verts, u32** textures
     while (1)
     {
         u32 datablock = data[offset++];
-        debug_printf("Reading %d\n", dlist - dlist_original);
         switch (datablock)
         {
             case SPClearGeometryMode:
@@ -745,21 +754,15 @@ static void sausage64_gendlist(u32* data, Gfx* dlist, Vtx* verts, u32** textures
             case SPVertex:
                 args[0] = data[offset++];
                 gSPVertex(dlist++, verts + ((args[0] & 0xFFFF0000)>>16), (args[0] & 0x0000FF00)>>8, args[0] & 0x000000FF);
-                debug_printf("vert -> +%d %d %d\n", ((args[0] & 0xFFFF0000)>>16), (args[0] & 0x0000FF00)>>8, args[0] & 0x000000FF);
                 break;
             case SP1Triangle:
                 args[0] = data[offset++];
                 gSP1Triangle(dlist++, (args[0] & 0xFF000000)>>24, (args[0] & 0x00FF0000)>>16, (args[0] & 0x0000FF00)>>8, (args[0] & 0x000000FF));
-                debug_printf("1tri -> %d %d %d %d\n", (args[0] & 0xFF000000)>>24, (args[0] & 0x00FF0000)>>16, (args[0] & 0x0000FF00)>>8, (args[0] & 0x000000FF));
                 break;
             case SP2Triangles:
                 args[0] = data[offset++];
                 args[1] = data[offset++];
                 gSP2Triangles(dlist++, 
-                    (args[0] & 0xFF000000)>>24, (args[0] & 0x00FF0000)>>16, (args[0] & 0x0000FF00)>>8, (args[0] & 0x000000FF),
-                    (args[1] & 0xFF000000)>>24, (args[1] & 0x00FF0000)>>16, (args[1] & 0x0000FF00)>>8, (args[1] & 0x000000FF)
-                );
-                debug_printf("2tri -> %d %d %d %d %d %d %d %d\n", 
                     (args[0] & 0xFF000000)>>24, (args[0] & 0x00FF0000)>>16, (args[0] & 0x0000FF00)>>8, (args[0] & 0x000000FF),
                     (args[1] & 0xFF000000)>>24, (args[1] & 0x00FF0000)>>16, (args[1] & 0x0000FF00)>>8, (args[1] & 0x000000FF)
                 );
@@ -777,12 +780,6 @@ static void sausage64_gendlist(u32* data, Gfx* dlist, Vtx* verts, u32** textures
                     args[i] = ((u8*)(data+offset))[i];
                 offset += 4;
                 gDPSetCombineLERP_Custom(dlist++, 
-                    args[0],  args[1],  args[2],  args[3], 
-                    args[4],  args[5],  args[6],  args[7],
-                    args[8],  args[9],  args[10], args[11], 
-                    args[12], args[13], args[14], args[15]
-                );
-                debug_printf("combine -> %d %d %d %d %d %d %d %d\n\t\t%d %d %d %d %d %d %d %d\n", 
                     args[0],  args[1],  args[2],  args[3], 
                     args[4],  args[5],  args[6],  args[7],
                     args[8],  args[9],  args[10], args[11], 
@@ -812,44 +809,47 @@ static void sausage64_gendlist(u32* data, Gfx* dlist, Vtx* verts, u32** textures
                 args[2] = data[offset++];
                 args[3] = data[offset++];
                 args[4] = args[0] & 0x000000FF;
-                if (args[4] == G_IM_SIZ_32b)
+                if (textures != NULL)
                 {
-                    gDPLoadTextureBlock(dlist++, 
-                        textures[(args[0] & 0xFFFF0000)>>16], (args[0] & 0x0000FF00)>>8, G_IM_SIZ_32b,
-                        (args[1] & 0xFFFF0000)>>16, args[1] & 0x0000FFFF,
-                        (args[2] & 0xFF000000)>>24, (args[2] & 0x00FF0000)>>16, (args[2] & 0x0000FF00)>>8, (args[2] & 0x000000FF),
-                        (args[3] & 0xFF000000)>>24, (args[3] & 0x00FF0000)>>16, (args[3] & 0x0000FF00)>>8
-                    );
+                    if (args[4] == G_IM_SIZ_32b)
+                    {
+                        gDPLoadTextureBlock(dlist++, 
+                            textures[(args[0] & 0xFFFF0000)>>16], (args[0] & 0x0000FF00)>>8, G_IM_SIZ_32b,
+                            (args[1] & 0xFFFF0000)>>16, args[1] & 0x0000FFFF,
+                            (args[2] & 0xFF000000)>>24, (args[2] & 0x00FF0000)>>16, (args[2] & 0x0000FF00)>>8, (args[2] & 0x000000FF),
+                            (args[3] & 0xFF000000)>>24, (args[3] & 0x00FF0000)>>16, (args[3] & 0x0000FF00)>>8
+                        );
+                    }
+                    else if (args[4] == G_IM_SIZ_16b)
+                    {
+                        gDPLoadTextureBlock(dlist++, 
+                            textures[(args[0] & 0xFFFF0000)>>16], (args[0] & 0x0000FF00)>>8, G_IM_SIZ_16b,
+                            (args[1] & 0xFFFF0000)>>16, args[1] & 0x0000FFFF,
+                            (args[2] & 0xFF000000)>>24, (args[2] & 0x00FF0000)>>16, (args[2] & 0x0000FF00)>>8, (args[2] & 0x000000FF),
+                            (args[3] & 0xFF000000)>>24, (args[3] & 0x00FF0000)>>16, (args[3] & 0x0000FF00)>>8
+                        );
+                    }
+                    else if (args[4] == G_IM_SIZ_8b)
+                    {
+                        gDPLoadTextureBlock(dlist++, 
+                            textures[(args[0] & 0xFFFF0000)>>16], (args[0] & 0x0000FF00)>>8, G_IM_SIZ_8b,
+                            (args[1] & 0xFFFF0000)>>16, args[1] & 0x0000FFFF,
+                            (args[2] & 0xFF000000)>>24, (args[2] & 0x00FF0000)>>16, (args[2] & 0x0000FF00)>>8, (args[2] & 0x000000FF),
+                            (args[3] & 0xFF000000)>>24, (args[3] & 0x00FF0000)>>16, (args[3] & 0x0000FF00)>>8
+                        );
+                    }
+                    else
+                    {
+                        gDPLoadTextureBlock_4b(dlist++, 
+                            textures[(args[0] & 0xFFFF0000)>>16], (args[0] & 0x0000FF00)>>8,
+                            (args[1] & 0xFFFF0000)>>16, args[1] & 0x0000FFFF,
+                            (args[2] & 0xFF000000)>>24, (args[2] & 0x00FF0000)>>16, (args[2] & 0x0000FF00)>>8, (args[2] & 0x000000FF),
+                            (args[3] & 0xFF000000)>>24, (args[3] & 0x00FF0000)>>16, (args[3] & 0x0000FF00)>>8
+                        );
+                    }
                 }
-                else if (args[4] == G_IM_SIZ_16b)
-                {
-                    gDPLoadTextureBlock(dlist++, 
-                        textures[(args[0] & 0xFFFF0000)>>16], (args[0] & 0x0000FF00)>>8, G_IM_SIZ_16b,
-                        (args[1] & 0xFFFF0000)>>16, args[1] & 0x0000FFFF,
-                        (args[2] & 0xFF000000)>>24, (args[2] & 0x00FF0000)>>16, (args[2] & 0x0000FF00)>>8, (args[2] & 0x000000FF),
-                        (args[3] & 0xFF000000)>>24, (args[3] & 0x00FF0000)>>16, (args[3] & 0x0000FF00)>>8
-                    );
-                }
-                else if (args[4] == G_IM_SIZ_8b)
-                {
-                    gDPLoadTextureBlock(dlist++, 
-                        textures[(args[0] & 0xFFFF0000)>>16], (args[0] & 0x0000FF00)>>8, G_IM_SIZ_8b,
-                        (args[1] & 0xFFFF0000)>>16, args[1] & 0x0000FFFF,
-                        (args[2] & 0xFF000000)>>24, (args[2] & 0x00FF0000)>>16, (args[2] & 0x0000FF00)>>8, (args[2] & 0x000000FF),
-                        (args[3] & 0xFF000000)>>24, (args[3] & 0x00FF0000)>>16, (args[3] & 0x0000FF00)>>8
-                    );
-                }
-                else
-                {
-                    gDPLoadTextureBlock_4b(dlist++, 
-                        textures[(args[0] & 0xFFFF0000)>>16], (args[0] & 0x0000FF00)>>8,
-                        (args[1] & 0xFFFF0000)>>16, args[1] & 0x0000FFFF,
-                        (args[2] & 0xFF000000)>>24, (args[2] & 0x00FF0000)>>16, (args[2] & 0x0000FF00)>>8, (args[2] & 0x000000FF),
-                        (args[3] & 0xFF000000)>>24, (args[3] & 0x00FF0000)>>16, (args[3] & 0x0000FF00)>>8
-                    );
-                }
+                break;
             case SPEndDisplayList:
-                debug_printf("Ended Displaylist\n");
                 gSPEndDisplayList(dlist++);
                 return;
             default:
@@ -859,8 +859,20 @@ static void sausage64_gendlist(u32* data, Gfx* dlist, Vtx* verts, u32** textures
     }
 }
 
+
+/*==============================
+    sausage64_load_binarymodel
+    Load a binary model from ROM
+    @param  The starting address in ROM
+    @param  The size of the model
+    @param  The list of textures to use
+    @return The newly allocated model
+==============================*/
+
 s64ModelData* sausage64_load_binarymodel(u32 romstart, u32 size, u32** textures)
 {
+    // TODO: Handle cases with no meshes, no anims
+    // TODO: Test simple models with 1 bone and no animations
     int i;
     OSMesg   dmamsg;
     OSIoMesg iomsg;
@@ -978,9 +990,9 @@ s64ModelData* sausage64_load_binarymodel(u32 romstart, u32 size, u32** textures)
         };
         BinFile_AnimData animdata = {
             *((u32*)&data[toc_anim.animdata_offset]),
-            (u16*)&data[toc_anim.animdata_offset+2]
+            (u16*)&data[toc_anim.animdata_offset+4]
         };
-        animdata.name = (((char*)(animdata.kfindices)) + animdata.kfcount*sizeof(u16) + 2);
+        animdata.name = (((char*)(animdata.kfindices)) + animdata.kfcount*sizeof(u16));
         mallocsize_strings += strlen(animdata.name)+1;
         mallocsize_keyframes += animdata.kfcount;
         mallocsize_transforms += animdata.kfcount*header.count_meshes;
@@ -1032,7 +1044,6 @@ s64ModelData* sausage64_load_binarymodel(u32 romstart, u32 size, u32** textures)
         memcpy(&verts[offset_verts], &data[toc_meshes[i].vertdata_offset], toc_meshes[i].vertdata_size);
         
         // Generate the display list
-        debug_printf("%s\n", meshes[i].name);
         sausage64_gendlist((u32*)(&data[toc_meshes[i].dldata_offset]), &dlists[offset_gfx], &verts[offset_verts], textures);
         meshes[i].dl = &dlists[offset_gfx];
         
@@ -1044,6 +1055,7 @@ s64ModelData* sausage64_load_binarymodel(u32 romstart, u32 size, u32** textures)
     for (i=0; i<header.count_anims; i++)
     {
         int j;
+        
         // Copy the s64Animation
         anims[i].name = strings+offset_strings;
         strcpy(strings+offset_strings, animdatas[i].name);
@@ -1071,6 +1083,7 @@ s64ModelData* sausage64_load_binarymodel(u32 romstart, u32 size, u32** textures)
     *(u16*)&mdl->animcount = header.count_anims;
     mdl->meshes = meshes;
     mdl->anims = anims;
+    mdl->_vtxcleanup = verts;
     
     // Finish
     free(toc_meshes);
@@ -1081,13 +1094,21 @@ s64ModelData* sausage64_load_binarymodel(u32 romstart, u32 size, u32** textures)
     return mdl;
 }
 
+
+/*==============================
+    sausage64_unload_binarymodel
+    Free the memory used by a dynamically loaded binary model
+    @param  The model to free
+==============================*/
+
 void sausage64_unload_binarymodel(s64ModelData* mdl)
 {
+    // Because all the data is malloc'd sequentially, to free, we just need to free the first instance of everything
     if (mdl->meshcount > 0)
     {
         free((char*)mdl->meshes[0].name);
         free((s64Gfx*)mdl->meshes[0].dl);
-        // TODO: Missing a free for verts too
+        free(mdl->_vtxcleanup);
         free((s64Mesh*)mdl->meshes);
     }
     if (mdl->animcount > 0)

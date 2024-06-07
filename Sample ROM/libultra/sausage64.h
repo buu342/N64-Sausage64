@@ -138,6 +138,9 @@
         const u16 animcount;
         const s64Mesh* meshes;
         const s64Animation* anims;
+        #ifndef LIBDRAGON
+            Vtx* _vtxcleanup;
+        #endif
     } s64ModelData;
     
     typedef struct {
@@ -214,7 +217,25 @@
         extern void sausage64_unload_staticmodel(s64ModelData* mdldata);
     #endif
     
+    /*==============================
+        sausage64_load_binarymodel
+        Load a binary model from ROM
+        @param  The starting address in ROM
+        @param  The size of the model
+        @param  The list of textures to use
+        @return The newly allocated model
+    ==============================*/
+    
     s64ModelData* sausage64_load_binarymodel(u32 romstart, u32 size, u32** textures);
+
+
+    /*==============================
+        sausage64_unload_binarymodel
+        Free the memory used by a dynamically loaded binary model
+        @param  The model to free
+    ==============================*/
+    
+    void sausage64_unload_binarymodel(s64ModelData* mdl);
 
     
     /*********************************

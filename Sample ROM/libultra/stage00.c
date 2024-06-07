@@ -11,7 +11,7 @@ Handles the first level of the game.
 #include "sausage64.h"
 #include "axisMdl.h"
 #include "models/textures/catherineTex.h"
-//#include "models/static/catherineMdl.h"
+//#include "models/static/catherineMdl.h" // Unused, binary models are preferred now
 #include "models/binary/catherineMdl.h"
 #include "debug.h"
 
@@ -84,7 +84,18 @@ static char usb_buffer[USB_BUFFER_SIZE];
 
 void stage00_init(void)
 {
-    u16* textures[TEXTURECOUNT_Catherine] = {tex_Back, tex_Boot, tex_Chest, tex_KnifeSheathe, tex_Pants};
+    u16* textures[TEXTURECOUNT_Catherine];
+    
+    // In order to load our model properly, we must first create a list of textures it will use
+    // These are defined in models/binary/catherineMdl.h, and the indices *MUST* be respected.
+    // Failure to do so will result in sections of the model loading the wrong texture
+    textures[TEXTURE_BackTex] = tex_Back;
+    textures[TEXTURE_BootTex] = tex_Boot;
+    textures[TEXTURE_ChestTex] = tex_Chest;
+    textures[TEXTURE_KnifeSheatheTex] = tex_KnifeSheathe;
+    textures[TEXTURE_PantsTex] = tex_Pants;
+    
+    // Load the binary model from ROM
     modeltorender = sausage64_load_binarymodel((u32)_CatherineSegmentRomStart, (u32)(_CatherineSegmentRomEnd - _CatherineSegmentRomStart), (u32**)textures);
 
     // Initialize Catherine
@@ -359,8 +370,6 @@ void stage00_draw(void)
         catherine_lookat();
     
     // Draw catherine
-    //usb_write(DATATYPE_RAWBINARY, modeltorender->meshes[0].dl, 144);
-    //gSPDisplayList(glistp++, modeltorender->meshes[0].dl);
     sausage64_drawmodel(&glistp, catherine);
     
     // Synchronize the RCP and CPU and specify that our display list has ended

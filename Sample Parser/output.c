@@ -307,7 +307,7 @@ void write_output_text()
         fputs("};\n\n", fp);
 
         // Final model data
-        fprintf(fp, "static s64ModelData mdl_%s = {%d, %d, meshes_%s, anims_%s};", global_modelname, list_meshes.size, list_animations.size, global_modelname, global_modelname);
+        fprintf(fp, "static s64ModelData mdl_%s = {%d, %d, meshes_%s, anims_%s, NULL};", global_modelname, list_meshes.size, list_animations.size, global_modelname, global_modelname);
     }
     
     // Finish

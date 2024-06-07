@@ -226,7 +226,7 @@
         @return The newly allocated model
     ==============================*/
     
-    s64ModelData* sausage64_load_binarymodel(u32 romstart, u32 size, u32** textures);
+    extern s64ModelData* sausage64_load_binarymodel(u32 romstart, u32 size, u32** textures);
 
 
     /*==============================
@@ -235,7 +235,7 @@
         @param  The model to free
     ==============================*/
     
-    void sausage64_unload_binarymodel(s64ModelData* mdl);
+    extern void sausage64_unload_binarymodel(s64ModelData* mdl);
 
     
     /*********************************
@@ -251,6 +251,15 @@
     ==============================*/
     
     extern s64ModelHelper* sausage64_inithelper(s64ModelData* mdldata);
+
+
+    /*==============================
+        sausage64_freehelper
+        Frees the memory used up by a Sausage64 model helper
+        @param A pointer to the model helper
+    ==============================*/
+
+    extern void sausage64_freehelper(s64ModelHelper* helper);
     
 
     #ifdef LIBDRAGON
@@ -380,14 +389,5 @@
     #else
         extern void sausage64_drawmodel(s64ModelHelper* mdl);
     #endif
-
-
-    /*==============================
-        sausage64_freehelper
-        Frees the memory used up by a Sausage64 model helper
-        @param A pointer to the model helper
-    ==============================*/
-
-    extern void sausage64_freehelper(s64ModelHelper* helper);
 
 #endif

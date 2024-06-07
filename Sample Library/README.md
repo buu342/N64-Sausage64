@@ -14,6 +14,32 @@ A tutorial on how to use the library is available [in the wiki](../../../wiki/5%
 <p>
     
 ```c
+/*********************************
+          Asset Loading
+*********************************/
+
+/*==============================
+    sausage64_load_binarymodel
+    Load a binary model from ROM
+    @param  The starting address in ROM
+    @param  The size of the model
+    @param  The list of textures to use
+    @return The newly allocated model
+==============================*/
+s64ModelData* sausage64_load_binarymodel(u32 romstart, u32 size, u32** textures);
+
+/*==============================
+    sausage64_unload_binarymodel
+    Free the memory used by a dynamically loaded binary model
+    @param  The model to free
+==============================*/
+void sausage64_unload_binarymodel(s64ModelData* mdl);
+
+
+/*********************************
+       Sausage64 Functions
+*********************************/
+
 /*==============================
     sausage64_inithelper
     Allocate a new model helper struct
@@ -22,6 +48,13 @@ A tutorial on how to use the library is available [in the wiki](../../../wiki/5%
             NULL if it failed to allocate
 ==============================*/
 s64ModelHelper* sausage64_inithelper(s64ModelData* mdldata);
+
+/*==============================
+    sausage64_freehelper
+    Frees the memory used up by a Sausage64 model helper
+    @param A pointer to the model helper
+==============================*/
+void sausage64_freehelper(s64ModelHelper* helper);
 
 /*==============================
     sausage64_set_camera
@@ -110,13 +143,6 @@ void sausage64_lookat(s64ModelHelper* mdl, const u16 mesh, f32 dir[3], f32 amoun
     @param The model helper data
 ==============================*/
 void sausage64_drawmodel(Gfx** glistp, s64ModelHelper* mdl);
-
-/*==============================
-    sausage64_freehelper
-    Frees the memory used up by a Sausage64 model helper
-    @param A pointer to the model helper
-==============================*/
-void sausage64_freehelper(s64ModelHelper* helper);
 ```
 </p>
 </details>
@@ -180,6 +206,13 @@ void sausage64_unload_staticmodel(s64ModelData* mdldata);
             NULL if it failed to allocate
 ==============================*/
 s64ModelHelper* sausage64_inithelper(s64ModelData* mdldata);
+
+/*==============================
+    sausage64_freehelper
+    Frees the memory used up by a Sausage64 model helper
+    @param A pointer to the model helper
+==============================*/
+void sausage64_freehelper(s64ModelHelper* helper);
 
  /*==============================
     sausage64_loadmaterial
@@ -275,13 +308,6 @@ void sausage64_lookat(s64ModelHelper* mdl, const u16 mesh, f32 dir[3], f32 amoun
     @param The model helper data
 ==============================*/
 void sausage64_drawmodel(s64ModelHelper* mdl);
-
-/*==============================
-    sausage64_freehelper
-    Frees the memory used up by a Sausage64 model helper
-    @param A pointer to the model helper
-==============================*/
-void sausage64_freehelper(s64ModelHelper* helper);
 ```
 </p>
 </details>

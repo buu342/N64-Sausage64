@@ -27,6 +27,20 @@ n64Texture texture_none = {.name = "None", .type = TYPE_OMIT};
 
 
 /*==============================
+    clean_stdin
+    fflush(stdin) doesn't work on Linux, so this is an alternative
+==============================*/
+
+void clean_stdin()
+{
+    int c;
+    do {
+        c = getchar();
+    } while (c != '\n' && c != EOF);
+}
+
+
+/*==============================
     add_texture
     Creates an image texture and adds it to the texture list
     @param The name of the texture
@@ -266,9 +280,9 @@ n64Texture* request_texture(char* name)
     {
         case TYPE_TEXTURE:
             printf("\tTexture Width: ");
-            scanf("%d", (int*)&w); fflush(stdin);
+            scanf("%d", (int*)&w); clean_stdin();
             printf("\tTexture Height: ");
-            scanf("%d", (int*)&h); fflush(stdin);
+            scanf("%d", (int*)&h); clean_stdin();
             tex = add_texture(name, w, h);
             printf("\tTexture flags (separate by spaces): ");
             fgets(strbuf, STRBUFF_SIZE, stdin);
@@ -278,11 +292,11 @@ n64Texture* request_texture(char* name)
             break;
         case TYPE_PRIMCOL:
             printf("\tPrimitve Red: ");
-            scanf("%d", (int*)&r); fflush(stdin);
+            scanf("%d", (int*)&r); clean_stdin();
             printf("\tPrimitve Green: ");
-            scanf("%d", (int*)&g); fflush(stdin);
+            scanf("%d", (int*)&g); clean_stdin();
             printf("\tPrimitve Blue: ");
-            scanf("%d", (int*)&b); fflush(stdin);
+            scanf("%d", (int*)&b); clean_stdin();
             tex = add_primcol(name, r, g, b);
             printf("\tTexture flags (separate by spaces): ");
             fgets(strbuf, STRBUFF_SIZE, stdin);

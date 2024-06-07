@@ -95,7 +95,7 @@ void stage00_init(void)
     textures[TEXTURE_KnifeSheatheTex] = tex_KnifeSheathe;
     textures[TEXTURE_PantsTex] = tex_Pants;
     
-    // Load the binary model from ROM
+    // Load the binary model dynamically from ROM
     modeltorender = sausage64_load_binarymodel((u32)_CatherineSegmentRomStart, (u32)(_CatherineSegmentRomEnd - _CatherineSegmentRomStart), (u32**)textures);
 
     // Initialize Catherine

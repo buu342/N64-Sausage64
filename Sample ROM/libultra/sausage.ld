@@ -72,6 +72,7 @@ SECTIONS
       build/codesegment.o(.rodata*);
    }
    END_SEG(code)
+   
    BEGIN_NOLOAD(code)
    {
       build/codesegment.o(COMMON);
@@ -80,4 +81,10 @@ SECTIONS
       . = ALIGN(0x8);
    }
    END_NOLOAD(code)
+
+   BEGIN_SEG(assets, __romPos)
+   {
+      build/asm/assets.o(.data*);
+   }
+   END_SEG(assets)
 }

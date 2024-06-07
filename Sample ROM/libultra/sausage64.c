@@ -723,141 +723,143 @@ static inline void s64vec_rotate(f32 vec[3], s64Quat rot, f32 result[3])
 #endif
 
 
-/*==============================
-    sausage64_gendlist
-    Generate a display list from a binary block of data
-    @param The data to read
-    @param The display list to fill
-    @param The list of verts to use
-    @param The list of textures to use
-==============================*/
+#ifndef LIBDRAGON
+    /*==============================
+        sausage64_gendlist
+        Generate a display list from a binary block of data
+        @param The data to read
+        @param The display list to fill
+        @param The list of verts to use
+        @param The list of textures to use
+    ==============================*/
 
-static void sausage64_gendlist(u32* data, Gfx* dlist, Vtx* verts, u32** textures)
-{
-    int i;
-    u32 offset = 0;
-    u32 args[16];
-    Gfx* dlist_original = dlist;
-    while (1)
+    static void sausage64_gendlist(u32* data, Gfx* dlist, Vtx* verts, u32** textures)
     {
-        u32 datablock = data[offset++];
-        switch (datablock)
+        int i;
+        u32 offset = 0;
+        u32 args[16];
+        Gfx* dlist_original = dlist;
+        while (1)
         {
-            case SPClearGeometryMode:
-                args[0] = data[offset++];
-                gSPClearGeometryMode(dlist++, args[0]);
-                break;
-            case SPSetGeometryMode:
-                args[0] = data[offset++];
-                gSPSetGeometryMode(dlist++, args[0]);
-                break;
-            case SPVertex:
-                args[0] = data[offset++];
-                gSPVertex(dlist++, verts + ((args[0] & 0xFFFF0000)>>16), (args[0] & 0x0000FF00)>>8, args[0] & 0x000000FF);
-                break;
-            case SP1Triangle:
-                args[0] = data[offset++];
-                gSP1Triangle(dlist++, (args[0] & 0xFF000000)>>24, (args[0] & 0x00FF0000)>>16, (args[0] & 0x0000FF00)>>8, (args[0] & 0x000000FF));
-                break;
-            case SP2Triangles:
-                args[0] = data[offset++];
-                args[1] = data[offset++];
-                gSP2Triangles(dlist++, 
-                    (args[0] & 0xFF000000)>>24, (args[0] & 0x00FF0000)>>16, (args[0] & 0x0000FF00)>>8, (args[0] & 0x000000FF),
-                    (args[1] & 0xFF000000)>>24, (args[1] & 0x00FF0000)>>16, (args[1] & 0x0000FF00)>>8, (args[1] & 0x000000FF)
-                );
-                break;
-            case DPSetPrimColor:
-                args[0] = data[offset++];
-                args[1] = data[offset++];
-                gDPSetPrimColor(dlist++, 
-                    (args[0] & 0xFFFF0000)>>16, (args[0] & 0x0000FFFF),
-                    (args[1] & 0xFF000000)>>24, (args[1] & 0x00FF0000)>>16, (args[1] & 0x0000FF00)>>8, (args[1] & 0x000000FF)
-                );
-                break;
-            case DPSetCombineLERP:
-                for (i=0; i<16; i++)
-                    args[i] = ((u8*)(data+offset))[i];
-                offset += 4;
-                gDPSetCombineLERP_Custom(dlist++, 
-                    args[0],  args[1],  args[2],  args[3], 
-                    args[4],  args[5],  args[6],  args[7],
-                    args[8],  args[9],  args[10], args[11], 
-                    args[12], args[13], args[14], args[15]
-                );
-                break;
-            case DPPipeSync:
-                gDPPipeSync(dlist++);
-                break;
-            case DPSetCycleType:
-                args[0] = data[offset++];
-                gDPSetCycleType(dlist++, args[0]);
-                break;
-            case DPSetRenderMode:
-                args[0] = data[offset++];
-                args[1] = data[offset++];
-                gDPSetRenderMode(dlist++, args[0], args[1]);
-                break;
-            case DPSetTextureFilter:
-                args[0] = data[offset++];
-                gDPSetTextureFilter(dlist++, args[0]);
-                break;
-            case DPLoadTextureBlock_4b:
-            case DPLoadTextureBlock:
-                args[0] = data[offset++];
-                args[1] = data[offset++];
-                args[2] = data[offset++];
-                args[3] = data[offset++];
-                args[4] = args[0] & 0x000000FF;
-                if (textures != NULL)
-                {
-                    if (args[4] == G_IM_SIZ_32b)
+            u32 datablock = data[offset++];
+            switch (datablock)
+            {
+                case SPClearGeometryMode:
+                    args[0] = data[offset++];
+                    gSPClearGeometryMode(dlist++, args[0]);
+                    break;
+                case SPSetGeometryMode:
+                    args[0] = data[offset++];
+                    gSPSetGeometryMode(dlist++, args[0]);
+                    break;
+                case SPVertex:
+                    args[0] = data[offset++];
+                    gSPVertex(dlist++, verts + ((args[0] & 0xFFFF0000)>>16), (args[0] & 0x0000FF00)>>8, args[0] & 0x000000FF);
+                    break;
+                case SP1Triangle:
+                    args[0] = data[offset++];
+                    gSP1Triangle(dlist++, (args[0] & 0xFF000000)>>24, (args[0] & 0x00FF0000)>>16, (args[0] & 0x0000FF00)>>8, (args[0] & 0x000000FF));
+                    break;
+                case SP2Triangles:
+                    args[0] = data[offset++];
+                    args[1] = data[offset++];
+                    gSP2Triangles(dlist++, 
+                        (args[0] & 0xFF000000)>>24, (args[0] & 0x00FF0000)>>16, (args[0] & 0x0000FF00)>>8, (args[0] & 0x000000FF),
+                        (args[1] & 0xFF000000)>>24, (args[1] & 0x00FF0000)>>16, (args[1] & 0x0000FF00)>>8, (args[1] & 0x000000FF)
+                    );
+                    break;
+                case DPSetPrimColor:
+                    args[0] = data[offset++];
+                    args[1] = data[offset++];
+                    gDPSetPrimColor(dlist++, 
+                        (args[0] & 0xFFFF0000)>>16, (args[0] & 0x0000FFFF),
+                        (args[1] & 0xFF000000)>>24, (args[1] & 0x00FF0000)>>16, (args[1] & 0x0000FF00)>>8, (args[1] & 0x000000FF)
+                    );
+                    break;
+                case DPSetCombineLERP:
+                    for (i=0; i<16; i++)
+                        args[i] = ((u8*)(data+offset))[i];
+                    offset += 4;
+                    gDPSetCombineLERP_Custom(dlist++, 
+                        args[0],  args[1],  args[2],  args[3], 
+                        args[4],  args[5],  args[6],  args[7],
+                        args[8],  args[9],  args[10], args[11], 
+                        args[12], args[13], args[14], args[15]
+                    );
+                    break;
+                case DPPipeSync:
+                    gDPPipeSync(dlist++);
+                    break;
+                case DPSetCycleType:
+                    args[0] = data[offset++];
+                    gDPSetCycleType(dlist++, args[0]);
+                    break;
+                case DPSetRenderMode:
+                    args[0] = data[offset++];
+                    args[1] = data[offset++];
+                    gDPSetRenderMode(dlist++, args[0], args[1]);
+                    break;
+                case DPSetTextureFilter:
+                    args[0] = data[offset++];
+                    gDPSetTextureFilter(dlist++, args[0]);
+                    break;
+                case DPLoadTextureBlock_4b:
+                case DPLoadTextureBlock:
+                    args[0] = data[offset++];
+                    args[1] = data[offset++];
+                    args[2] = data[offset++];
+                    args[3] = data[offset++];
+                    args[4] = args[0] & 0x000000FF;
+                    if (textures != NULL)
                     {
-                        gDPLoadTextureBlock(dlist++, 
-                            textures[(args[0] & 0xFFFF0000)>>16], (args[0] & 0x0000FF00)>>8, G_IM_SIZ_32b,
-                            (args[1] & 0xFFFF0000)>>16, args[1] & 0x0000FFFF,
-                            (args[2] & 0xFF000000)>>24, (args[2] & 0x00FF0000)>>16, (args[2] & 0x0000FF00)>>8, (args[2] & 0x000000FF),
-                            (args[3] & 0xFF000000)>>24, (args[3] & 0x00FF0000)>>16, (args[3] & 0x0000FF00)>>8
-                        );
+                        if (args[4] == G_IM_SIZ_32b)
+                        {
+                            gDPLoadTextureBlock(dlist++, 
+                                textures[(args[0] & 0xFFFF0000)>>16], (args[0] & 0x0000FF00)>>8, G_IM_SIZ_32b,
+                                (args[1] & 0xFFFF0000)>>16, args[1] & 0x0000FFFF,
+                                (args[2] & 0xFF000000)>>24, (args[2] & 0x00FF0000)>>16, (args[2] & 0x0000FF00)>>8, (args[2] & 0x000000FF),
+                                (args[3] & 0xFF000000)>>24, (args[3] & 0x00FF0000)>>16, (args[3] & 0x0000FF00)>>8
+                            );
+                        }
+                        else if (args[4] == G_IM_SIZ_16b)
+                        {
+                            gDPLoadTextureBlock(dlist++, 
+                                textures[(args[0] & 0xFFFF0000)>>16], (args[0] & 0x0000FF00)>>8, G_IM_SIZ_16b,
+                                (args[1] & 0xFFFF0000)>>16, args[1] & 0x0000FFFF,
+                                (args[2] & 0xFF000000)>>24, (args[2] & 0x00FF0000)>>16, (args[2] & 0x0000FF00)>>8, (args[2] & 0x000000FF),
+                                (args[3] & 0xFF000000)>>24, (args[3] & 0x00FF0000)>>16, (args[3] & 0x0000FF00)>>8
+                            );
+                        }
+                        else if (args[4] == G_IM_SIZ_8b)
+                        {
+                            gDPLoadTextureBlock(dlist++, 
+                                textures[(args[0] & 0xFFFF0000)>>16], (args[0] & 0x0000FF00)>>8, G_IM_SIZ_8b,
+                                (args[1] & 0xFFFF0000)>>16, args[1] & 0x0000FFFF,
+                                (args[2] & 0xFF000000)>>24, (args[2] & 0x00FF0000)>>16, (args[2] & 0x0000FF00)>>8, (args[2] & 0x000000FF),
+                                (args[3] & 0xFF000000)>>24, (args[3] & 0x00FF0000)>>16, (args[3] & 0x0000FF00)>>8
+                            );
+                        }
+                        else
+                        {
+                            gDPLoadTextureBlock_4b(dlist++, 
+                                textures[(args[0] & 0xFFFF0000)>>16], (args[0] & 0x0000FF00)>>8,
+                                (args[1] & 0xFFFF0000)>>16, args[1] & 0x0000FFFF,
+                                (args[2] & 0xFF000000)>>24, (args[2] & 0x00FF0000)>>16, (args[2] & 0x0000FF00)>>8, (args[2] & 0x000000FF),
+                                (args[3] & 0xFF000000)>>24, (args[3] & 0x00FF0000)>>16, (args[3] & 0x0000FF00)>>8
+                            );
+                        }
                     }
-                    else if (args[4] == G_IM_SIZ_16b)
-                    {
-                        gDPLoadTextureBlock(dlist++, 
-                            textures[(args[0] & 0xFFFF0000)>>16], (args[0] & 0x0000FF00)>>8, G_IM_SIZ_16b,
-                            (args[1] & 0xFFFF0000)>>16, args[1] & 0x0000FFFF,
-                            (args[2] & 0xFF000000)>>24, (args[2] & 0x00FF0000)>>16, (args[2] & 0x0000FF00)>>8, (args[2] & 0x000000FF),
-                            (args[3] & 0xFF000000)>>24, (args[3] & 0x00FF0000)>>16, (args[3] & 0x0000FF00)>>8
-                        );
-                    }
-                    else if (args[4] == G_IM_SIZ_8b)
-                    {
-                        gDPLoadTextureBlock(dlist++, 
-                            textures[(args[0] & 0xFFFF0000)>>16], (args[0] & 0x0000FF00)>>8, G_IM_SIZ_8b,
-                            (args[1] & 0xFFFF0000)>>16, args[1] & 0x0000FFFF,
-                            (args[2] & 0xFF000000)>>24, (args[2] & 0x00FF0000)>>16, (args[2] & 0x0000FF00)>>8, (args[2] & 0x000000FF),
-                            (args[3] & 0xFF000000)>>24, (args[3] & 0x00FF0000)>>16, (args[3] & 0x0000FF00)>>8
-                        );
-                    }
-                    else
-                    {
-                        gDPLoadTextureBlock_4b(dlist++, 
-                            textures[(args[0] & 0xFFFF0000)>>16], (args[0] & 0x0000FF00)>>8,
-                            (args[1] & 0xFFFF0000)>>16, args[1] & 0x0000FFFF,
-                            (args[2] & 0xFF000000)>>24, (args[2] & 0x00FF0000)>>16, (args[2] & 0x0000FF00)>>8, (args[2] & 0x000000FF),
-                            (args[3] & 0xFF000000)>>24, (args[3] & 0x00FF0000)>>16, (args[3] & 0x0000FF00)>>8
-                        );
-                    }
-                }
-                break;
-            case SPEndDisplayList:
-                gSPEndDisplayList(dlist++);
-                return;
-            default:
-                //debug_printf("Warning: Unknown DL Command with ID %d\n", datablock);
-                break;
+                    break;
+                case SPEndDisplayList:
+                    gSPEndDisplayList(dlist++);
+                    return;
+                default:
+                    //debug_printf("Warning: Unknown DL Command with ID %d\n", datablock);
+                    break;
+            }
         }
     }
-}
+#endif
 
 
 /*==============================
@@ -871,9 +873,9 @@ static void sausage64_gendlist(u32* data, Gfx* dlist, Vtx* verts, u32** textures
 
 s64ModelData* sausage64_load_binarymodel(u32 romstart, u32 size, u32** textures)
 {
-    // TODO: Handle cases with no meshes, no anims
     // TODO: Test simple models with 1 bone and no animations
     int i;
+    u8 mallocfailed = FALSE;
     OSMesg   dmamsg;
     OSIoMesg iomsg;
     OSMesgQueue msgq;
@@ -934,14 +936,31 @@ s64ModelData* sausage64_load_binarymodel(u32 romstart, u32 size, u32** textures)
     
     // Get model data
     header.count_meshes = ((u16*)data)[2];
-    header.count_anims = ((u16*)data)[3];
     header.offset_meshes = ((u32*)data)[2];
+    header.count_anims = ((u16*)data)[3];
     header.offset_anims = ((u32*)data)[3];
-    toc_meshes = (BinFile_TOC_Meshes*)malloc(sizeof(BinFile_TOC_Meshes)*header.count_meshes);
-    toc_anims = (BinFile_TOC_Anims*)malloc(sizeof(BinFile_TOC_Anims)*header.count_anims);
-    meshdatas = (BinFile_MeshData*)malloc(sizeof(BinFile_MeshData)*header.count_meshes);
-    animdatas = (BinFile_AnimData*)malloc(sizeof(BinFile_AnimData)*header.count_anims);
-    if (toc_meshes == NULL || toc_anims == NULL || meshdatas == NULL || animdatas == NULL)
+
+    // Malloc temporary mesh data
+    if (header.count_meshes > 0)
+    {
+        toc_meshes = (BinFile_TOC_Meshes*)malloc(sizeof(BinFile_TOC_Meshes)*header.count_meshes);
+        meshdatas = (BinFile_MeshData*)malloc(sizeof(BinFile_MeshData)*header.count_meshes);
+        if (toc_meshes == NULL || meshdatas == NULL)
+            mallocfailed = TRUE;
+    }
+
+    // Malloc temporary animation data
+    if (header.count_anims > 0)
+    {
+        toc_anims = (BinFile_TOC_Anims*)malloc(sizeof(BinFile_TOC_Anims)*header.count_anims);
+        animdatas = (BinFile_AnimData*)malloc(sizeof(BinFile_AnimData)*header.count_anims);
+        if (toc_anims == NULL || animdatas == NULL)
+            mallocfailed = TRUE;
+
+    }
+
+    // Test that malloc succeeded
+    if (mallocfailed)
     {
         if (toc_meshes != NULL) free(toc_meshes);
         if (toc_anims != NULL) free(toc_anims);
@@ -1002,16 +1021,34 @@ s64ModelData* sausage64_load_binarymodel(u32 romstart, u32 size, u32** textures)
         animdatas[i] = animdata;
     }
     
-    // Perform the mallocs
+    // Perform the mallocs for the data we're actually going to need
     mdl = (s64ModelData*)malloc(sizeof(s64ModelData));
-    meshes = (s64Mesh*)malloc(sizeof(s64Mesh)*header.count_meshes);
     strings = (char*)malloc(sizeof(char)*mallocsize_strings);
-    verts = (Vtx*)malloc(sizeof(Vtx)*mallocsize_verts);
-    dlists = (Gfx*)malloc(sizeof(Gfx)*mallocsize_gfx);
-    anims = (s64Animation*)malloc(sizeof(s64Animation)*header.count_anims);
-    keyframes = (s64KeyFrame*)malloc(sizeof(s64KeyFrame)*mallocsize_keyframes);
-    transforms = (s64Transform*)malloc(sizeof(s64Transform)*mallocsize_transforms);
-    if (mdl == NULL || meshes == NULL || strings == NULL || verts == NULL || dlists == NULL || anims == NULL || keyframes == NULL || transforms == NULL)
+    if (mdl == NULL || strings == NULL)
+        mallocfailed = TRUE;
+
+    // Malloc mesh data
+    if (header.count_meshes > 0)
+    {
+        meshes = (s64Mesh*)malloc(sizeof(s64Mesh)*header.count_meshes);
+        verts = (Vtx*)malloc(sizeof(Vtx)*mallocsize_verts);
+        dlists = (Gfx*)malloc(sizeof(Gfx)*mallocsize_gfx);
+        if (meshes == NULL || verts == NULL || dlists == NULL)
+            mallocfailed = TRUE;
+    }
+
+    // Malloc animation data
+    if (header.count_anims > 0)
+    {
+        anims = (s64Animation*)malloc(sizeof(s64Animation)*header.count_anims);
+        keyframes = (s64KeyFrame*)malloc(sizeof(s64KeyFrame)*mallocsize_keyframes);
+        transforms = (s64Transform*)malloc(sizeof(s64Transform)*mallocsize_transforms);
+        if (anims == NULL || keyframes == NULL || transforms == NULL)
+            mallocfailed = TRUE;
+    }
+
+    // Test that malloc succeeded
+    if (mallocfailed)
     {
         if (mdl != NULL) free(mdl);
         if (meshes != NULL) free(meshes);
@@ -1029,13 +1066,13 @@ s64ModelData* sausage64_load_binarymodel(u32 romstart, u32 size, u32** textures)
         return NULL;
     }
     
-    // Now we will actually pull data
+    // Now we will actually pull data from the binary file and copy it over to our s64 data structs
     for (i=0; i<header.count_meshes; i++)
     {        
         // Copy the s64Mesh
         *(u32*)&meshes[i].is_billboard = meshdatas[i].is_billboard;
         *(s32*)&meshes[i].parent = meshdatas[i].parent;
-        (Gfx*)meshes[i].dl = &dlists[offset_gfx];
+        meshes[i].dl = &dlists[offset_gfx];
         meshes[i].name = strings+offset_strings;
         strcpy(strings+offset_strings, meshdatas[i].name);
         
@@ -1078,18 +1115,24 @@ s64ModelData* sausage64_load_binarymodel(u32 romstart, u32 size, u32** textures)
         offset_transforms += header.count_meshes*animdatas[i].kfcount;
     }
     
-    // Populate the model data
+    // Populate the model data struct
     *(u16*)&mdl->meshcount = header.count_meshes;
     *(u16*)&mdl->animcount = header.count_anims;
     mdl->meshes = meshes;
     mdl->anims = anims;
     mdl->_vtxcleanup = verts;
     
-    // Finish
-    free(toc_meshes);
-    free(meshdatas);
-    free(toc_anims);
-    free(animdatas);
+    // Finish by cleaning up memory we used temporarily and returning the model data pointer
+    if (header.count_meshes > 0)
+    {
+        free(toc_meshes);
+        free(meshdatas);
+    }
+    if (header.count_anims > 0)
+    {
+        free(toc_anims);
+        free(animdatas);
+    }
     free(data);
     return mdl;
 }

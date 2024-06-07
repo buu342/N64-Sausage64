@@ -337,6 +337,8 @@ void write_output_binary()
     BinFile_AnimData* animdatas;
     BinFile_KeyFrame** kfdatas;
     int* kftotal;
+    int tcount = 0;
+    int longesttexname = 0;
     bool makestructs = (list_animations.size > 0 || list_meshes.size > 1);
     
     // Open the file
@@ -793,68 +795,57 @@ void write_output_binary()
 
     // -------------- Helper Header File --------------
     
-    if (makestructs)
+    // Open the file
+    sprintf(strbuff, "%s.h", global_outputname);
+    fp = fopen(strbuff, "w+");
+    if (fp == NULL)
+        terminate("Error: Unable to open file for writing\n");
+
+    // Print the header
+    write_header(fp, makestructs);
+
+    // Print texture count and texture list
+    for (curnode = list_textures.head; curnode != NULL; curnode = curnode->next)
     {
-        int tcount = 0;
-        int longesttexname = 0;
-
-        // Open the file
-        sprintf(strbuff, "%s.h", global_outputname);
-        fp = fopen(strbuff, "w+");
-        if (fp == NULL)
-            terminate("Error: Unable to open file for writing\n");
-
-        // Print the header
-        write_header(fp, makestructs);
-
-        // Print texture count and texture list
+        n64Texture* tex = (n64Texture*)curnode->data;
+        if (get_validtexindex(&list_textures, tex->name) != -1)
+        {
+            int len = strlen(tex->name);
+            tcount++;
+            if (len > longesttexname)
+                longesttexname = len;
+        }
+    }
+    if (tcount > 0)
+    {
+        fprintf(fp, "// Texture data\n#define TEXTURECOUNT_%s %d\n\n", global_modelname, tcount);
         for (curnode = list_textures.head; curnode != NULL; curnode = curnode->next)
         {
+            int nspaces;
             n64Texture* tex = (n64Texture*)curnode->data;
-            if (get_validtexindex(&list_textures, tex->name) != -1)
+            int tindex = get_validtexindex(&list_textures, tex->name);
+            if (tindex != -1)
             {
-                int len = strlen(tex->name);
-                tcount++;
-                if (len > longesttexname)
-                    longesttexname = len;
+                fprintf(fp, "#define TEXTURE_%s ", tex->name);
+                nspaces = strlen(tex->name);
+                for (i=nspaces; i<longesttexname; i++) fputc(' ', fp);
+                fprintf(fp, "%d\n", tindex);
             }
         }
-        if (tcount > 0)
-        {
-            fprintf(fp, "// Texture data\n#define TEXTURECOUNT_%s %d\n\n", global_modelname, tcount);
-            for (curnode = list_textures.head; curnode != NULL; curnode = curnode->next)
-            {
-                int nspaces;
-                n64Texture* tex = (n64Texture*)curnode->data;
-                int tindex = get_validtexindex(&list_textures, tex->name);
-                if (tindex != -1)
-                {
-                    fprintf(fp, "#define TEXTURE_%s ", tex->name);
-                    nspaces = strlen(tex->name);
-                    for (i=nspaces; i<longesttexname; i++) fputc(' ', fp);
-                    fprintf(fp, "%d\n", tindex);
-                }
-            }
-        }
-
-        // Print the extern definitions
-        if (!global_opengl)
-        {
-            fprintf(fp, "\n// Extern definitions\n");
-            fprintf(fp, "extern u8 _%sSegmentRomStart[];\n", global_modelname);
-            fprintf(fp, "extern u8 _%sSegmentRomEnd[];", global_modelname);
-        }
-
-        // Done
-        fclose(fp);
+        fprintf(fp, "\n");
     }
+
+    // Print the extern definitions
+    if (!global_opengl)
+    {
+        fprintf(fp, "// Extern definitions\n");
+        fprintf(fp, "extern u8 _%sSegmentRomStart[];\n", global_modelname);
+        fprintf(fp, "extern u8 _%sSegmentRomEnd[];", global_modelname);
+    }
+
+    // Done
+    fclose(fp);
 
     // Finished writing the output
-    if (!global_quiet)
-    {
-        printf("Wrote output to '%s.bin'", global_outputname);
-        if (makestructs)
-            printf(" and '%s.h'", global_outputname);
-        printf("\n");
-    }
+    if (!global_quiet) printf("Wrote output to '%s.bin' and '%s.h'\n", global_outputname, global_outputname);
 }

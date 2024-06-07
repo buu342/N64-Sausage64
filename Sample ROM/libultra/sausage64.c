@@ -9,6 +9,7 @@ https://github.com/buu342/Blender-Sausage64
 #include "sausage64.h"
 #ifdef LIBDRAGON
     #include <math.h>
+    #include <rdpq_tex.h>
 #endif
 #include <stdlib.h>
 #include <malloc.h>
@@ -30,17 +31,20 @@ https://github.com/buu342/Blender-Sausage64
 
 
 /*********************************
-           Other Macros
+       Binary Asset Macros
 *********************************/
 
 #define BINARY_VERSION 0
 
-#define	gDPSetCombineLERP_Custom(pkt, a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1) \
-{ \
-    Gfx *_g = (Gfx *)(pkt); \
-    _g->words.w0 = _SHIFTL(G_SETCOMBINE, 24, 8) | _SHIFTL(GCCc0w0(a0, c0, Aa0, Ac0) | GCCc1w0(a1, c1), 0, 24); \
-	_g->words.w1 =	(unsigned int)(GCCc0w1(b0, d0, Ab0, Ad0) | GCCc1w1(b1, Aa1, Ac1, d1, Ab1, Ad1)); \
-}
+// Custom Combine LERP function that doesn't do macro hackery
+#ifndef LIBDRAGON
+    #define	gDPSetCombineLERP_Custom(pkt, a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1) \
+    { \
+        Gfx *_g = (Gfx *)(pkt); \
+        _g->words.w0 = _SHIFTL(G_SETCOMBINE, 24, 8) | _SHIFTL(GCCc0w0(a0, c0, Aa0, Ac0) | GCCc1w0(a1, c1), 0, 24); \
+    	_g->words.w1 =	(unsigned int)(GCCc0w1(b0, d0, Ab0, Ad0) | GCCc1w1(b1, Aa1, Ac1, d1, Ab1, Ad1)); \
+    }
+#endif
 
 
 /*********************************
@@ -98,6 +102,7 @@ typedef struct {
              Enum
 *********************************/
 
+// Libultra DL command enums
 typedef enum {
     DPFillRectangle = 0,
     DPScisFillRectangle,
@@ -873,7 +878,6 @@ static inline void s64vec_rotate(f32 vec[3], s64Quat rot, f32 result[3])
 
 s64ModelData* sausage64_load_binarymodel(u32 romstart, u32 size, u32** textures)
 {
-    // TODO: Test simple models with 1 bone and no animations
     int i;
     u8 mallocfailed = FALSE;
     OSMesg   dmamsg;

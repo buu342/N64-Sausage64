@@ -116,32 +116,35 @@
     } s64FrameTransform;
 
     typedef struct {
-        u32 framenumber;
-        s64Transform* framedata;
+        const u32 framenumber;
+        const s64Transform* framedata;
     } s64KeyFrame;
 
     typedef struct {
         const char* name;
-        u32 keyframecount;
-        s64KeyFrame* keyframes;
+        const u32 keyframecount;
+        const s64KeyFrame* keyframes;
     } s64Animation;
 
     typedef struct {
         const char* name;
         const u32 is_billboard;
-        s64Gfx* dl;
-        s32 parent;
+        const s64Gfx* dl;
+        const s32 parent;
     } s64Mesh;
 
     typedef struct {
-        u16 meshcount;
-        u16 animcount;
-        s64Mesh* meshes;
-        s64Animation* anims;
+        const u16 meshcount;
+        const u16 animcount;
+        const s64Mesh* meshes;
+        const s64Animation* anims;
+        #ifndef LIBDRAGON
+            Vtx* _vtxcleanup;
+        #endif
     } s64ModelData;
     
     typedef struct {
-        s64Animation* animdata;
+        const s64Animation* animdata;
         f32 curtick;
         u32 curkeyframe;
     } s64AnimPlay;
@@ -156,7 +159,7 @@
         u8    (*predraw)(u16);
         void  (*postdraw)(u16);
         void  (*animcallback)(u16);
-        s64ModelData* mdldata;
+        const s64ModelData* mdldata;
         s64FrameTransform* transforms; 
         s64AnimPlay curanim;
         s64AnimPlay blendanim;
@@ -213,6 +216,26 @@
 
         extern void sausage64_unload_staticmodel(s64ModelData* mdldata);
     #endif
+    
+    /*==============================
+        sausage64_load_binarymodel
+        Load a binary model from ROM
+        @param  The starting address in ROM
+        @param  The size of the model
+        @param  The list of textures to use
+        @return The newly allocated model
+    ==============================*/
+    
+    s64ModelData* sausage64_load_binarymodel(u32 romstart, u32 size, u32** textures);
+
+
+    /*==============================
+        sausage64_unload_binarymodel
+        Free the memory used by a dynamically loaded binary model
+        @param  The model to free
+    ==============================*/
+    
+    void sausage64_unload_binarymodel(s64ModelData* mdl);
 
     
     /*********************************

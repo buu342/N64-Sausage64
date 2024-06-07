@@ -359,7 +359,8 @@ void stage00_draw(void)
         catherine_lookat();
     
     // Draw catherine
-    gSPDisplayList(glistp++, modeltorender->meshes[0].dl);
+    //usb_write(DATATYPE_RAWBINARY, modeltorender->meshes[0].dl, 144);
+    //gSPDisplayList(glistp++, modeltorender->meshes[0].dl);
     sausage64_drawmodel(&glistp, catherine);
     
     // Synchronize the RCP and CPU and specify that our display list has ended

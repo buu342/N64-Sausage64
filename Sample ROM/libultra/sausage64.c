@@ -727,9 +727,11 @@ static void sausage64_gendlist(u32* data, Gfx* dlist, Vtx* verts, u32** textures
     int i;
     u32 offset = 0;
     u32 args[16];
+    Gfx* dlist_original = dlist;
     while (1)
     {
         u32 datablock = data[offset++];
+        debug_printf("Reading %d\n", dlist - dlist_original);
         switch (datablock)
         {
             case SPClearGeometryMode:
@@ -772,9 +774,15 @@ static void sausage64_gendlist(u32* data, Gfx* dlist, Vtx* verts, u32** textures
                 break;
             case DPSetCombineLERP:
                 for (i=0; i<16; i++)
-                    args[i] = ((u8*)data)[offset+i];
+                    args[i] = ((u8*)(data+offset))[i];
                 offset += 4;
                 gDPSetCombineLERP_Custom(dlist++, 
+                    args[0],  args[1],  args[2],  args[3], 
+                    args[4],  args[5],  args[6],  args[7],
+                    args[8],  args[9],  args[10], args[11], 
+                    args[12], args[13], args[14], args[15]
+                );
+                debug_printf("combine -> %d %d %d %d %d %d %d %d\n\t\t%d %d %d %d %d %d %d %d\n", 
                     args[0],  args[1],  args[2],  args[3], 
                     args[4],  args[5],  args[6],  args[7],
                     args[8],  args[9],  args[10], args[11], 
@@ -841,6 +849,7 @@ static void sausage64_gendlist(u32* data, Gfx* dlist, Vtx* verts, u32** textures
                     );
                 }
             case SPEndDisplayList:
+                debug_printf("Ended Displaylist\n");
                 gSPEndDisplayList(dlist++);
                 return;
             default:

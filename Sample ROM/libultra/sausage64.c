@@ -657,7 +657,7 @@ static inline void s64vec_rotate(f32 vec[3], s64Quat rot, f32 result[3])
         // Generate the buffers, and then assign them to the vert+face arrays
         for (u32 i=0; i<meshcount; i++)
         {
-            s64Gfx* dl = mdldata->meshes[i].dl;
+            s64Gfx* dl = (s64Gfx*)mdldata->meshes[i].dl;
             u32 facecount = 0, vertcount = 0;
 
             // Count the number of faces
@@ -716,7 +716,7 @@ static inline void s64vec_rotate(f32 vec[3], s64Quat rot, f32 result[3])
         u32 meshcount = mdldata->meshcount;
         for (u32 i=0; i<meshcount; i++)
         {
-            s64Gfx* dl = mdldata->meshes[i].dl;
+            s64Gfx* dl = (s64Gfx*)mdldata->meshes[i].dl;
             glDeleteBuffersARB(1, &dl->guid_mdl);
             glDeleteBuffersARB(1, &dl->guid_verts);
             glDeleteBuffersARB(1, &dl->guid_faces);
@@ -867,279 +867,295 @@ static inline void s64vec_rotate(f32 vec[3], s64Quat rot, f32 result[3])
 #endif
 
 
-/*==============================
-    sausage64_load_binarymodel
-    Load a binary model from ROM
-    @param  The starting address in ROM
-    @param  The size of the model
-    @param  The list of textures to use
-    @return The newly allocated model
-==============================*/
+#ifndef LIBDRAGON
+    /*==============================
+        sausage64_load_binarymodel
+        Load a binary model from ROM
+        @param  The starting address in ROM
+        @param  The size of the model
+        @param  The list of textures to use
+        @return The newly allocated model
+    ==============================*/
 
-s64ModelData* sausage64_load_binarymodel(u32 romstart, u32 size, u32** textures)
-{
-    int i;
-    u8 mallocfailed = FALSE;
-    OSMesg   dmamsg;
-    OSIoMesg iomsg;
-    OSMesgQueue msgq;
-    u32 left = size;
-    u8* data;
-    BinFile_Header header;
-    BinFile_TOC_Meshes* toc_meshes;
-    BinFile_MeshData* meshdatas;
-    BinFile_TOC_Anims* toc_anims;
-    BinFile_AnimData* animdatas;
-    u32 mallocsize_strings = 0, mallocsize_verts = 0, mallocsize_gfx = 0, mallocsize_keyframes = 0, mallocsize_transforms = 0;
-    u32 offset_strings = 0, offset_verts = 0, offset_gfx = 0, offset_keyframes = 0, offset_transforms = 0;
-    char* strings = NULL;
-    Vtx* verts = NULL;
-    Gfx* dlists = NULL;
-    s64Mesh* meshes = NULL;
-    s64Animation* anims = NULL;
-    s64KeyFrame* keyframes = NULL;
-    s64Transform* transforms = NULL;
-    s64ModelData* mdl = NULL;
-    
-    // Reserve some memory for the file we're about to read
-    data = (u8*)memalign(16, size);
-    if (data == NULL)
-        return NULL;
-        
-    // Initialize the message queue and invalidate the data cache
-    osCreateMesgQueue(&msgq, &dmamsg, 1);
-    osInvalDCache((void*)data, size);
-
-    // Read from ROM
-    while (left > 0)
+    s64ModelData* sausage64_load_binarymodel(u32 romstart, u32 size, u32** textures)
     {
-        u32 readsize = left;
-        u32 offset;
+        int i;
+        u8 mallocfailed = FALSE;
+            OSMesg   dmamsg;
+            OSIoMesg iomsg;
+            OSMesgQueue msgq;
+            u32 left = size;
+        u8* data;
+        BinFile_Header header;
+        BinFile_TOC_Meshes* toc_meshes;
+        BinFile_MeshData* meshdatas;
+        BinFile_TOC_Anims* toc_anims;
+        BinFile_AnimData* animdatas;
+        u32 mallocsize_strings = 0, mallocsize_verts = 0, mallocsize_gfx = 0, mallocsize_keyframes = 0, mallocsize_transforms = 0;
+        u32 offset_strings = 0, offset_verts = 0, offset_gfx = 0, offset_keyframes = 0, offset_transforms = 0;
+        char* strings = NULL;
+        Vtx* verts = NULL;
+        Gfx* dlists = NULL;
+        s64Mesh* meshes = NULL;
+        s64Animation* anims = NULL;
+        s64KeyFrame* keyframes = NULL;
+        s64Transform* transforms = NULL;
+        s64ModelData* mdl = NULL;
         
-        // Limit the size to prevent audio stutters
-        if (readsize > 16384)
-            readsize = 16384;
+        // Reserve some memory for the file we're about to read
+        data = (u8*)memalign(16, size);
+        if (data == NULL)
+            return NULL;
             
-        // Perform the read
-        offset = size - left;
-        osPiStartDma(&iomsg, OS_MESG_PRI_NORMAL, OS_READ, romstart+offset, data+offset, readsize, &msgq);
-        (void)osRecvMesg(&msgq, &dmamsg, OS_MESG_BLOCK);
-        left -= readsize;
-    }
-    
-    // Validate
-    header.header[0] = data[0];
-    header.header[1] = data[1];
-    header.header[2] = data[2];
-    header.header[3] = data[3];
-    if (header.header[0] != 'S' || header.header[1] != '6' || header.header[2] != '4' || header.header[3] != BINARY_VERSION)
-    {
-        free(data);
-        return NULL;
-    }
-    
-    // Get model data
-    header.count_meshes = ((u16*)data)[2];
-    header.offset_meshes = ((u32*)data)[2];
-    header.count_anims = ((u16*)data)[3];
-    header.offset_anims = ((u32*)data)[3];
+        // Initialize the message queue and invalidate the data cache
+        osCreateMesgQueue(&msgq, &dmamsg, 1);
+        osInvalDCache((void*)data, size);
 
-    // Malloc temporary mesh data
-    if (header.count_meshes > 0)
-    {
-        toc_meshes = (BinFile_TOC_Meshes*)malloc(sizeof(BinFile_TOC_Meshes)*header.count_meshes);
-        meshdatas = (BinFile_MeshData*)malloc(sizeof(BinFile_MeshData)*header.count_meshes);
-        if (toc_meshes == NULL || meshdatas == NULL)
-            mallocfailed = TRUE;
-    }
-
-    // Malloc temporary animation data
-    if (header.count_anims > 0)
-    {
-        toc_anims = (BinFile_TOC_Anims*)malloc(sizeof(BinFile_TOC_Anims)*header.count_anims);
-        animdatas = (BinFile_AnimData*)malloc(sizeof(BinFile_AnimData)*header.count_anims);
-        if (toc_anims == NULL || animdatas == NULL)
-            mallocfailed = TRUE;
-
-    }
-
-    // Test that malloc succeeded
-    if (mallocfailed)
-    {
-        if (toc_meshes != NULL) free(toc_meshes);
-        if (toc_anims != NULL) free(toc_anims);
-        if (meshdatas != NULL) free(meshdatas);
-        if (animdatas != NULL) free(animdatas);
-        free(data);
-        return NULL;
-    }
-    
-    // To reduce memory fragmentation, we're gfloatoing to iterate once through everything
-    // to calculate the size we'll need for all the data,
-    // and then the second iteration is when we'll actually populate the data structures
-    for (i=0; i<header.count_meshes; i++)
-    {
-        int toc_offset = header.offset_meshes + 0x1C*i;
-        BinFile_TOC_Meshes toc_mesh = {
-            *((u32*)&data[toc_offset+0*4]),
-            *((u32*)&data[toc_offset+1*4]),
-            *((u32*)&data[toc_offset+2*4]),
-            *((u32*)&data[toc_offset+3*4]),
-            *((u32*)&data[toc_offset+4*4]),
-            *((u32*)&data[toc_offset+5*4]),
-            *((u32*)&data[toc_offset+6*4]),
-        };
-        BinFile_MeshData meshdata = {
-            *((u16*)&data[toc_mesh.meshdata_offset]),
-            data[toc_mesh.meshdata_offset+2],
-            (char*)&data[toc_mesh.meshdata_offset+3]
-        };
-        mallocsize_strings += strlen(meshdata.name)+1;
-        mallocsize_verts += toc_mesh.vertdata_size/16;
-        mallocsize_gfx += toc_mesh.dldata_slotcount;
-        
-        // Copy the data
-        toc_meshes[i] = toc_mesh;
-        meshdatas[i] = meshdata;
-    }
-    for (i=0; i<header.count_anims; i++)
-    {
-        int toc_offset = header.offset_anims + 0x10*i;
-        BinFile_TOC_Anims toc_anim = {
-            *((u32*)&data[toc_offset+0*4]),
-            *((u32*)&data[toc_offset+1*4]),
-            *((u32*)&data[toc_offset+2*4]),
-            *((u32*)&data[toc_offset+3*4]),
-        };
-        BinFile_AnimData animdata = {
-            *((u32*)&data[toc_anim.animdata_offset]),
-            (u16*)&data[toc_anim.animdata_offset+4]
-        };
-        animdata.name = (((char*)(animdata.kfindices)) + animdata.kfcount*sizeof(u16));
-        mallocsize_strings += strlen(animdata.name)+1;
-        mallocsize_keyframes += animdata.kfcount;
-        mallocsize_transforms += animdata.kfcount*header.count_meshes;
-        
-        // Copy the data
-        toc_anims[i] = toc_anim;
-        animdatas[i] = animdata;
-    }
-    
-    // Perform the mallocs for the data we're actually going to need
-    mdl = (s64ModelData*)malloc(sizeof(s64ModelData));
-    strings = (char*)malloc(sizeof(char)*mallocsize_strings);
-    if (mdl == NULL || strings == NULL)
-        mallocfailed = TRUE;
-
-    // Malloc mesh data
-    if (header.count_meshes > 0)
-    {
-        meshes = (s64Mesh*)malloc(sizeof(s64Mesh)*header.count_meshes);
-        verts = (Vtx*)malloc(sizeof(Vtx)*mallocsize_verts);
-        dlists = (Gfx*)malloc(sizeof(Gfx)*mallocsize_gfx);
-        if (meshes == NULL || verts == NULL || dlists == NULL)
-            mallocfailed = TRUE;
-    }
-
-    // Malloc animation data
-    if (header.count_anims > 0)
-    {
-        anims = (s64Animation*)malloc(sizeof(s64Animation)*header.count_anims);
-        keyframes = (s64KeyFrame*)malloc(sizeof(s64KeyFrame)*mallocsize_keyframes);
-        transforms = (s64Transform*)malloc(sizeof(s64Transform)*mallocsize_transforms);
-        if (anims == NULL || keyframes == NULL || transforms == NULL)
-            mallocfailed = TRUE;
-    }
-
-    // Test that malloc succeeded
-    if (mallocfailed)
-    {
-        if (mdl != NULL) free(mdl);
-        if (meshes != NULL) free(meshes);
-        if (strings != NULL) free(strings);
-        if (verts != NULL) free(verts);
-        if (dlists != NULL) free(dlists);
-        if (anims != NULL) free(anims);
-        if (keyframes != NULL) free(keyframes);
-        if (transforms != NULL) free(transforms);
-        free(toc_meshes);
-        free(meshdatas);
-        free(toc_anims);
-        free(animdatas);
-        free(data);
-        return NULL;
-    }
-    
-    // Now we will actually pull data from the binary file and copy it over to our s64 data structs
-    for (i=0; i<header.count_meshes; i++)
-    {        
-        // Copy the s64Mesh
-        *(u32*)&meshes[i].is_billboard = meshdatas[i].is_billboard;
-        *(s32*)&meshes[i].parent = meshdatas[i].parent;
-        meshes[i].dl = &dlists[offset_gfx];
-        meshes[i].name = strings+offset_strings;
-        strcpy(strings+offset_strings, meshdatas[i].name);
-        
-        // Copy the vertex data
-        // It's aligned by design (Thanks SGI!), so we can just memcpy
-        memcpy(&verts[offset_verts], &data[toc_meshes[i].vertdata_offset], toc_meshes[i].vertdata_size);
-        
-        // Generate the display list
-        sausage64_gendlist((u32*)(&data[toc_meshes[i].dldata_offset]), &dlists[offset_gfx], &verts[offset_verts], textures);
-        meshes[i].dl = &dlists[offset_gfx];
-        
-        // Increment pointers
-        offset_strings += strlen(meshes[i].name)+1;
-        offset_verts += toc_meshes[i].vertdata_size/16;
-        offset_gfx += toc_meshes[i].dldata_slotcount;
-    }
-    for (i=0; i<header.count_anims; i++)
-    {
-        int j;
-        
-        // Copy the s64Animation
-        anims[i].name = strings+offset_strings;
-        strcpy(strings+offset_strings, animdatas[i].name);
-        *(u32*)&anims[i].keyframecount = animdatas[i].kfcount;
-        anims[i].keyframes = &keyframes[offset_keyframes];
-        
-        // Copy the s64KeyFrame
-        for (j=0; j<animdatas[i].kfcount; j++)
+        // Read from ROM
+        while (left > 0)
         {
-            *(u32*)&keyframes[offset_keyframes + j].framenumber = animdatas[i].kfindices[j];
-            keyframes[offset_keyframes + j].framedata = &transforms[offset_transforms+j*header.count_meshes];
+            u32 readsize = left;
+            u32 offset;
+            
+            // Limit the size to prevent audio stutters
+            if (readsize > 16384)
+                readsize = 16384;
+                
+            // Perform the read
+            offset = size - left;
+            osPiStartDma(&iomsg, OS_MESG_PRI_NORMAL, OS_READ, romstart+offset, data+offset, readsize, &msgq);
+            (void)osRecvMesg(&msgq, &dmamsg, OS_MESG_BLOCK);
+            left -= readsize;
         }
         
-        // Memcpy the s64Transforms
-        memcpy(&transforms[offset_transforms], &data[toc_anims[i].kfdata_offset], toc_anims[i].kfdata_size);
+        // Validate
+        header.header[0] = data[0];
+        header.header[1] = data[1];
+        header.header[2] = data[2];
+        header.header[3] = data[3];
+        if (header.header[0] != 'S' || header.header[1] != '6' || header.header[2] != '4' || header.header[3] != BINARY_VERSION)
+        {
+            free(data);
+            return NULL;
+        }
         
-        // Increment pointers
-        offset_strings += strlen(anims[i].name)+1;
-        offset_keyframes += animdatas[i].kfcount;
-        offset_transforms += header.count_meshes*animdatas[i].kfcount;
+        // Get model data
+        header.count_meshes = ((u16*)data)[2];
+        header.offset_meshes = ((u32*)data)[2];
+        header.count_anims = ((u16*)data)[3];
+        header.offset_anims = ((u32*)data)[3];
+
+        // Malloc temporary mesh data
+        if (header.count_meshes > 0)
+        {
+            toc_meshes = (BinFile_TOC_Meshes*)malloc(sizeof(BinFile_TOC_Meshes)*header.count_meshes);
+            meshdatas = (BinFile_MeshData*)malloc(sizeof(BinFile_MeshData)*header.count_meshes);
+            if (toc_meshes == NULL || meshdatas == NULL)
+                mallocfailed = TRUE;
+        }
+
+        // Malloc temporary animation data
+        if (header.count_anims > 0)
+        {
+            toc_anims = (BinFile_TOC_Anims*)malloc(sizeof(BinFile_TOC_Anims)*header.count_anims);
+            animdatas = (BinFile_AnimData*)malloc(sizeof(BinFile_AnimData)*header.count_anims);
+            if (toc_anims == NULL || animdatas == NULL)
+                mallocfailed = TRUE;
+
+        }
+
+        // Test that malloc succeeded
+        if (mallocfailed)
+        {
+            if (toc_meshes != NULL) free(toc_meshes);
+            if (toc_anims != NULL) free(toc_anims);
+            if (meshdatas != NULL) free(meshdatas);
+            if (animdatas != NULL) free(animdatas);
+            free(data);
+            return NULL;
+        }
+        
+        // To reduce memory fragmentation, we're gfloatoing to iterate once through everything
+        // to calculate the size we'll need for all the data,
+        // and then the second iteration is when we'll actually populate the data structures
+        for (i=0; i<header.count_meshes; i++)
+        {
+            int toc_offset = header.offset_meshes + 0x1C*i;
+            BinFile_TOC_Meshes toc_mesh = {
+                *((u32*)&data[toc_offset+0*4]),
+                *((u32*)&data[toc_offset+1*4]),
+                *((u32*)&data[toc_offset+2*4]),
+                *((u32*)&data[toc_offset+3*4]),
+                *((u32*)&data[toc_offset+4*4]),
+                *((u32*)&data[toc_offset+5*4]),
+                *((u32*)&data[toc_offset+6*4]),
+            };
+            BinFile_MeshData meshdata = {
+                *((u16*)&data[toc_mesh.meshdata_offset]),
+                data[toc_mesh.meshdata_offset+2],
+                (char*)&data[toc_mesh.meshdata_offset+3]
+            };
+            mallocsize_strings += strlen(meshdata.name)+1;
+            mallocsize_verts += toc_mesh.vertdata_size/16;
+            mallocsize_gfx += toc_mesh.dldata_slotcount;
+            
+            // Copy the data
+            toc_meshes[i] = toc_mesh;
+            meshdatas[i] = meshdata;
+        }
+        for (i=0; i<header.count_anims; i++)
+        {
+            int toc_offset = header.offset_anims + 0x10*i;
+            BinFile_TOC_Anims toc_anim = {
+                *((u32*)&data[toc_offset+0*4]),
+                *((u32*)&data[toc_offset+1*4]),
+                *((u32*)&data[toc_offset+2*4]),
+                *((u32*)&data[toc_offset+3*4]),
+            };
+            BinFile_AnimData animdata = {
+                *((u32*)&data[toc_anim.animdata_offset]),
+                (u16*)&data[toc_anim.animdata_offset+4]
+            };
+            animdata.name = (((char*)(animdata.kfindices)) + animdata.kfcount*sizeof(u16));
+            mallocsize_strings += strlen(animdata.name)+1;
+            mallocsize_keyframes += animdata.kfcount;
+            mallocsize_transforms += animdata.kfcount*header.count_meshes;
+            
+            // Copy the data
+            toc_anims[i] = toc_anim;
+            animdatas[i] = animdata;
+        }
+        
+        // Perform the mallocs for the data we're actually going to need
+        mdl = (s64ModelData*)malloc(sizeof(s64ModelData));
+        strings = (char*)malloc(sizeof(char)*mallocsize_strings);
+        if (mdl == NULL || strings == NULL)
+            mallocfailed = TRUE;
+
+        // Malloc mesh data
+        if (header.count_meshes > 0)
+        {
+            meshes = (s64Mesh*)malloc(sizeof(s64Mesh)*header.count_meshes);
+            verts = (Vtx*)malloc(sizeof(Vtx)*mallocsize_verts);
+            dlists = (Gfx*)malloc(sizeof(Gfx)*mallocsize_gfx);
+            if (meshes == NULL || verts == NULL || dlists == NULL)
+                mallocfailed = TRUE;
+        }
+
+        // Malloc animation data
+        if (header.count_anims > 0)
+        {
+            anims = (s64Animation*)malloc(sizeof(s64Animation)*header.count_anims);
+            keyframes = (s64KeyFrame*)malloc(sizeof(s64KeyFrame)*mallocsize_keyframes);
+            transforms = (s64Transform*)malloc(sizeof(s64Transform)*mallocsize_transforms);
+            if (anims == NULL || keyframes == NULL || transforms == NULL)
+                mallocfailed = TRUE;
+        }
+
+        // Test that malloc succeeded
+        if (mallocfailed)
+        {
+            if (mdl != NULL) free(mdl);
+            if (meshes != NULL) free(meshes);
+            if (strings != NULL) free(strings);
+            if (verts != NULL) free(verts);
+            if (dlists != NULL) free(dlists);
+            if (anims != NULL) free(anims);
+            if (keyframes != NULL) free(keyframes);
+            if (transforms != NULL) free(transforms);
+            free(toc_meshes);
+            free(meshdatas);
+            free(toc_anims);
+            free(animdatas);
+            free(data);
+            return NULL;
+        }
+        
+        // Now we will actually pull data from the binary file and copy it over to our s64 data structs
+        for (i=0; i<header.count_meshes; i++)
+        {        
+            // Copy the s64Mesh
+            *(u32*)&meshes[i].is_billboard = meshdatas[i].is_billboard;
+            *(s32*)&meshes[i].parent = meshdatas[i].parent;
+            meshes[i].dl = &dlists[offset_gfx];
+            meshes[i].name = strings+offset_strings;
+            strcpy(strings+offset_strings, meshdatas[i].name);
+            
+            // Copy the vertex data
+            // It's aligned by design (Thanks SGI!), so we can just memcpy
+            memcpy(&verts[offset_verts], &data[toc_meshes[i].vertdata_offset], toc_meshes[i].vertdata_size);
+            
+            // Generate the display list
+            sausage64_gendlist((u32*)(&data[toc_meshes[i].dldata_offset]), &dlists[offset_gfx], &verts[offset_verts], textures);
+            meshes[i].dl = &dlists[offset_gfx];
+            
+            // Increment pointers
+            offset_strings += strlen(meshes[i].name)+1;
+            offset_verts += toc_meshes[i].vertdata_size/16;
+            offset_gfx += toc_meshes[i].dldata_slotcount;
+        }
+        for (i=0; i<header.count_anims; i++)
+        {
+            int j;
+            
+            // Copy the s64Animation
+            anims[i].name = strings+offset_strings;
+            strcpy(strings+offset_strings, animdatas[i].name);
+            *(u32*)&anims[i].keyframecount = animdatas[i].kfcount;
+            anims[i].keyframes = &keyframes[offset_keyframes];
+            
+            // Copy the s64KeyFrame
+            for (j=0; j<animdatas[i].kfcount; j++)
+            {
+                *(u32*)&keyframes[offset_keyframes + j].framenumber = animdatas[i].kfindices[j];
+                keyframes[offset_keyframes + j].framedata = &transforms[offset_transforms+j*header.count_meshes];
+            }
+            
+            // Memcpy the s64Transforms
+            memcpy(&transforms[offset_transforms], &data[toc_anims[i].kfdata_offset], toc_anims[i].kfdata_size);
+            
+            // Increment pointers
+            offset_strings += strlen(anims[i].name)+1;
+            offset_keyframes += animdatas[i].kfcount;
+            offset_transforms += header.count_meshes*animdatas[i].kfcount;
+        }
+        
+        // Populate the model data struct
+        *(u16*)&mdl->meshcount = header.count_meshes;
+        *(u16*)&mdl->animcount = header.count_anims;
+        mdl->meshes = meshes;
+        mdl->anims = anims;
+        mdl->_vtxcleanup = verts;
+        
+        // Finish by cleaning up memory we used temporarily and returning the model data pointer
+        if (header.count_meshes > 0)
+        {
+            free(toc_meshes);
+            free(meshdatas);
+        }
+        if (header.count_anims > 0)
+        {
+            free(toc_anims);
+            free(animdatas);
+        }
+        free(data);
+        return mdl;
     }
-    
-    // Populate the model data struct
-    *(u16*)&mdl->meshcount = header.count_meshes;
-    *(u16*)&mdl->animcount = header.count_anims;
-    mdl->meshes = meshes;
-    mdl->anims = anims;
-    mdl->_vtxcleanup = verts;
-    
-    // Finish by cleaning up memory we used temporarily and returning the model data pointer
-    if (header.count_meshes > 0)
+#else
+    /*==============================
+        sausage64_load_binarymodel
+        Load a binary model from ROM
+        @param  The starting address in ROM
+        @param  The size of the model
+        @param  The list of textures to use
+        @return The newly allocated model
+    ==============================*/
+
+    s64ModelData* sausage64_load_binarymodel(u32 romstart, u32 size, u32** textures)
     {
-        free(toc_meshes);
-        free(meshdatas);
+        return NULL;
     }
-    if (header.count_anims > 0)
-    {
-        free(toc_anims);
-        free(animdatas);
-    }
-    free(data);
-    return mdl;
-}
+#endif
 
 
 /*==============================
@@ -1155,7 +1171,9 @@ void sausage64_unload_binarymodel(s64ModelData* mdl)
     {
         free((char*)mdl->meshes[0].name);
         free((s64Gfx*)mdl->meshes[0].dl);
-        free(mdl->_vtxcleanup);
+        #ifndef LIBDRAGON
+            free(mdl->_vtxcleanup);
+        #endif
         free((s64Mesh*)mdl->meshes);
     }
     if (mdl->animcount > 0)
@@ -1789,7 +1807,7 @@ void sausage64_lookat(s64ModelHelper* mdl, const u16 mesh, f32 dir[3], f32 amoun
         gSPPopMatrix((*glistp)++, G_MTX_MODELVIEW);
     }
 #else
-    static inline void sausage64_drawpart(s64Gfx* dl, s64ModelHelper* mdl, u16 mesh)
+    static inline void sausage64_drawpart(const s64Gfx* dl, s64ModelHelper* mdl, u16 mesh)
     {
         f32 helper1[4][4];
         s64Transform* fdata = &mdl->transforms[mesh].data;
@@ -1891,7 +1909,7 @@ void sausage64_lookat(s64ModelHelper* mdl, const u16 mesh, f32 dir[3], f32 amoun
         // Iterate through each mesh
         for (i=0; i<mcount; i++)
         {
-            s64Gfx* dl = mdl->mdldata->meshes[i].dl;
+            const s64Gfx* dl = mdl->mdldata->meshes[i].dl;
             
             // Call the pre draw function
             if (mdl->predraw != NULL)

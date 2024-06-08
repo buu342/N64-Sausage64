@@ -24,8 +24,10 @@ typedef struct {
     char header[4];
     uint16_t count_meshes;
     uint16_t count_anims;
+    uint32_t count_materials;
     uint32_t offset_meshes;
     uint32_t offset_anims;
+    uint32_t offset_materials;
 } BinFile;
 
 typedef struct {
@@ -33,6 +35,8 @@ typedef struct {
     uint32_t meshdata_size;
     uint32_t vertdata_offset;
     uint32_t vertdata_size;
+    uint32_t trilist_offset;
+    uint32_t trilist_size;
     uint32_t dldata_offset;
     uint32_t dldata_size;
     uint32_t dldata_slotcount;
@@ -76,6 +80,38 @@ typedef struct {
     float rot[4];
     float scale[3];
 } BinFile_KeyFrame;
+
+typedef struct {
+    uint32_t matdata_offset;
+    uint32_t matdata_size;
+    uint32_t material_offset;
+    uint32_t material_size;
+} BinFile_TOC_Materials;
+
+typedef struct {
+    uint8_t type;
+    uint8_t lighting;
+    uint8_t cullfront;
+    uint8_t cullback;
+    uint8_t smooth;
+    uint8_t depthtest;
+    char* name;
+} BinFile_MatData;
+
+typedef struct {
+    uint32_t w;
+    uint32_t h;
+    uint32_t filter;
+    uint16_t wraps;
+    uint16_t wrapt;
+} BinFile_Material_Texture;
+
+typedef struct {
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+    uint8_t a;
+} BinFile_Material_PrimColor;
 
 
 /*==============================
@@ -337,9 +373,13 @@ void write_output_binary()
     BinFile_AnimData* animdatas;
     BinFile_KeyFrame** kfdatas;
     int* kftotal;
-    int tcount = 0;
-    int longesttexname = 0;
     bool makestructs = (list_animations.size > 0 || list_meshes.size > 1);
+    int longesttexname = 0;
+    int texturecount = 0, primcolorcount = 0;
+    BinFile_TOC_Materials* toc_materials;
+    BinFile_MatData* matdatas;
+    BinFile_Material_Texture* textures;
+    BinFile_Material_PrimColor* primcolors;
     
     // Open the file
     sprintf(strbuff, "%s.bin", global_outputname);
@@ -354,6 +394,16 @@ void write_output_binary()
     bin.header[3]     = BINARY_VERSION;
     bin.count_meshes  = list_meshes.size;
     bin.count_anims   = list_animations.size;
+    bin.count_materials = 0;
+    if (global_opengl)
+    {
+        for (curnode = list_textures.head; curnode != NULL; curnode = curnode->next)
+        {
+            n64Texture* tex = (n64Texture*)curnode->data;
+            if (tex->type != TYPE_OMIT && !tex->dontload)
+                bin.count_materials++;
+        }
+    }
 
     // Malloc stuff
     toc_meshes = (BinFile_TOC_Meshes*)malloc(sizeof(BinFile_TOC_Meshes)*list_meshes.size);
@@ -386,6 +436,7 @@ void write_output_binary()
     for (curnode = list_meshes.head; curnode != NULL; curnode = curnode->next)
     {
         int parent = 0;
+        listNode* vcachenode;
         s64Mesh* mesh = (s64Mesh*)curnode->data;
 
         // Find the parent mesh
@@ -429,23 +480,22 @@ void write_output_binary()
         else
             toc_meshes[i].meshdata_offset = toc_meshes[i-1].dldata_offset + toc_meshes[i-1].dldata_size;
 
+        // Get the total vert count
+        vtotal[i] = 0;
+        for (vcachenode = mesh->vertcache.head; vcachenode != NULL; vcachenode = vcachenode->next)
+        {
+            vertCache* vcache = (vertCache*)vcachenode->data;
+            listNode* vertnode;
+            
+            // Cycle through all the verts
+            for (vertnode = vcache->verts.head; vertnode != NULL; vertnode = vertnode->next)
+                vtotal[i]++;
+        }
+
         // Create the vert data
         if (!global_opengl)
         {
             int j = 0;
-            listNode* vcachenode;
-
-            // Get the total vert count
-            vtotal[i] = 0;
-            for (vcachenode = mesh->vertcache.head; vcachenode != NULL; vcachenode = vcachenode->next)
-            {
-                vertCache* vcache = (vertCache*)vcachenode->data;
-                listNode* vertnode;
-                
-                // Cycle through all the verts
-                for (vertnode = vcache->verts.head; vertnode != NULL; vertnode = vertnode->next)
-                    vtotal[i]++;
-            }
 
             ((BinFile_UltraVert**)vertdatas)[i] = (BinFile_UltraVert*)malloc(sizeof(BinFile_UltraVert)*vtotal[i]);
             if (((BinFile_UltraVert**)vertdatas)[i] == NULL)
@@ -513,33 +563,44 @@ void write_output_binary()
         }
         else
         {
-            /*int j = 0;
-            listNode* vertnode;
-            ((BinFile_DragonVert**)vertdatas)[i] = (BinFile_DragonVert*)malloc(sizeof(BinFile_DragonVert)*vtotal);
+            int j = 0;
+
+            ((BinFile_DragonVert**)vertdatas)[i] = (BinFile_DragonVert*)malloc(sizeof(BinFile_DragonVert)*vtotal[i]);
             if (((BinFile_DragonVert**)vertdatas)[i] == NULL)
                 terminate("Error: Unable to malloc for vert data\n");
 
-            // Copy the vert data
-            for (vertnode = mesh->verts.head; vertnode != NULL; vertnode = vertnode->next)
+            for (vcachenode = mesh->vertcache.head; vcachenode != NULL; vcachenode = vcachenode->next)
             {
-                s64Vert* vert = (s64Vert*)vertnode->data;
-                ((BinFile_DragonVert**)vertdatas)[i][j].pos[0] = vert->pos.x;
-                ((BinFile_DragonVert**)vertdatas)[i][j].pos[1] = vert->pos.y;
-                ((BinFile_DragonVert**)vertdatas)[i][j].pos[2] = vert->pos.z;
-                ((BinFile_DragonVert**)vertdatas)[i][j].tex[0] = vert->UV.x;
-                ((BinFile_DragonVert**)vertdatas)[i][j].tex[1] = vert->UV.y;
-                ((BinFile_DragonVert**)vertdatas)[i][j].normal[0] = vert->normal.x;
-                ((BinFile_DragonVert**)vertdatas)[i][j].normal[1] = vert->normal.y;
-                ((BinFile_DragonVert**)vertdatas)[i][j].normal[2] = vert->normal.z;
-                ((BinFile_DragonVert**)vertdatas)[i][j].color[0] = vert->color.x;
-                ((BinFile_DragonVert**)vertdatas)[i][j].color[1] = vert->color.y;
-                ((BinFile_DragonVert**)vertdatas)[i][j].color[2] = vert->color.z;
-                j++;
+                listNode* vertnode;
+                vertCache* vcache = (vertCache*)vcachenode->data;
+                
+                // Cycle through all the verts
+                for (vertnode = vcache->verts.head; vertnode != NULL; vertnode = vertnode->next)
+                {
+                    s64Vert* vert = (s64Vert*)vertnode->data;
+                    
+                    // dump the vert data
+                    ((BinFile_DragonVert**)vertdatas)[i][j].pos[0] = vert->pos.x;
+                    ((BinFile_DragonVert**)vertdatas)[i][j].pos[1] = vert->pos.y;
+                    ((BinFile_DragonVert**)vertdatas)[i][j].pos[2] = vert->pos.z;
+                    ((BinFile_DragonVert**)vertdatas)[i][j].tex[0] = vert->UV.x;
+                    ((BinFile_DragonVert**)vertdatas)[i][j].tex[1] = vert->UV.y;
+                    ((BinFile_DragonVert**)vertdatas)[i][j].normal[0] = vert->normal.x;
+                    ((BinFile_DragonVert**)vertdatas)[i][j].normal[1] = vert->normal.y;
+                    ((BinFile_DragonVert**)vertdatas)[i][j].normal[2] = vert->normal.z;
+                    ((BinFile_DragonVert**)vertdatas)[i][j].color[0] = vert->color.x;
+                    ((BinFile_DragonVert**)vertdatas)[i][j].color[1] = vert->color.y;
+                    ((BinFile_DragonVert**)vertdatas)[i][j].color[2] = vert->color.z;
+                    j++;
+                }
             }
 
-            // Update the vert data size in the TOC
-            //toc_meshes[i].vertdata_size = sizeof(BinFile_DragonVert)*vtotal;
-            */
+            // Update the vert data size and offset in the TOC
+            toc_meshes[i].vertdata_size = (member_size(BinFile_DragonVert, pos)
+                                        + member_size(BinFile_DragonVert, tex)
+                                        + member_size(BinFile_DragonVert, normal) 
+                                        + member_size(BinFile_DragonVert, color)
+                                        )*vtotal[i];
         }
         toc_meshes[i].vertdata_offset = toc_meshes[i].meshdata_offset + align_32bits(toc_meshes[i].meshdata_size);
 
@@ -805,20 +866,21 @@ void write_output_binary()
     write_header(fp, makestructs);
 
     // Print texture count and texture list
+    texturecount = 0;
     for (curnode = list_textures.head; curnode != NULL; curnode = curnode->next)
     {
         n64Texture* tex = (n64Texture*)curnode->data;
         if (get_validtexindex(&list_textures, tex->name) != -1)
         {
             int len = strlen(tex->name);
-            tcount++;
+            texturecount++;
             if (len > longesttexname)
                 longesttexname = len;
         }
     }
-    if (tcount > 0)
+    if (texturecount > 0)
     {
-        fprintf(fp, "// Texture data\n#define TEXTURECOUNT_%s %d\n\n", global_modelname, tcount);
+        fprintf(fp, "// Texture data\n#define TEXTURECOUNT_%s %d\n\n", global_modelname, texturecount);
         for (curnode = list_textures.head; curnode != NULL; curnode = curnode->next)
         {
             int nspaces;

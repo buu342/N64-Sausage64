@@ -23,11 +23,11 @@ Outputs the parsed data to a file
 typedef struct {
     char header[4];
     uint16_t count_meshes;
+    uint16_t count_materials;
     uint16_t count_anims;
-    uint32_t count_materials;
-    uint32_t offset_meshes;
-    uint32_t offset_anims;
+    uint16_t offset_meshes;
     uint32_t offset_materials;
+    uint32_t offset_anims;
 } BinFile;
 
 typedef struct {
@@ -35,8 +35,8 @@ typedef struct {
     uint32_t meshdata_size;
     uint32_t vertdata_offset;
     uint32_t vertdata_size;
-    uint32_t trilist_offset;
-    uint32_t trilist_size;
+    uint32_t facedata_offset;
+    uint32_t facedata_size;
     uint32_t dldata_offset;
     uint32_t dldata_size;
     uint32_t dldata_slotcount;
@@ -61,6 +61,14 @@ typedef struct {
     float normal[3];
     float color[3];
 } BinFile_DragonVert;
+
+typedef struct {
+    uint16_t vertcount;
+    uint16_t vertoffset;
+    uint16_t facecount;
+    uint16_t faceoffset;
+    int32_t matid;
+} BinFile_VCacheRenderBlock;
 
 typedef struct {
     uint32_t animdata_offset;
@@ -366,9 +374,11 @@ void write_output_binary()
     BinFile bin;
     BinFile_TOC_Meshes* toc_meshes;
     BinFile_MeshData* meshdatas;
-    uint32_t** dldatas;
     void* vertdatas;
     int* vtotal;
+    int* ftotal;
+    uint16_t** facedatas;
+    uint32_t** dldatas;
     BinFile_TOC_Anims* toc_anims;
     BinFile_AnimData* animdatas;
     BinFile_KeyFrame** kfdatas;
@@ -393,8 +403,8 @@ void write_output_binary()
     bin.header[2]     = '4';
     bin.header[3]     = BINARY_VERSION;
     bin.count_meshes  = list_meshes.size;
-    bin.count_anims   = list_animations.size;
     bin.count_materials = 0;
+    bin.count_anims   = list_animations.size;
     if (global_opengl)
     {
         for (curnode = list_textures.head; curnode != NULL; curnode = curnode->next)
@@ -407,29 +417,19 @@ void write_output_binary()
 
     // Malloc stuff
     toc_meshes = (BinFile_TOC_Meshes*)malloc(sizeof(BinFile_TOC_Meshes)*list_meshes.size);
-    if (toc_meshes == NULL)
-        terminate("Error: Unable to malloc for TOC_Meshes\n");
     meshdatas = (BinFile_MeshData*)malloc(sizeof(BinFile_MeshData)*list_meshes.size);
-    if (meshdatas == NULL)
-        terminate("Error: Unable to malloc for MeshData\n");
     if (!global_opengl)
         vertdatas = (BinFile_UltraVert**)malloc(sizeof(BinFile_UltraVert*)*list_meshes.size);
     else
         vertdatas = (BinFile_DragonVert**)malloc(sizeof(BinFile_DragonVert*)*list_meshes.size);
-    if (vertdatas == NULL)
-        terminate("Error: Unable to malloc for Verts\n");
+    facedatas = (uint16_t**)malloc(sizeof(uint16_t*)*list_meshes.size);
     dldatas = (uint32_t**)malloc(sizeof(uint32_t*)*list_meshes.size);
-    if (dldatas == NULL)
-        terminate("Error: Unable to malloc for DLData\n");
     vtotal = (int*)malloc(sizeof(int)*list_meshes.size);
-    if (vtotal == NULL)
-        terminate("Error: Unable to malloc for vtotal\n");
+    ftotal = (int*)malloc(sizeof(int)*list_meshes.size);
     kftotal = (int*)malloc(sizeof(int)*list_animations.size);
-    if (kftotal == NULL)
-        terminate("Error: Unable to malloc for kftotal\n");
     kfdatas = (BinFile_KeyFrame**)malloc(sizeof(BinFile_KeyFrame*)*list_animations.size);
-    if (kfdatas == NULL)
-        terminate("Error: Unable to malloc for KFDatas\n");
+    if (toc_meshes == NULL || meshdatas == NULL || vertdatas == NULL || facedatas == NULL || dldatas == NULL || vtotal == NULL || ftotal == NULL || kftotal == NULL || kfdatas == NULL)
+        terminate("Error: Malloc failure during binary output\n");
 
     // Generate the mesh data
     i = 0;
@@ -464,23 +464,33 @@ void write_output_binary()
                                     + member_size(BinFile_MeshData, is_billboard)
                                     + strlen(meshdatas[i].name)+1;
         if (i == 0)
-            toc_meshes[i].meshdata_offset = (member_size(BinFile, header) 
-                                            + member_size(BinFile, count_meshes)
-                                            + member_size(BinFile, count_anims)
-                                            + member_size(BinFile, offset_meshes)
-                                            + member_size(BinFile, offset_anims))
-                                            +(member_size(BinFile_TOC_Meshes, meshdata_offset)
-                                            + member_size(BinFile_TOC_Meshes, meshdata_size)
-                                            + member_size(BinFile_TOC_Meshes, vertdata_offset)
-                                            + member_size(BinFile_TOC_Meshes, vertdata_size)
-                                            + member_size(BinFile_TOC_Meshes, dldata_offset)
-                                            + member_size(BinFile_TOC_Meshes, dldata_size)
-                                            + member_size(BinFile_TOC_Meshes, dldata_slotcount))
-                                            *list_meshes.size;
+        {
+            toc_meshes[i].meshdata_offset += member_size(BinFile_TOC_Meshes, meshdata_offset);
+            toc_meshes[i].meshdata_offset += member_size(BinFile_TOC_Meshes, meshdata_size);
+            toc_meshes[i].meshdata_offset += member_size(BinFile_TOC_Meshes, vertdata_offset);
+            toc_meshes[i].meshdata_offset += member_size(BinFile_TOC_Meshes, vertdata_size);
+            if (global_opengl)
+            {
+                toc_meshes[i].meshdata_offset += member_size(BinFile_TOC_Meshes, facedata_offset);
+                toc_meshes[i].meshdata_offset += member_size(BinFile_TOC_Meshes, facedata_size);
+            }
+            toc_meshes[i].meshdata_offset += member_size(BinFile_TOC_Meshes, dldata_offset);
+            toc_meshes[i].meshdata_offset += member_size(BinFile_TOC_Meshes, dldata_size);
+            toc_meshes[i].meshdata_offset += member_size(BinFile_TOC_Meshes, dldata_slotcount);
+            toc_meshes[i].meshdata_offset *= list_meshes.size;
+            toc_meshes[i].meshdata_offset += member_size(BinFile, header) ;
+            toc_meshes[i].meshdata_offset += member_size(BinFile, count_materials);
+            toc_meshes[i].meshdata_offset += member_size(BinFile, count_meshes);
+            toc_meshes[i].meshdata_offset += member_size(BinFile, count_anims);
+            toc_meshes[i].meshdata_offset += member_size(BinFile, offset_meshes);
+            toc_meshes[i].meshdata_offset += member_size(BinFile, offset_anims);
+            if (global_opengl)
+                toc_meshes[i].meshdata_offset += member_size(BinFile, offset_materials);
+        }
         else
             toc_meshes[i].meshdata_offset = toc_meshes[i-1].dldata_offset + toc_meshes[i-1].dldata_size;
 
-        // Get the total vert count
+        // Get the total vert and face count
         vtotal[i] = 0;
         for (vcachenode = mesh->vertcache.head; vcachenode != NULL; vcachenode = vcachenode->next)
         {
@@ -490,6 +500,8 @@ void write_output_binary()
             // Cycle through all the verts
             for (vertnode = vcache->verts.head; vertnode != NULL; vertnode = vertnode->next)
                 vtotal[i]++;
+            for (vertnode = vcache->faces.head; vertnode != NULL; vertnode = vertnode->next)
+                ftotal[i]++;
         }
 
         // Create the vert data
@@ -579,18 +591,18 @@ void write_output_binary()
                 {
                     s64Vert* vert = (s64Vert*)vertnode->data;
                     
-                    // dump the vert data
-                    ((BinFile_DragonVert**)vertdatas)[i][j].pos[0] = vert->pos.x;
-                    ((BinFile_DragonVert**)vertdatas)[i][j].pos[1] = vert->pos.y;
-                    ((BinFile_DragonVert**)vertdatas)[i][j].pos[2] = vert->pos.z;
-                    ((BinFile_DragonVert**)vertdatas)[i][j].tex[0] = vert->UV.x;
-                    ((BinFile_DragonVert**)vertdatas)[i][j].tex[1] = vert->UV.y;
-                    ((BinFile_DragonVert**)vertdatas)[i][j].normal[0] = vert->normal.x;
-                    ((BinFile_DragonVert**)vertdatas)[i][j].normal[1] = vert->normal.y;
-                    ((BinFile_DragonVert**)vertdatas)[i][j].normal[2] = vert->normal.z;
-                    ((BinFile_DragonVert**)vertdatas)[i][j].color[0] = vert->color.x;
-                    ((BinFile_DragonVert**)vertdatas)[i][j].color[1] = vert->color.y;
-                    ((BinFile_DragonVert**)vertdatas)[i][j].color[2] = vert->color.z;
+                    // Dump the vert data
+                    ((BinFile_DragonVert**)vertdatas)[i][j].pos[0] = swap_endianfloat(vert->pos.x);
+                    ((BinFile_DragonVert**)vertdatas)[i][j].pos[1] = swap_endianfloat(vert->pos.y);
+                    ((BinFile_DragonVert**)vertdatas)[i][j].pos[2] = swap_endianfloat(vert->pos.z);
+                    ((BinFile_DragonVert**)vertdatas)[i][j].tex[0] = swap_endianfloat(vert->UV.x);
+                    ((BinFile_DragonVert**)vertdatas)[i][j].tex[1] = swap_endianfloat(vert->UV.y);
+                    ((BinFile_DragonVert**)vertdatas)[i][j].normal[0] = swap_endianfloat(vert->normal.x);
+                    ((BinFile_DragonVert**)vertdatas)[i][j].normal[1] = swap_endianfloat(vert->normal.y);
+                    ((BinFile_DragonVert**)vertdatas)[i][j].normal[2] = swap_endianfloat(vert->normal.z);
+                    ((BinFile_DragonVert**)vertdatas)[i][j].color[0] = swap_endianfloat(vert->color.x);
+                    ((BinFile_DragonVert**)vertdatas)[i][j].color[1] = swap_endianfloat(vert->color.y);
+                    ((BinFile_DragonVert**)vertdatas)[i][j].color[2] = swap_endianfloat(vert->color.z);
                     j++;
                 }
             }
@@ -603,6 +615,40 @@ void write_output_binary()
                                         )*vtotal[i];
         }
         toc_meshes[i].vertdata_offset = toc_meshes[i].meshdata_offset + align_32bits(toc_meshes[i].meshdata_size);
+
+        // Create the faces list (OpenGL)
+        if (global_opengl)
+        {
+            int vertindex = 0;
+            int faceindex = 0;
+
+            // Malloc the face data
+            facedatas[i] = (uint16_t*)malloc(sizeof(uint16_t)*ftotal[i]*3);
+            if (facedatas[i] == NULL)
+                terminate("Error: Unable to malloc for face data\n");
+
+            // Assign the face data
+            for (vcachenode = mesh->vertcache.head; vcachenode != NULL; vcachenode = vcachenode->next)
+            {
+                listNode* vertnode;
+                vertCache* vcache = (vertCache*)vcachenode->data;
+                
+                // Cycle through all the faces
+                for (vertnode = vcache->faces.head; vertnode != NULL; vertnode = vertnode->next)
+                {
+                    s64Face* face = (s64Face*)vertnode->data;
+                    facedatas[i][faceindex*3 + 0] = swap_endian16(vertindex + list_index_from_data(&vcache->verts, face->verts[0]));
+                    facedatas[i][faceindex*3 + 1] = swap_endian16(vertindex + list_index_from_data(&vcache->verts, face->verts[1]));
+                    facedatas[i][faceindex*3 + 2] = swap_endian16(vertindex + list_index_from_data(&vcache->verts, face->verts[2]));
+                    faceindex++;
+                }
+                vertindex += vcache->verts.size;
+            }
+
+            // Update the vert data size and offset in the TOC
+            toc_meshes[i].facedata_size = sizeof(uint16_t)*ftotal[i]*3;
+            toc_meshes[i].facedata_offset = toc_meshes[i].vertdata_offset + align_32bits(toc_meshes[i].vertdata_size);
+        }
 
         // Create the display list
         if (!global_opengl)
@@ -648,12 +694,73 @@ void write_output_binary()
         }
         else
         {
+            // TODO: This shit should be in opengl.c
+            // Iterate through the vertex cache blocks and create the render blocks we'll need
+            int j=0;
+            n64Texture* lastTexture = NULL;
+            linkedList list_vcacherender = EMPTY_LINKEDLIST;
+            BinFile_VCacheRenderBlock* lastrenderblock = NULL;
+            for (vcachenode = mesh->vertcache.head; vcachenode != NULL; vcachenode = vcachenode->next)
+            {
+                listNode* vertnode;
+                vertCache* vcache = (vertCache*)vcachenode->data;
+                for (vertnode = vcache->faces.head; vertnode != NULL; vertnode = vertnode->next)
+                {
+                    s64Face* face = (s64Face*)vertnode->data;
+                    if (face->texture != lastTexture)
+                    {
+                        lastTexture = face->texture;
+                        BinFile_VCacheRenderBlock* vcrb = calloc(1, sizeof(BinFile_VCacheRenderBlock));
+                        if (vcrb == NULL)
+                            terminate("Error: Unable to allocate memory for VCache Render Block\n");
+                        vcrb->matid = get_validmatindex(&list_textures, face->texture->name);
+                        if (lastrenderblock == NULL)
+                        {
+                            vcrb->vertoffset = 0;
+                            vcrb->faceoffset = 0;
+                        }
+                        else
+                        {
+                            vcrb->vertoffset = lastrenderblock->vertcount + lastrenderblock->vertoffset;
+                            vcrb->faceoffset = lastrenderblock->facecount + lastrenderblock->faceoffset;
+                        }
+                        lastrenderblock = vcrb;
+                        list_append(&list_vcacherender, vcrb);
+                    }
+                }
+                lastrenderblock->facecount += vcache->faces.size;
+                lastrenderblock->vertcount += vcache->verts.size;
+            }
 
+            // Copy our data to the dldata block
+            dldatas[i] = (uint32_t*)malloc(sizeof(uint32_t)*3*list_vcacherender.size);
+            if (dldatas[i] == NULL)
+                terminate("Error: Unable to malloc for DLData\n");
+            for (vcachenode = list_vcacherender.head; vcachenode != NULL; vcachenode = vcachenode->next)
+            {
+                BinFile_VCacheRenderBlock* vcrb = vcachenode->data;
+                dldatas[i][j + 0] = swap_endian16((vcrb->vertcount << 16) & 0xFFFF0000) | swap_endian16(vcrb->vertoffset & 0x0000FFFF);
+                dldatas[i][j + 1] = swap_endian16((vcrb->facecount << 16) & 0xFFFF0000) | swap_endian16(vcrb->faceoffset & 0x0000FFFF);
+                dldatas[i][j + 2] = vcrb->matid;
+                j++;
+            }
+
+            // Fill in the dldata info
+            toc_meshes[i].dldata_size = (member_size(BinFile_VCacheRenderBlock, vertcount)
+                                    + member_size(BinFile_VCacheRenderBlock, vertoffset)
+                                    + member_size(BinFile_VCacheRenderBlock, facecount)
+                                    + member_size(BinFile_VCacheRenderBlock, faceoffset)
+                                    + member_size(BinFile_VCacheRenderBlock, matid))
+                                    *list_vcacherender.size;
+            toc_meshes[i].dldata_slotcount = list_vcacherender.size;
+            toc_meshes[i].dldata_offset = toc_meshes[i].facedata_offset + align_32bits(toc_meshes[i].facedata_size);
         }
 
         // Done
         i++;
     }
+
+    // -------------- Material Data (OpenGL) --------------
 
     // -------------- Animation Data --------------
 
@@ -662,11 +769,9 @@ void write_output_binary()
 
     // Create the animation TOC
     toc_anims = (BinFile_TOC_Anims*)malloc(sizeof(BinFile_TOC_Anims)*list_animations.size);
-    if (toc_anims == NULL)
-        terminate("Error: Unable to malloc for TOC_Anims\n");
     animdatas = (BinFile_AnimData*)malloc(sizeof(BinFile_AnimData)*list_animations.size);
-    if (animdatas == NULL)
-        terminate("Error: Unable to malloc for AnimData\n");
+    if (toc_anims == NULL || animdatas == NULL)
+        terminate("Error: Unable to malloc for Anim Data\n");
     i = 0;
     for (curnode = list_animations.head; curnode != NULL; curnode = curnode->next)
     {
@@ -741,18 +846,25 @@ void write_output_binary()
         i++;
     }
 
-
     // -------------- Actually start writing the binary file now --------------
 
     // Write the file header
-    bin.count_meshes  = swap_endian16(bin.count_meshes);
-    bin.count_anims   = swap_endian16(bin.count_anims);
-    bin.offset_meshes = swap_endian32(16);
-    bin.offset_anims  = swap_endian32(bin.offset_anims);
+    bin.count_meshes      = swap_endian16(bin.count_meshes);
+    bin.count_materials   = swap_endian16(bin.count_materials);
+    bin.count_anims       = swap_endian16(bin.count_anims);
+    if (global_opengl)
+        bin.offset_meshes     = swap_endian16(20);
+    else
+        bin.offset_meshes     = swap_endian16(16);
+    bin.offset_materials  = swap_endian32(bin.offset_materials);
+    bin.offset_anims      = swap_endian32(bin.offset_anims);
     fwrite(&bin.header, member_size(BinFile, header), 1, fp);
     fwrite(&bin.count_meshes, member_size(BinFile, count_meshes), 1, fp);
+    fwrite(&bin.count_materials, member_size(BinFile, count_materials), 1, fp);
     fwrite(&bin.count_anims, member_size(BinFile, count_anims), 1, fp);
     fwrite(&bin.offset_meshes, member_size(BinFile, offset_meshes), 1, fp);
+    if (global_opengl)
+        fwrite(&bin.offset_materials, member_size(BinFile, offset_materials), 1, fp);
     fwrite(&bin.offset_anims, member_size(BinFile, offset_anims), 1, fp);
 
     // Write the mesh TOCs
@@ -769,12 +881,19 @@ void write_output_binary()
         fwrite(&toc_meshes[i].meshdata_size, member_size(BinFile_TOC_Meshes, meshdata_size), 1, fp);
         fwrite(&toc_meshes[i].vertdata_offset, member_size(BinFile_TOC_Meshes, vertdata_offset), 1, fp);
         fwrite(&toc_meshes[i].vertdata_size, member_size(BinFile_TOC_Meshes, vertdata_size), 1, fp);
+        if (global_opengl)
+        {
+            toc_meshes[i].facedata_offset = swap_endian32(toc_meshes[i].facedata_offset);
+            toc_meshes[i].facedata_size = swap_endian32(toc_meshes[i].facedata_size);
+            fwrite(&toc_meshes[i].facedata_offset, member_size(BinFile_TOC_Meshes, facedata_offset), 1, fp);
+            fwrite(&toc_meshes[i].facedata_size, member_size(BinFile_TOC_Meshes, facedata_size), 1, fp);
+        }
         fwrite(&toc_meshes[i].dldata_offset, member_size(BinFile_TOC_Meshes, dldata_offset), 1, fp);
         fwrite(&toc_meshes[i].dldata_size, member_size(BinFile_TOC_Meshes, dldata_size), 1, fp);
         fwrite(&toc_meshes[i].dldata_slotcount, member_size(BinFile_TOC_Meshes, dldata_slotcount), 1, fp);
     }
 
-    // Write the mesh data + verts + dl
+    // Write the mesh data + verts + faces + dl
     for (i=0; i<list_meshes.size; i++)
     {
         int j;

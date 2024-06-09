@@ -493,3 +493,35 @@ int get_validtexindex(linkedList* textures, char* name)
     }
     return -1;
 }
+
+
+/*==============================
+    get_validmatindex
+    Since a list of materials contains multiple materials,
+    including stuff that has the OMIT or DONTLOAD flag,
+    use this to find the index of valid materials only.
+    @param   The list of textures to iterate
+    @param   The name of the material to validate
+    @returns The valid material index, or -1
+==============================*/
+
+int get_validmatindex(linkedList* textures, char* name)
+{
+    int index = 0;
+    listNode* texnode;
+    
+    // Iterate through the mesh list
+    for (texnode = textures->head; texnode != NULL; texnode = texnode->next)
+    {
+        n64Texture* tex = (n64Texture*)texnode->data;
+        if (tex->type != TYPE_OMIT)
+        {
+            if (tex->dontload)
+                continue;
+            if (!strcmp(tex->name, name))
+                return index;
+            index++;
+        }
+    }
+    return -1;
+}

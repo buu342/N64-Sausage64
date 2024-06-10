@@ -647,7 +647,7 @@ void write_output_binary()
 
             // Update the vert data size and offset in the TOC
             toc_meshes[i].facedata_size = sizeof(uint16_t)*ftotal[i]*3;
-            toc_meshes[i].facedata_offset = toc_meshes[i].vertdata_offset + align_32bits(toc_meshes[i].vertdata_size);
+            toc_meshes[i].facedata_offset = toc_meshes[i].vertdata_offset + toc_meshes[i].vertdata_size;
         }
 
         // Create the display list
@@ -739,9 +739,10 @@ void write_output_binary()
             for (vcachenode = list_vcacherender.head; vcachenode != NULL; vcachenode = vcachenode->next)
             {
                 BinFile_VCacheRenderBlock* vcrb = vcachenode->data;
-                dldatas[i][j + 0] = swap_endian16((vcrb->vertcount << 16) & 0xFFFF0000) | swap_endian16(vcrb->vertoffset & 0x0000FFFF);
-                dldatas[i][j + 1] = swap_endian16((vcrb->facecount << 16) & 0xFFFF0000) | swap_endian16(vcrb->faceoffset & 0x0000FFFF);
-                dldatas[i][j + 2] = vcrb->matid;
+                printf("%d %d\n", vcrb->vertcount, vcrb->facecount);
+                dldatas[i][j*3 + 0] = ((swap_endian16(vcrb->vertoffset) << 16) & 0xFFFF0000) | (swap_endian16(vcrb->vertcount) & 0x0000FFFF);
+                dldatas[i][j*3 + 1] = ((swap_endian16(vcrb->faceoffset) << 16) & 0xFFFF0000) | (swap_endian16(vcrb->facecount) & 0x0000FFFF);
+                dldatas[i][j*3 + 2] = swap_endian32(vcrb->matid);
                 j++;
             }
 
@@ -920,10 +921,20 @@ void write_output_binary()
                 fwrite(&((BinFile_UltraVert**)vertdatas)[i][j].tex[0], member_size(BinFile_UltraVert, tex), 1, fp);
                 fwrite(&((BinFile_UltraVert**)vertdatas)[i][j].colornormal[0], member_size(BinFile_UltraVert, colornormal), 1, fp);
             }
-            fwrite(dldatas[i], swap_endian32(toc_meshes[i].dldata_size), 1, fp);
         }
         else
-            fwrite(&((BinFile_DragonVert**)vertdatas)[i], swap_endian32(toc_meshes[i].vertdata_size), 1, fp);
+        {
+            for (j=0; j<vtotal[i]; j++)
+            {
+                fwrite(&((BinFile_DragonVert**)vertdatas)[i][j].pos[0], member_size(BinFile_DragonVert, pos), 1, fp);
+                fwrite(&((BinFile_DragonVert**)vertdatas)[i][j].tex[0], member_size(BinFile_DragonVert, tex), 1, fp);
+                fwrite(&((BinFile_DragonVert**)vertdatas)[i][j].normal[0], member_size(BinFile_DragonVert, normal), 1, fp);
+                fwrite(&((BinFile_DragonVert**)vertdatas)[i][j].color[0], member_size(BinFile_DragonVert, color), 1, fp);
+            }
+            for (j=0; j<ftotal[i]; j++)
+                fwrite(&facedatas[i][j*3], sizeof(uint16_t), 3, fp);
+        }
+        fwrite(dldatas[i], swap_endian32(toc_meshes[i].dldata_size), 1, fp);
     }
 
     // Write the animation TOCs

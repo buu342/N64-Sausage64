@@ -71,25 +71,6 @@ typedef struct {
 } BinFile_VCacheRenderBlock;
 
 typedef struct {
-    uint32_t animdata_offset;
-    uint32_t animdata_size;
-    uint32_t kfdata_offset;
-    uint32_t kfdata_size;
-} BinFile_TOC_Anims;
-
-typedef struct {
-    uint32_t kfcount;
-    uint16_t* kfindices;
-    char* name;
-} BinFile_AnimData;
-
-typedef struct {
-    float pos[3];
-    float rot[4];
-    float scale[3];
-} BinFile_KeyFrame;
-
-typedef struct {
     uint32_t matdata_offset;
     uint32_t matdata_size;
     uint32_t material_offset;
@@ -121,6 +102,25 @@ typedef struct {
     uint8_t a;
 } BinFile_Material_PrimColor;
 
+typedef struct {
+    uint32_t animdata_offset;
+    uint32_t animdata_size;
+    uint32_t kfdata_offset;
+    uint32_t kfdata_size;
+} BinFile_TOC_Anims;
+
+typedef struct {
+    uint32_t kfcount;
+    uint16_t* kfindices;
+    char* name;
+} BinFile_AnimData;
+
+typedef struct {
+    float pos[3];
+    float rot[4];
+    float scale[3];
+} BinFile_KeyFrame;
+
 
 /*==============================
     align_32bits
@@ -132,6 +132,22 @@ typedef struct {
 static int align_32bits(int num)
 {
     return ((num + (4 - 1))/4)*4;
+}
+
+
+/*==============================
+    writepadding
+    Write zero padding to a file
+    @param The file to PAD
+    @parma The number to align for padding
+==============================*/
+
+static void writepadding(FILE* fp, int padvalue)
+{
+    const uint8_t padbytes[4] = {0};
+    int padding = align_32bits(padvalue) - padvalue;
+    if (padding > 0)
+        fwrite(padbytes, padding, 1, fp);
 }
 
 
@@ -384,7 +400,6 @@ void write_output_binary()
     BinFile_KeyFrame** kfdatas;
     int* kftotal;
     bool makestructs = (list_animations.size > 0 || list_meshes.size > 1);
-    int longesttexname = 0;
     int texturecount = 0, primcolorcount = 0;
     BinFile_TOC_Materials* toc_materials;
     BinFile_MatData* matdatas;
@@ -410,7 +425,7 @@ void write_output_binary()
         for (curnode = list_textures.head; curnode != NULL; curnode = curnode->next)
         {
             n64Texture* tex = (n64Texture*)curnode->data;
-            if (tex->type != TYPE_OMIT && !tex->dontload)
+            if (isvalidmat(tex))
                 bin.count_materials++;
         }
     }
@@ -431,7 +446,9 @@ void write_output_binary()
     if (toc_meshes == NULL || meshdatas == NULL || vertdatas == NULL || facedatas == NULL || dldatas == NULL || vtotal == NULL || ftotal == NULL || kftotal == NULL || kfdatas == NULL)
         terminate("Error: Malloc failure during binary output\n");
 
-    // Generate the mesh data
+
+    // -------------- Mesh Data --------------
+
     i = 0;
     for (curnode = list_meshes.head; curnode != NULL; curnode = curnode->next)
     {
@@ -739,7 +756,6 @@ void write_output_binary()
             for (vcachenode = list_vcacherender.head; vcachenode != NULL; vcachenode = vcachenode->next)
             {
                 BinFile_VCacheRenderBlock* vcrb = vcachenode->data;
-                printf("%d %d\n", vcrb->vertcount, vcrb->facecount);
                 dldatas[i][j*3 + 0] = ((swap_endian16(vcrb->vertoffset) << 16) & 0xFFFF0000) | (swap_endian16(vcrb->vertcount) & 0x0000FFFF);
                 dldatas[i][j*3 + 1] = ((swap_endian16(vcrb->faceoffset) << 16) & 0xFFFF0000) | (swap_endian16(vcrb->facecount) & 0x0000FFFF);
                 dldatas[i][j*3 + 2] = swap_endian32(vcrb->matid);
@@ -761,12 +777,131 @@ void write_output_binary()
         i++;
     }
 
+
     // -------------- Material Data (OpenGL) --------------
+
+    if (bin.count_materials > 0)
+    {
+        int j, k;
+        bin.offset_materials = toc_meshes[list_meshes.size-1].dldata_offset + toc_meshes[list_meshes.size-1].dldata_size;
+        toc_materials = (BinFile_TOC_Materials*)malloc(sizeof(BinFile_TOC_Materials)*bin.count_materials);
+        matdatas = (BinFile_MatData*)malloc(sizeof(BinFile_MatData)*bin.count_materials);
+        if (toc_materials == NULL || matdatas == NULL)
+            terminate("Error: Unable to malloc for material data");
+
+        // Count the type of each material, and fill in the matdatas
+        i=0;
+        for (curnode = list_textures.head; curnode != NULL; curnode = curnode->next)
+        {
+            n64Texture* tex = (n64Texture*)curnode->data;
+            if (!isvalidmat(tex))
+                continue;
+            matdatas[i].type = tex->type;
+            matdatas[i].lighting = tex_hasgeoflag(tex, "G_LIGHTING");
+            matdatas[i].cullfront = tex_hasgeoflag(tex, "G_CULL_FRONT");
+            matdatas[i].cullback = tex_hasgeoflag(tex, "G_CULL_BACK");
+            matdatas[i].smooth = tex_hasgeoflag(tex, "G_SHADING_SMOOTH");
+            matdatas[i].depthtest = tex_hasgeoflag(tex, "G_ZBUFFER");
+            matdatas[i].name = tex->name;
+            switch (tex->type)
+            {
+                case TYPE_TEXTURE: texturecount++; break;
+                case TYPE_PRIMCOL: primcolorcount++; break;
+            }
+            toc_materials[i].matdata_size = member_size(BinFile_MatData, type)
+                                          + member_size(BinFile_MatData, lighting)
+                                          + member_size(BinFile_MatData, cullfront)
+                                          + member_size(BinFile_MatData, cullback)
+                                          + member_size(BinFile_MatData, smooth)
+                                          + member_size(BinFile_MatData, depthtest)
+                                          + (strlen(tex->name) + 1);
+            i++;
+        }
+
+        // Malloc the material structs
+        textures = (BinFile_Material_Texture*)malloc(sizeof(BinFile_Material_Texture)*texturecount);
+        primcolors = (BinFile_Material_PrimColor*)malloc(sizeof(BinFile_Material_PrimColor)*primcolorcount);
+        if ((texturecount > 0 && textures == NULL) || (primcolorcount > 0 && primcolors == NULL))
+            terminate("Error: Unable to malloc for material data");
+
+        // Fill in the material structs
+        i=0;
+        j=0;
+        k=0;
+        for (curnode = list_textures.head; curnode != NULL; curnode = curnode->next)
+        {
+            n64Texture* tex = (n64Texture*)curnode->data;
+            if (!isvalidmat(tex))
+                continue;
+            switch (tex->type)
+            {
+                case TYPE_TEXTURE:
+                    textures[j].w = swap_endian32(tex->data.image.w);
+                    textures[j].h = swap_endian32(tex->data.image.h);
+                    if (!strcmp(tex->texfilter, "G_TF_POINT"))
+                        textures[j].filter = swap_endian32(0x2600);
+                    else
+                        textures[j].filter = swap_endian32(0x2601);
+                    if (!strcmp(tex->data.image.texmodes, "G_TX_MIRROR"))
+                        textures[j].wraps = swap_endian16(0x8370);
+                    else if (!strcmp(tex->data.image.texmodes, "G_TX_WRAP"))
+                        textures[j].wraps = swap_endian16(0x2901);
+                    else
+                        textures[j].wraps = swap_endian16(0x2900);
+                    if (!strcmp(tex->data.image.texmodet, "G_TX_MIRROR"))
+                        textures[j].wrapt = swap_endian16(0x8370);
+                    else if (!strcmp(tex->data.image.texmodet, "G_TX_WRAP"))
+                        textures[j].wrapt = swap_endian16(0x2901);
+                    else
+                        textures[j].wrapt = swap_endian16(0x2900);
+                    toc_materials[i].material_size = member_size(BinFile_Material_Texture, w)
+                                                   + member_size(BinFile_Material_Texture, h)
+                                                   + member_size(BinFile_Material_Texture, filter)
+                                                   + member_size(BinFile_Material_Texture, wraps);
+                                                   + member_size(BinFile_Material_Texture, wrapt);
+                    j++;
+                    break;
+                case TYPE_PRIMCOL:
+                    primcolors[k].r = tex->data.color.r;
+                    primcolors[k].g = tex->data.color.g;
+                    primcolors[k].b = tex->data.color.b;
+                    primcolors[k].a = 255;
+                    toc_materials[i].material_size = member_size(BinFile_Material_PrimColor, r)
+                                                   + member_size(BinFile_Material_PrimColor, g)
+                                                   + member_size(BinFile_Material_PrimColor, b)
+                                                   + member_size(BinFile_Material_PrimColor, a);
+                    k++;
+                    break;
+                default:
+                    terminate("Error: Unknown material type");
+                    break;
+            }
+
+            // Finish assigning the offsets
+            if (i == 0)
+                toc_materials[i].matdata_offset = align_32bits(
+                                                (member_size(BinFile_TOC_Materials, matdata_offset)
+                                                + member_size(BinFile_TOC_Materials, matdata_size)
+                                                + member_size(BinFile_TOC_Materials, material_offset)
+                                                + member_size(BinFile_TOC_Materials, material_size))
+                                                * bin.count_materials
+                                                + toc_meshes[list_meshes.size-1].dldata_offset 
+                                                + toc_meshes[list_meshes.size-1].dldata_size);
+            else
+                toc_materials[i].matdata_offset = toc_materials[i-1].material_offset + align_32bits(toc_materials[i-1].material_size);
+            toc_materials[i].material_offset = toc_materials[i].matdata_offset + align_32bits(toc_materials[i].matdata_size);
+            i++;
+        }
+    }
+
 
     // -------------- Animation Data --------------
 
     // Update the header's animation offset
-    bin.offset_anims = toc_meshes[list_meshes.size-1].dldata_offset + toc_meshes[list_meshes.size-1].dldata_size;
+    if (bin.count_materials > 0)
+        bin.offset_anims = toc_materials[bin.count_materials-1].material_offset + toc_materials[bin.count_materials-1].material_size;
+    else
+        bin.offset_anims = toc_meshes[list_meshes.size-1].dldata_offset + toc_meshes[list_meshes.size-1].dldata_size;
 
     // Create the animation TOC
     toc_anims = (BinFile_TOC_Anims*)malloc(sizeof(BinFile_TOC_Anims)*list_animations.size);
@@ -847,6 +982,7 @@ void write_output_binary()
         i++;
     }
 
+
     // -------------- Actually start writing the binary file now --------------
 
     // Write the file header
@@ -898,14 +1034,11 @@ void write_output_binary()
     for (i=0; i<list_meshes.size; i++)
     {
         int j;
-        int padding = align_32bits(swap_endian32(toc_meshes[i].meshdata_size)) - swap_endian32(toc_meshes[i].meshdata_size);
-        uint8_t padbytes[4] = {0};
         meshdatas[i].parent = swap_endian16(meshdatas[i].parent);
         fwrite(&meshdatas[i].parent, member_size(BinFile_MeshData, parent), 1, fp);
         fwrite(&meshdatas[i].is_billboard, member_size(BinFile_MeshData, is_billboard), 1, fp);
         fwrite(meshdatas[i].name, strlen(meshdatas[i].name)+1, 1, fp);
-        if (padding > 0)
-            fwrite(padbytes, padding, 1, fp); 
+        writepadding(fp, swap_endian32(toc_meshes[i].meshdata_size));
         if (!global_opengl)
         {
             for (j=0; j<vtotal[i]; j++)
@@ -933,8 +1066,55 @@ void write_output_binary()
             }
             for (j=0; j<ftotal[i]; j++)
                 fwrite(&facedatas[i][j*3], sizeof(uint16_t), 3, fp);
+            writepadding(fp, swap_endian32(toc_meshes[i].facedata_size));
         }
         fwrite(dldatas[i], swap_endian32(toc_meshes[i].dldata_size), 1, fp);
+    }
+
+    // Write the material TOCs
+    for (i=0; i<swap_endian16(bin.count_materials); i++)
+    {
+        toc_materials[i].matdata_offset = swap_endian32(toc_materials[i].matdata_offset);
+        toc_materials[i].matdata_size = swap_endian32(toc_materials[i].matdata_size);
+        toc_materials[i].material_offset = swap_endian32(toc_materials[i].material_offset);
+        toc_materials[i].material_size = swap_endian32(toc_materials[i].material_size);
+        fwrite(&toc_materials[i].matdata_offset, member_size(BinFile_TOC_Materials, matdata_offset), 1, fp);
+        fwrite(&toc_materials[i].matdata_size, member_size(BinFile_TOC_Materials, matdata_size), 1, fp);
+        fwrite(&toc_materials[i].material_offset, member_size(BinFile_TOC_Materials, material_offset), 1, fp);
+        fwrite(&toc_materials[i].material_size, member_size(BinFile_TOC_Materials, material_size), 1, fp);
+    }
+
+    // Write the material data itself
+    texturecount = 0;
+    primcolorcount = 0;
+    for (i=0; i<swap_endian16(bin.count_materials); i++)
+    {
+        fwrite(&matdatas[i].type, member_size(BinFile_MatData, type), 1, fp);
+        fwrite(&matdatas[i].lighting, member_size(BinFile_MatData, lighting), 1, fp);
+        fwrite(&matdatas[i].cullfront, member_size(BinFile_MatData, cullfront), 1, fp);
+        fwrite(&matdatas[i].cullback, member_size(BinFile_MatData, cullback), 1, fp);
+        fwrite(&matdatas[i].smooth, member_size(BinFile_MatData, smooth), 1, fp);
+        fwrite(&matdatas[i].depthtest, member_size(BinFile_MatData, depthtest), 1, fp);
+        fwrite(matdatas[i].name, strlen(matdatas[i].name)+1, 1, fp);
+        writepadding(fp, swap_endian32(toc_materials[i].matdata_size));
+        switch (matdatas[i].type)
+        {
+            case TYPE_TEXTURE:
+                fwrite(&textures[texturecount].w, member_size(BinFile_Material_Texture, w), 1, fp);
+                fwrite(&textures[texturecount].h, member_size(BinFile_Material_Texture, h), 1, fp);
+                fwrite(&textures[texturecount].filter, member_size(BinFile_Material_Texture, filter), 1, fp);
+                fwrite(&textures[texturecount].wraps, member_size(BinFile_Material_Texture, wraps), 1, fp);
+                fwrite(&textures[texturecount].wrapt, member_size(BinFile_Material_Texture, wrapt), 1, fp);
+                texturecount++;
+                break;
+            case TYPE_PRIMCOL:
+                fwrite(&primcolors[primcolorcount].r, member_size(BinFile_Material_PrimColor, r), 1, fp);
+                fwrite(&primcolors[primcolorcount].g, member_size(BinFile_Material_PrimColor, g), 1, fp);
+                fwrite(&primcolors[primcolorcount].b, member_size(BinFile_Material_PrimColor, b), 1, fp);
+                fwrite(&primcolors[primcolorcount].a, member_size(BinFile_Material_PrimColor, a), 1, fp);
+                primcolorcount++;
+                break;
+        }
     }
 
     // Write the animation TOCs
@@ -954,16 +1134,13 @@ void write_output_binary()
     for (i=0; i<list_animations.size; i++)
     {
         int j;
-        int padding = align_32bits(swap_endian32(toc_anims[i].animdata_size)) - swap_endian32(toc_anims[i].animdata_size);
-        uint8_t padbytes[4] = {0};
         for (j=0; j<animdatas[i].kfcount; j++)
             animdatas[i].kfindices[j] = swap_endian16(animdatas[i].kfindices[j]);
         animdatas[i].kfcount = swap_endian32(animdatas[i].kfcount);
         fwrite(&animdatas[i].kfcount, member_size(BinFile_AnimData, kfcount), 1, fp);
         fwrite(animdatas[i].kfindices, sizeof(uint16_t)*swap_endian32(animdatas[i].kfcount), 1, fp);
         fwrite(animdatas[i].name, strlen(animdatas[i].name)+1, 1, fp);
-        if (padding > 0)
-            fwrite(padbytes, padding, 1, fp); 
+        writepadding(fp, swap_endian32(toc_anims[i].animdata_size));
         for (j=0; j<kftotal[i]; j++)
         {
             kfdatas[i][j].pos[0] = swap_endianfloat(kfdatas[i][j].pos[0]);
@@ -996,35 +1173,73 @@ void write_output_binary()
     write_header(fp, makestructs);
 
     // Print texture count and texture list
-    texturecount = 0;
-    for (curnode = list_textures.head; curnode != NULL; curnode = curnode->next)
+    if (!global_opengl)
     {
-        n64Texture* tex = (n64Texture*)curnode->data;
-        if (get_validtexindex(&list_textures, tex->name) != -1)
-        {
-            int len = strlen(tex->name);
-            texturecount++;
-            if (len > longesttexname)
-                longesttexname = len;
-        }
-    }
-    if (texturecount > 0)
-    {
-        fprintf(fp, "// Texture data\n#define TEXTURECOUNT_%s %d\n\n", global_modelname, texturecount);
+        int longesttexname = 0;
+        texturecount = 0;
         for (curnode = list_textures.head; curnode != NULL; curnode = curnode->next)
         {
-            int nspaces;
             n64Texture* tex = (n64Texture*)curnode->data;
-            int tindex = get_validtexindex(&list_textures, tex->name);
-            if (tindex != -1)
+            if (isvalidmat(tex) && tex->type == TYPE_TEXTURE)
             {
-                fprintf(fp, "#define TEXTURE_%s ", tex->name);
-                nspaces = strlen(tex->name);
-                for (i=nspaces; i<longesttexname; i++) fputc(' ', fp);
-                fprintf(fp, "%d\n", tindex);
+                int len = strlen(tex->name);
+                texturecount++;
+                if (len > longesttexname)
+                    longesttexname = len;
             }
         }
-        fprintf(fp, "\n");
+        if (texturecount > 0)
+        {
+            fprintf(fp, "// Texture data\n#define TEXTURECOUNT_%s %d\n\n", global_modelname, texturecount);
+            for (curnode = list_textures.head; curnode != NULL; curnode = curnode->next)
+            {
+                int nspaces;
+                n64Texture* tex = (n64Texture*)curnode->data;
+                int tindex = get_validtexindex(&list_textures, tex->name);
+                if (tindex != -1)
+                {
+                    fprintf(fp, "#define TEXTURE_%s ", tex->name);
+                    nspaces = strlen(tex->name);
+                    for (i=nspaces; i<longesttexname; i++) fputc(' ', fp);
+                    fprintf(fp, "%d\n", tindex);
+                }
+            }
+            fprintf(fp, "\n");
+        }
+    }
+    else
+    {
+        int matcount = 0;
+        int longestmatname = 0;
+        for (curnode = list_textures.head; curnode != NULL; curnode = curnode->next)
+        {
+            n64Texture* mat = (n64Texture*)curnode->data;
+            if (isvalidmat(mat))
+            {
+                int len = strlen(mat->name);
+                matcount++;
+                if (len > longestmatname)
+                    longestmatname = len;
+            }
+        }
+        if (matcount > 0)
+        {
+            fprintf(fp, "// Material data\n#define MATERIALCOUNT_%s %d\n\n", global_modelname, matcount);
+            for (curnode = list_textures.head; curnode != NULL; curnode = curnode->next)
+            {
+                int nspaces;
+                n64Texture* mat = (n64Texture*)curnode->data;
+                int mindex = get_validmatindex(&list_textures, mat->name);
+                if (mindex != -1)
+                {
+                    fprintf(fp, "#define MATERIAL_%s ", mat->name);
+                    nspaces = strlen(mat->name);
+                    for (i=nspaces; i<longestmatname; i++) fputc(' ', fp);
+                    fprintf(fp, "%d\n", mindex);
+                }
+            }
+            fprintf(fp, "\n");
+        }
     }
 
     // Print the extern definitions

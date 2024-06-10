@@ -93,19 +93,16 @@ void construct_opengl()
             switch (tex->type)
             {
                 case TYPE_TEXTURE:
-                    fprintf(fp, "TYPE_TEXTURE, &matdata_%s, %d, %d, %d, %d, %d", tex->name, 
-                        tex_hasgeoflag(tex, "G_LIGHTING"), tex_hasgeoflag(tex, "G_CULL_FRONT"), tex_hasgeoflag(tex, "G_CULL_BACK"),
-                        tex_hasgeoflag(tex, "G_SHADING_SMOOTH"), tex_hasgeoflag(tex, "G_ZBUFFER")
-                    );
+                    fprintf(fp, "TYPE_TEXTURE, ");
                     break;
                 case TYPE_PRIMCOL:
-                    fprintf(fp, "TYPE_PRIMCOL, &matdata_%s, %d, %d, %d, %d, %d", tex->name, 
-                        tex_hasgeoflag(tex, "G_LIGHTING"), tex_hasgeoflag(tex, "G_CULL_FRONT"), tex_hasgeoflag(tex, "G_CULL_BACK"),
-                        tex_hasgeoflag(tex, "G_SHADING_SMOOTH"), tex_hasgeoflag(tex, "G_ZBUFFER")
-                    );
+                    fprintf(fp, "TYPE_PRIMCOL, ");
                     break;
             }
-            fprintf(fp, "};\n\n");
+            fprintf(fp, "&matdata_%s, %d, %d, %d, %d, %d};\n\n", tex->name, 
+                tex_hasgeoflag(tex, "G_LIGHTING"), tex_hasgeoflag(tex, "G_CULL_FRONT"), tex_hasgeoflag(tex, "G_CULL_BACK"),
+                tex_hasgeoflag(tex, "G_SHADING_SMOOTH"), tex_hasgeoflag(tex, "G_ZBUFFER")
+            );
         }
     }
     

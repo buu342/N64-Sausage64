@@ -463,6 +463,20 @@ bool tex_hasgeoflag(n64Texture* tex, char* flag)
 
 
 /*==============================
+    isvalidmat
+    Checks if the material is valid
+    IE it is not of type OMIT and does
+    not have loading disabled
+    @param The material to check
+==============================*/
+
+bool isvalidmat(n64Texture* mat)
+{
+    return mat->type != TYPE_OMIT && !mat->dontload;
+}
+
+
+/*==============================
     get_validtexindex
     Since a list of textures contains multiple textures
     including stuff that has the OMIT flag or that is a 

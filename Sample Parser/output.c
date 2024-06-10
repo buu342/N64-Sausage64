@@ -501,8 +501,7 @@ void write_output_binary()
             toc_meshes[i].meshdata_offset += member_size(BinFile, count_anims);
             toc_meshes[i].meshdata_offset += member_size(BinFile, offset_meshes);
             toc_meshes[i].meshdata_offset += member_size(BinFile, offset_anims);
-            if (global_opengl)
-                toc_meshes[i].meshdata_offset += member_size(BinFile, offset_materials);
+            toc_meshes[i].meshdata_offset += member_size(BinFile, offset_materials);
         }
         else
             toc_meshes[i].meshdata_offset = toc_meshes[i-1].dldata_offset + toc_meshes[i-1].dldata_size;
@@ -898,10 +897,13 @@ void write_output_binary()
     // -------------- Animation Data --------------
 
     // Update the header's animation offset
-    if (bin.count_materials > 0)
-        bin.offset_anims = toc_materials[bin.count_materials-1].material_offset + toc_materials[bin.count_materials-1].material_size;
-    else
+    if (bin.count_materials == 0)
+    {
         bin.offset_anims = toc_meshes[list_meshes.size-1].dldata_offset + toc_meshes[list_meshes.size-1].dldata_size;
+        bin.offset_materials = bin.offset_anims;
+    }
+    else
+        bin.offset_anims = toc_materials[bin.count_materials-1].material_offset + toc_materials[bin.count_materials-1].material_size;
 
     // Create the animation TOC
     toc_anims = (BinFile_TOC_Anims*)malloc(sizeof(BinFile_TOC_Anims)*list_animations.size);
@@ -989,10 +991,7 @@ void write_output_binary()
     bin.count_meshes      = swap_endian16(bin.count_meshes);
     bin.count_materials   = swap_endian16(bin.count_materials);
     bin.count_anims       = swap_endian16(bin.count_anims);
-    if (global_opengl)
-        bin.offset_meshes     = swap_endian16(20);
-    else
-        bin.offset_meshes     = swap_endian16(16);
+    bin.offset_meshes     = swap_endian16(0x14);
     bin.offset_materials  = swap_endian32(bin.offset_materials);
     bin.offset_anims      = swap_endian32(bin.offset_anims);
     fwrite(&bin.header, member_size(BinFile, header), 1, fp);
@@ -1000,8 +999,7 @@ void write_output_binary()
     fwrite(&bin.count_materials, member_size(BinFile, count_materials), 1, fp);
     fwrite(&bin.count_anims, member_size(BinFile, count_anims), 1, fp);
     fwrite(&bin.offset_meshes, member_size(BinFile, offset_meshes), 1, fp);
-    if (global_opengl)
-        fwrite(&bin.offset_materials, member_size(BinFile, offset_materials), 1, fp);
+    fwrite(&bin.offset_materials, member_size(BinFile, offset_materials), 1, fp);
     fwrite(&bin.offset_anims, member_size(BinFile, offset_anims), 1, fp);
 
     // Write the mesh TOCs

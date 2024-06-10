@@ -63,8 +63,10 @@ typedef struct {
 typedef struct {
     char header[4];
     u16 count_meshes;
+    u16 count_materials;
     u16 count_anims;
-    u32 offset_meshes;
+    u16 offset_meshes;
+    u32 offset_materials;
     u32 offset_anims;
 } BinFile_Header;
 
@@ -941,9 +943,9 @@ static inline void s64vec_rotate(f32 vec[3], s64Quat rot, f32 result[3])
         
         // Get model data
         header.count_meshes = ((u16*)data)[2];
-        header.offset_meshes = ((u32*)data)[2];
-        header.count_anims = ((u16*)data)[3];
-        header.offset_anims = ((u32*)data)[3];
+        header.offset_meshes = ((u16*)data)[5];
+        header.count_anims = ((u16*)data)[4];
+        header.offset_anims = ((u32*)data)[4];
 
         // Malloc temporary mesh data
         if (header.count_meshes > 0)

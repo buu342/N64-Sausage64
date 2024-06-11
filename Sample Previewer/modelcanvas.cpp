@@ -1,7 +1,6 @@
 ﻿#include <math.h>
 #include "main.h"
 #include "modelcanvas.h"
-#include "sausage_texture.h"
 #include "Include/glm/glm/gtx/compatibility.hpp"
 #include "Include/glm/glm/gtc/type_ptr.hpp"
 #include "Include/glm/glm/gtx/euler_angles.hpp"
@@ -30,12 +29,12 @@
 *********************************/
 
 // Missing texture
-n64Texture* texture_missing;
+n64Material* texture_missing;
 GLuint texture_missing_id;
 
 // Highlighted model sections
 s64Mesh* highlighted_mesh = NULL;
-n64Texture* highlighted_texture = NULL;
+n64Material* highlighted_material = NULL;
 s64Anim* highlighted_anim = NULL;
 
 // Highlighted animation info
@@ -195,7 +194,7 @@ void ModelCanvas::OnKeyDown(wxKeyEvent& event) {
 void ModelCanvas::InitializeOpenGL()
 {
     // Initialize our missing texture
-    texture_missing = new n64Texture(TYPE_TEXTURE);
+    texture_missing = new n64Material(TYPE_TEXTURE);
     glGenTextures(1, &texture_missing_id);
     glBindTexture(GL_TEXTURE_2D, texture_missing_id);
     glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
@@ -363,7 +362,7 @@ void ModelCanvas::RenderSausage64()
     s64Keyframe* curkeyf = NULL;
     s64Keyframe* nextkeyf = NULL;
     s64Model* mdl = ((Main*)this->m_app)->GetLoadedModel();
-    n64Texture* lasttex = NULL;
+    n64Material* lastmat = NULL;
 
     // If no model is loaded, stop
     if (mdl == NULL)
@@ -468,36 +467,36 @@ void ModelCanvas::RenderSausage64()
         // Generate the triangles for each mesh
         for (std::list<s64Face*>::iterator itface = mesh->faces.begin(); itface != mesh->faces.end(); ++itface)
         {
-            texCol* col = NULL;
+            matCol* col = NULL;
             bool hashighlight = false;
             s64Face* face = *itface;
             std::list<s64Vert*> verts = face->verts;
 
             // Handle render settings
-            if (face->texture != lasttex)
+            if (face->material != lastmat)
             {
-                if (settings_showlighting && face->texture->HasGeoFlag("G_LIGHTING"))
+                if (settings_showlighting && face->material->HasGeoFlag("G_LIGHTING"))
                     glEnable(GL_LIGHTING);
                 else
                     glDisable(GL_LIGHTING);
-                if (face->texture->HasGeoFlag("G_ZBUFFER"))
+                if (face->material->HasGeoFlag("G_ZBUFFER"))
                     glEnable(GL_DEPTH_TEST);
                 else
                     glDisable(GL_DEPTH_TEST);
                 glEnable(GL_CULL_FACE);
-                if (face->texture->HasGeoFlag("G_CULL_FRONT") && face->texture->HasGeoFlag("G_CULL_BACK"))
+                if (face->material->HasGeoFlag("G_CULL_FRONT") && face->material->HasGeoFlag("G_CULL_BACK"))
                     glCullFace(GL_FRONT_AND_BACK);
-                else if (face->texture->HasGeoFlag("G_CULL_FRONT"))
+                else if (face->material->HasGeoFlag("G_CULL_FRONT"))
                     glCullFace(GL_FRONT);
-                else if (face->texture->HasGeoFlag("G_CULL_BACK"))
+                else if (face->material->HasGeoFlag("G_CULL_BACK"))
                     glCullFace(GL_BACK);
                 else
                     glDisable(GL_CULL_FACE);
-                if (face->texture->HasGeoFlag("G_SHADING_SMOOTH"))
+                if (face->material->HasGeoFlag("G_SHADING_SMOOTH"))
                     glShadeModel(GL_SMOOTH);
                 else
                     glShadeModel(GL_FLAT);
-                switch (face->texture->type)
+                switch (face->material->type)
                 {
                     case TYPE_PRIMCOL:
                         glDisable(GL_TEXTURE);
@@ -513,7 +512,7 @@ void ModelCanvas::RenderSausage64()
                         glDisable(GL_COLOR_MATERIAL);
                         glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, default_diffuse);
                         glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, default_ambient);
-                        glBindTexture(GL_TEXTURE_2D, face->texture->GetTextureData()->glid);
+                        glBindTexture(GL_TEXTURE_2D, face->material->GetTextureData()->glid);
                         break;
                     case TYPE_UNKNOWN:
                         glEnable(GL_TEXTURE);
@@ -524,13 +523,13 @@ void ModelCanvas::RenderSausage64()
                         glBindTexture(GL_TEXTURE_2D, texture_missing_id);
                         break;
                 }
-                lasttex = face->texture;
+                lastmat = face->material;
             }
-            if (face->texture->type == TYPE_PRIMCOL)
-                col = face->texture->GetPrimColorData();
+            if (face->material->type == TYPE_PRIMCOL)
+                col = face->material->GetPrimColorData();
 
             // Enable fog if highlighted
-            if (settings_showhighlight && (highlighted_mesh == mesh || highlighted_texture == face->texture))
+            if (settings_showhighlight && (highlighted_mesh == mesh || highlighted_material == face->material))
                 glEnable(GL_FOG);
             else
                 glDisable(GL_FOG);
@@ -540,7 +539,7 @@ void ModelCanvas::RenderSausage64()
             for (std::list<s64Vert*>::iterator itvert = verts.begin(); itvert != verts.end(); ++itvert)
             {
                 s64Vert* vert = *itvert;
-                if (face->texture->type == TYPE_PRIMCOL)
+                if (face->material->type == TYPE_PRIMCOL)
                 {
                     if (col == NULL)
                         continue;

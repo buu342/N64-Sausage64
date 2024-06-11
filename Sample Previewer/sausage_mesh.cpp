@@ -41,7 +41,7 @@ s64Vert::~s64Vert()
 
 s64Face::s64Face()
 {
-	this->texture = NULL;
+	this->material = NULL;
 }
 
 
@@ -139,16 +139,16 @@ s64Vert* s64Mesh::GetVertFromIndex(unsigned int index)
 
 
 /*==============================
-    s64Mesh::GetTextureFromName
-    Gets an texture struct pointer given a name
-    @param The name of the texture to find
-    @returns A pointer to the requested texture, or NULL
+    s64Mesh::GetMaterialFromName
+    Gets an material struct pointer given a name
+    @param The name of the material to find
+    @returns A pointer to the requested material, or NULL
 ==============================*/
 
-n64Texture* s64Mesh::GetTextureFromName(std::string name)
+n64Material* s64Mesh::GetMaterialFromName(std::string name)
 {
-	for (std::list<n64Texture*>::iterator ittex = this->textures.begin(); ittex != this->textures.end(); ++ittex)
-		if (name == (*ittex)->name.c_str())
-			return *ittex;
+	for (std::list<n64Material*>::iterator itmat = this->materials.begin(); itmat != this->materials.end(); ++itmat)
+		if (name == (*itmat)->name.c_str())
+			return *itmat;
 	return NULL;
 }

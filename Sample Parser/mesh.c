@@ -8,7 +8,6 @@ Handles the parsing and creation of meshes
 #include <stdlib.h>
 #include <string.h>
 #include "main.h"
-#include "texture.h"
 #include "mesh.h"
 
 
@@ -116,21 +115,21 @@ s64Vert* find_vert(s64Mesh* mesh, int index)
 
 
 /*==============================
-    find_texture_fromvert
-    Returns the texture used by a vertex
+    find_material_fromvert
+    Returns the material used by a vertex
     @param   The list of faces
     @param   The vertex to search for
-    @returns The texture assigned to the FIRST face with the given vertex, or NULL if none is found
+    @returns The material assigned to the FIRST face with the given vertex, or NULL if none is found
 ==============================*/
 
-n64Texture* find_texture_fromvert(linkedList* faces, s64Vert* vert)
+n64Material* find_material_fromvert(linkedList* faces, s64Vert* vert)
 {
     for (listNode* facenode = faces->head; facenode != NULL; facenode = facenode->next)
     {
         s64Face* face = (s64Face*)facenode->data;
         for (int i=0; i<MAXVERTS; i++)
             if (face->verts[i] == vert)
-                return face->texture;
+                return face->material;
     }
     
     // No face found, return NULL

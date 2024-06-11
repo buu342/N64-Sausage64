@@ -28,7 +28,7 @@ s64Model::~s64Model()
 {
     for (std::list<s64Mesh*>::iterator it = this->m_meshes.begin(); it != this->m_meshes.end(); ++it)
         delete *it;
-    for (std::list<n64Texture*>::iterator it = this->m_textures.begin(); it != this->m_textures.end(); ++it)
+    for (std::list<n64Material*>::iterator it = this->m_materials.begin(); it != this->m_materials.end(); ++it)
         delete *it;
     for (std::list<s64Anim*>::iterator it = this->m_anims.begin(); it != this->m_anims.end(); ++it)
         delete *it;
@@ -36,17 +36,17 @@ s64Model::~s64Model()
 
 
 /*==============================
-    s64Model::GetTextureFromName
-    Gets an texture struct pointer given a name
-    @param The name of the texture to find
-    @returns A pointer to the requested texture, or NULL
+    s64Model::GetMaterialFromName
+    Gets an material struct pointer given a name
+    @param The name of the material to find
+    @returns A pointer to the requested material, or NULL
 ==============================*/
 
-n64Texture* s64Model::GetTextureFromName(std::string name)
+n64Material* s64Model::GetMaterialFromName(std::string name)
 {
-    for (std::list<n64Texture*>::iterator ittex = this->m_textures.begin(); ittex != this->m_textures.end(); ++ittex)
-        if (name == (*ittex)->name)
-            return *ittex;
+    for (std::list<n64Material*>::iterator itmat = this->m_materials.begin(); itmat != this->m_materials.end(); ++itmat)
+        if (name == (*itmat)->name)
+            return *itmat;
     return NULL;
 }
 
@@ -67,7 +67,7 @@ bool s64Model::GenerateFromFile(std::string path)
     s64Anim* curanim = NULL;
     s64Keyframe* curkeyframe = NULL;
     s64FrameData* curframedata = NULL;
-    n64Texture* curtex = NULL;
+    n64Material* curmat = NULL;
     std::list<s64Vert*>::iterator vertit;
     FILE* fp = fopen(path.c_str(), "r+");
     if (fp == NULL)
@@ -236,28 +236,28 @@ bool s64Model::GenerateFromFile(std::string path)
                             curface->verts.push_back(curmesh->GetVertFromIndex(atoi(strtok(NULL, " "))));
                         }
 
-                        // Get the texture name and check if it exists already
+                        // Get the material name and check if it exists already
                         strdata = strtok(NULL, " ");
                         strdata[strcspn(strdata, "\r\n")] = 0;
-                        curtex = this->GetTextureFromName(strdata);
-                        if (curtex == NULL)
+                        curmat = this->GetMaterialFromName(strdata);
+                        if (curmat == NULL)
                         {
-                            curtex = new n64Texture(TYPE_UNKNOWN);
-                            curtex->name = strdata;
-                            this->m_textures.push_back(curtex);
+                            curmat = new n64Material(TYPE_UNKNOWN);
+                            curmat->name = strdata;
+                            this->m_materials.push_back(curmat);
                         }
-                        curface->texture = curtex;
+                        curface->material = curmat;
 
                         // Assign the face to the previous face as well, if we have a quad
                         if (prevface != NULL)
                         {
-                            prevface->texture = curtex;
+                            prevface->material = curmat;
                             prevface = NULL;
                         }
 
-                        // If this texture hasn't been added to this mesh yet, do so
-                        if (curmesh->GetTextureFromName(strdata) == NULL)
-                            curmesh->textures.push_back(curtex);
+                        // If this material hasn't been added to this mesh yet, do so
+                        if (curmesh->GetMaterialFromName(strdata) == NULL)
+                            curmesh->materials.push_back(curmat);
                         break;
                     case STATE_KEYFRAME:
                         curframedata = new s64FrameData();
@@ -326,14 +326,14 @@ int s64Model::GetMeshCount()
 
 
 /*==============================
-    s64Model::GetTextureCount
-    Gets the number of textures in this model
-    @param The number of textures
+    s64Model::GetMaterialCount
+    Gets the number of materials in this model
+    @param The number of materials
 ==============================*/
 
-int s64Model::GetTextureCount()
+int s64Model::GetMaterialCount()
 {
-    return this->m_textures.size();
+    return this->m_materials.size();
 }
 
 
@@ -362,14 +362,14 @@ std::list<s64Mesh*>* s64Model::GetMeshList()
 
 
 /*==============================
-    s64Model::GetTextureList
-    Gets the list of textures in this model
-    @returns A pointer to the list of textures
+    s64Model::GetMaterialList
+    Gets the list of materials in this model
+    @returns A pointer to the list of materials
 ==============================*/
 
-std::list<n64Texture*>* s64Model::GetTextureList()
+std::list<n64Material*>* s64Model::GetMaterialList()
 {
-    return &this->m_textures;
+    return &this->m_materials;
 }
 
 

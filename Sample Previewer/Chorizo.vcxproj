@@ -29,7 +29,7 @@
     <ClInclude Include="sausage_mesh.h" />
     <ClInclude Include="modelcanvas.h" />
     <ClInclude Include="sausage.h" />
-    <ClInclude Include="sausage_texture.h" />
+    <ClInclude Include="sausage_material.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="sausage_animation.cpp" />
@@ -38,7 +38,7 @@
     <ClCompile Include="sausage_mesh.cpp" />
     <ClCompile Include="modelcanvas.cpp" />
     <ClCompile Include="sausage.cpp" />
-    <ClCompile Include="sausage_texture.cpp" />
+    <ClCompile Include="sausage_material.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="Resources\icon_program.ico" />

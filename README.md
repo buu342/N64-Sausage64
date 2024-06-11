@@ -16,7 +16,7 @@ This repository contains five folders:
 * `Sample Parser` - An example Sausage64 to N64 display list converter, written in C. More info about the program in the folder's README. 
 * `Sample Previewer` - An example Sausage64 model previewer, written in C++ and OpenGL. More info about the program in the folder's README. 
 * `Sample Library` - An example library for the N64, designed for the output from `Sample Parser`. More info about the library in the folder's README. 
-* `Sample ROM` - An example N64 ROM (written in Libultra and Libdragon) displaying the character and the animations in action, with the help of the `Sample Library`. The .s64 file and the textures were converted to display lists and other parsable data with the `Sample Parser` program. More information available in the folder's README. 
+* `Sample ROM` - An example N64 ROM (written in Libultra and Libdragon) displaying the character and the animations in action, with the help of the `Sample Library`. The .s64 file and the materials were converted to display lists and other parsable data with the `Sample Parser` program. More information available in the folder's README. 
 
 ### What do you mean by Sausage Links?
 Sausage link characters are made out of different unconnected segments. This is also known as "hierarchical modeling".

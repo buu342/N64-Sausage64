@@ -1,5 +1,5 @@
 /***************************************************************
-                           texture.c
+                           output.c
                              
 Outputs the parsed data to a file
 ***************************************************************/
@@ -10,7 +10,6 @@ Outputs the parsed data to a file
 #include <stdint.h>
 #include <math.h>
 #include "main.h"
-#include "texture.h"
 #include "mesh.h"
 #include "animation.h"
 #include "dlist.h"
@@ -276,7 +275,7 @@ void write_output_text()
                 listNode* meshnode;
                 s64Keyframe* keyf = (s64Keyframe*)keyfnode->data;
                 fprintf(fp, "static s64Transform anim_%s_%s_framedata%d[] = {\n", global_modelname, anim->name, keyf->keyframe);
-                for (meshnode = list_meshes.head; meshnode != NULL; meshnode = meshnode->next) // Iterating meshes because they can be out of order to the frame data, due to texture sorting optimization
+                for (meshnode = list_meshes.head; meshnode != NULL; meshnode = meshnode->next) // Iterating meshes because they can be out of order to the frame data, due to material sorting optimization
                 {
                     listNode* fdatanode;
                     for (fdatanode = keyf->framedata.head; fdatanode != NULL; fdatanode = fdatanode->next)
@@ -423,10 +422,10 @@ void write_output_binary()
     bin.count_anims   = list_animations.size;
     if (global_opengl)
     {
-        for (curnode = list_textures.head; curnode != NULL; curnode = curnode->next)
+        for (curnode = list_materials.head; curnode != NULL; curnode = curnode->next)
         {
-            n64Texture* tex = (n64Texture*)curnode->data;
-            if (isvalidmat(tex))
+            n64Material* mat = (n64Material*)curnode->data;
+            if (isvalidmat(mat))
                 bin.count_materials++;
         }
     }
@@ -541,25 +540,25 @@ void write_output_binary()
                 {
                     int texturew = 0, textureh = 0;
                     s64Vert* vert = (s64Vert*)vertnode->data;
-                    n64Texture* tex = find_texture_fromvert(&vcache->faces, vert);
+                    n64Material* mat = find_material_fromvert(&vcache->faces, vert);
                     Vector3D normorcol = {0, 0, 0};
                     
                     // Ensure the texture is valid
-                    if (tex == NULL)
-                        terminate("Error: Inconsistent face/vertex texture information\n");
+                    if (mat == NULL)
+                        terminate("Error: Inconsistent face/vertex material information\n");
                     
                     // Retrieve texture/normal/color data for this vertex
-                    switch (tex->type)
+                    switch (mat->type)
                     {
                         case TYPE_TEXTURE:
                             // Get the texture size
-                            texturew = (tex->data).image.w;
-                            textureh = (tex->data).image.h;
+                            texturew = (mat->data).image.w;
+                            textureh = (mat->data).image.h;
                             
                             // Intentional fallthrough
                         case TYPE_PRIMCOL:
                             // Pick vertex normals or vertex colors, depending on the texture flag
-                            if (tex_hasgeoflag(tex, "G_LIGHTING"))
+                            if (mat_hasgeoflag(mat, "G_LIGHTING"))
                                 normorcol = vector_scale(vert->normal, 127);
                             else
                                 normorcol = vector_scale(vert->color, 255);
@@ -760,19 +759,19 @@ void write_output_binary()
 
         // Count the type of each material, and fill in the matdatas
         i=0;
-        for (curnode = list_textures.head; curnode != NULL; curnode = curnode->next)
+        for (curnode = list_materials.head; curnode != NULL; curnode = curnode->next)
         {
-            n64Texture* tex = (n64Texture*)curnode->data;
-            if (!isvalidmat(tex))
+            n64Material* mat = (n64Material*)curnode->data;
+            if (!isvalidmat(mat))
                 continue;
-            matdatas[i].type = tex->type;
-            matdatas[i].lighting = tex_hasgeoflag(tex, "G_LIGHTING");
-            matdatas[i].cullfront = tex_hasgeoflag(tex, "G_CULL_FRONT");
-            matdatas[i].cullback = tex_hasgeoflag(tex, "G_CULL_BACK");
-            matdatas[i].smooth = tex_hasgeoflag(tex, "G_SHADING_SMOOTH");
-            matdatas[i].depthtest = tex_hasgeoflag(tex, "G_ZBUFFER");
-            matdatas[i].name = tex->name;
-            switch (tex->type)
+            matdatas[i].type = mat->type;
+            matdatas[i].lighting = mat_hasgeoflag(mat, "G_LIGHTING");
+            matdatas[i].cullfront = mat_hasgeoflag(mat, "G_CULL_FRONT");
+            matdatas[i].cullback = mat_hasgeoflag(mat, "G_CULL_BACK");
+            matdatas[i].smooth = mat_hasgeoflag(mat, "G_SHADING_SMOOTH");
+            matdatas[i].depthtest = mat_hasgeoflag(mat, "G_ZBUFFER");
+            matdatas[i].name = mat->name;
+            switch (mat->type)
             {
                 case TYPE_TEXTURE: texturecount++; break;
                 case TYPE_PRIMCOL: primcolorcount++; break;
@@ -783,7 +782,7 @@ void write_output_binary()
                                           + member_size(BinFile_MatData, cullback)
                                           + member_size(BinFile_MatData, smooth)
                                           + member_size(BinFile_MatData, depthtest)
-                                          + (strlen(tex->name) + 1);
+                                          + (strlen(mat->name) + 1);
             i++;
         }
 
@@ -797,29 +796,29 @@ void write_output_binary()
         i=0;
         j=0;
         k=0;
-        for (curnode = list_textures.head; curnode != NULL; curnode = curnode->next)
+        for (curnode = list_materials.head; curnode != NULL; curnode = curnode->next)
         {
-            n64Texture* tex = (n64Texture*)curnode->data;
-            if (!isvalidmat(tex))
+            n64Material* mat = (n64Material*)curnode->data;
+            if (!isvalidmat(mat))
                 continue;
-            switch (tex->type)
+            switch (mat->type)
             {
                 case TYPE_TEXTURE:
-                    textures[j].w = swap_endian32(tex->data.image.w);
-                    textures[j].h = swap_endian32(tex->data.image.h);
-                    if (!strcmp(tex->texfilter, "G_TF_POINT"))
+                    textures[j].w = swap_endian32(mat->data.image.w);
+                    textures[j].h = swap_endian32(mat->data.image.h);
+                    if (!strcmp(mat->texfilter, "G_TF_POINT"))
                         textures[j].filter = swap_endian32(0x2600);
                     else
                         textures[j].filter = swap_endian32(0x2601);
-                    if (!strcmp(tex->data.image.texmodes, "G_TX_MIRROR"))
+                    if (!strcmp(mat->data.image.texmodes, "G_TX_MIRROR"))
                         textures[j].wraps = swap_endian16(0x8370);
-                    else if (!strcmp(tex->data.image.texmodes, "G_TX_WRAP"))
+                    else if (!strcmp(mat->data.image.texmodes, "G_TX_WRAP"))
                         textures[j].wraps = swap_endian16(0x2901);
                     else
                         textures[j].wraps = swap_endian16(0x2900);
-                    if (!strcmp(tex->data.image.texmodet, "G_TX_MIRROR"))
+                    if (!strcmp(mat->data.image.texmodet, "G_TX_MIRROR"))
                         textures[j].wrapt = swap_endian16(0x8370);
-                    else if (!strcmp(tex->data.image.texmodet, "G_TX_WRAP"))
+                    else if (!strcmp(mat->data.image.texmodet, "G_TX_WRAP"))
                         textures[j].wrapt = swap_endian16(0x2901);
                     else
                         textures[j].wrapt = swap_endian16(0x2900);
@@ -831,9 +830,9 @@ void write_output_binary()
                     j++;
                     break;
                 case TYPE_PRIMCOL:
-                    primcolors[k].r = tex->data.color.r;
-                    primcolors[k].g = tex->data.color.g;
-                    primcolors[k].b = tex->data.color.b;
+                    primcolors[k].r = mat->data.color.r;
+                    primcolors[k].g = mat->data.color.g;
+                    primcolors[k].b = mat->data.color.b;
                     primcolors[k].a = 255;
                     toc_materials[i].material_size = member_size(BinFile_Material_PrimColor, r)
                                                    + member_size(BinFile_Material_PrimColor, g)
@@ -925,7 +924,7 @@ void write_output_binary()
         for (kfnode = anim->keyframes.head; kfnode != NULL; kfnode = kfnode->next)
         {
             s64Keyframe* keyf = (s64Keyframe*)kfnode->data;
-            for (meshnode = list_meshes.head; meshnode != NULL; meshnode = meshnode->next) // Iterating meshes because they can be out of order to the frame data, due to texture sorting optimization
+            for (meshnode = list_meshes.head; meshnode != NULL; meshnode = meshnode->next) // Iterating meshes because they can be out of order to the frame data, due to material sorting optimization
             {
                 listNode* fdatanode;
                 for (fdatanode = keyf->framedata.head; fdatanode != NULL; fdatanode = fdatanode->next)
@@ -1142,9 +1141,9 @@ void write_output_binary()
 
     // Print texture count and texture list
     texturecount = 0;
-    for (curnode = list_textures.head; curnode != NULL; curnode = curnode->next)
+    for (curnode = list_materials.head; curnode != NULL; curnode = curnode->next)
     {
-        n64Texture* tex = (n64Texture*)curnode->data;
+        n64Material* tex = (n64Material*)curnode->data;
         if (isvalidmat(tex) && tex->type == TYPE_TEXTURE)
         {
             int len = strlen(tex->name);
@@ -1156,11 +1155,11 @@ void write_output_binary()
     if (texturecount > 0)
     {
         fprintf(fp, "// Texture data\n#define TEXTURECOUNT_%s %d\n\n", global_modelname, texturecount);
-        for (curnode = list_textures.head; curnode != NULL; curnode = curnode->next)
+        for (curnode = list_materials.head; curnode != NULL; curnode = curnode->next)
         {
             int nspaces;
-            n64Texture* tex = (n64Texture*)curnode->data;
-            int tindex = get_validtexindex(&list_textures, tex->name);
+            n64Material* tex = (n64Material*)curnode->data;
+            int tindex = get_validtexindex(&list_materials, tex->name);
             if (tindex != -1)
             {
                 fprintf(fp, "#define TEXTURE_%s ", tex->name);

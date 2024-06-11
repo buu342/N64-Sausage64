@@ -19,7 +19,7 @@
     
     extern linkedList list_meshes;
     extern linkedList list_animations;
-    extern linkedList list_textures;
+    extern linkedList list_materials;
     
     extern bool global_quiet;
     extern bool global_fixroot;

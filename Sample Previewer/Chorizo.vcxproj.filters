@@ -30,7 +30,7 @@
     <ClInclude Include="sausage_mesh.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="sausage_texture.h">
+    <ClInclude Include="sausage_material.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="sausage_animation.h">
@@ -65,7 +65,7 @@
     <ClCompile Include="sausage_mesh.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="sausage_texture.cpp">
+    <ClCompile Include="sausage_material.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="sausage_animation.cpp">

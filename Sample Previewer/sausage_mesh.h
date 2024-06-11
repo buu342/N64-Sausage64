@@ -5,7 +5,7 @@ typedef struct IUnknown IUnknown;
 #include <string>
 #include <list>
 #include "Include/glm/glm/glm.hpp"
-#include "sausage_texture.h"
+#include "sausage_material.h"
 
 
 /*********************************
@@ -35,7 +35,7 @@ class s64Face
     
     public:
         std::list<s64Vert*> verts;
-        n64Texture* texture;
+        n64Material* material;
         s64Face();
         ~s64Face();
         s64Vert* GetVertFromIndex(unsigned int index);
@@ -52,12 +52,12 @@ class s64Mesh
         glm::vec3 root;
         std::list<s64Vert*> verts;
         std::list<s64Face*> faces;
-        std::list<n64Texture*> textures;
+        std::list<n64Material*> materials;
         std::list<std::string> props;
         bool billboard;
         s64Mesh();
         ~s64Mesh();
         void ParseProperties();
         s64Vert* GetVertFromIndex(unsigned int index);
-        n64Texture* GetTextureFromName(std::string name);
+        n64Material* GetMaterialFromName(std::string name);
 };

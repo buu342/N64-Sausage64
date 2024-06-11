@@ -3,9 +3,9 @@
 
 Performs a bunch of optimizations on the model for export and 
 generates vertex caches. The optimizations are as follows:
-- Sorts the meshes to reduce texture loading using a custom
+- Sorts the meshes to reduce material loading using a custom
   algorithm.
-- Merges verticies which both use PRIMCOLOR textures
+- Merges verticies which both use PRIMCOLOR materials
 - Optimizes the triangle loading order using Forsyth, heavily 
   basing my code off the implementation by Martin Strosjo, 
   available here: http://www.martin.st/thesis/forsyth.cpp
@@ -16,7 +16,6 @@ generates vertex caches. The optimizations are as follows:
 #include <string.h>
 #include <math.h>
 #include "main.h"
-#include "texture.h"
 #include "mesh.h"
 
 
@@ -38,11 +37,11 @@ generates vertex caches. The optimizations are as follows:
 *********************************/
 
 typedef struct {
-    int         id;       // The ID of this node
-    linkedList  textures; // A list of texture names used by this node
-    linkedList* meshes;   // A list of meshes used by this node
-    linkedList  edges;    // A list with a tuple of nodes and the corresponding edge weight
-    linkedList  ignore;   // A list of nodes to ignore if this node is visited
+    int         id;        // The ID of this node
+    linkedList  materials; // A list of material names used by this node
+    linkedList* meshes;    // A list of meshes used by this node
+    linkedList  edges;     // A list with a tuple of nodes and the corresponding edge weight
+    linkedList  ignore;    // A list of nodes to ignore if this node is visited
 } TSPNode;
 
 
@@ -455,71 +454,71 @@ static linkedList* forsyth(vertCache* vcacheoriginal)
 
 /*==============================
     permute
-    Generates permutations of the textures array and 
+    Generates permutations of the materials array and 
     stores them in a separate array
-    @param The textures array
+    @param The materials array
     @param The starting index 
     @param The ending index
     @param A pointer to the current index in the storage array
     @param The storage array
-    @param The number of textures
+    @param The number of materials
 ==============================*/
 
-static void permute(char** textures, int start, int end, int* count, char*** store, int texcount)
+static void permute(char** materials, int start, int end, int* count, char*** store, int matcount)
 {
     if (start == end)
     {
-        for (int i=0; i<texcount; i++)
-            store[*count][i] = textures[i];
+        for (int i=0; i<matcount; i++)
+            store[*count][i] = materials[i];
         (*count)++;
         return;
     }
         
     for (int i=start; i<=end; i++)
     {
-        char* left = textures[start];
-        char* right = textures[i];
-        textures[start] = right;
-        textures[i] = left;
+        char* left = materials[start];
+        char* right = materials[i];
+        materials[start] = right;
+        materials[i] = left;
 
-        permute(textures, start+1, end, count, store, texcount);
+        permute(materials, start+1, end, count, store, matcount);
 
-        textures[start] = left;
-        textures[i] = right;
+        materials[start] = left;
+        materials[i] = right;
     }
 } 
 
 
 /*==============================
-    shares_textures
-    Checks if two meshes share the same textures
-    @param   The mesh to check the textures of
+    shares_materials
+    Checks if two meshes share the same materials
+    @param   The mesh to check the materials of
     @param   The mesh to compare to
-    @returns Whether or not the two meshes share textures
+    @returns Whether or not the two meshes share materials
 ==============================*/
 
-static inline bool shares_textures(s64Mesh* a, s64Mesh* b)
+static inline bool shares_materials(s64Mesh* a, s64Mesh* b)
 {
-    // If the number of textures doesn't match between meshes, then it obviously doesn't share textures
-    if (a->textures.size != b->textures.size)
+    // If the number of materials doesn't match between meshes, then it obviously doesn't share materials
+    if (a->materials.size != b->materials.size)
         return FALSE;
     
-    // Go through all the textures in mesh 'a'
-    for (listNode* tex_a = a->textures.head; tex_a != NULL; tex_a = tex_a->next)
+    // Go through all the materials in mesh 'a'
+    for (listNode* mat_a = a->materials.head; mat_a != NULL; mat_a = mat_a->next)
     {
         bool found = FALSE;
         
-        // Compare the names of the textures in 'a' with the textures in 'b'
-        for (listNode* tex_b = b->textures.head; tex_b != NULL; tex_b = tex_b->next)
+        // Compare the names of the materials in 'a' with the materials in 'b'
+        for (listNode* mat_b = b->materials.head; mat_b != NULL; mat_b = mat_b->next)
         {
-            if (!strcmp(((n64Texture*)tex_a->data)->name, ((n64Texture*)tex_b->data)->name))
+            if (!strcmp(((n64Material*)mat_a->data)->name, ((n64Material*)mat_b->data)->name))
             {
                 found = TRUE;
                 break;
             }
         }
         
-        // We didn't find a match, the two meshes don't share textures
+        // We didn't find a match, the two meshes don't share materials
         if (!found)
             return FALSE;
     }
@@ -530,18 +529,18 @@ static inline bool shares_textures(s64Mesh* a, s64Mesh* b)
 
 
 /*==============================
-    optimize_textureloads
-    Optimizes the texture loading order in the model
+    optimize_materialloads
+    Optimizes the material loading order in the model
 ==============================*/
 
-static void optimize_textureloads()
+static void optimize_materialloads()
 {
     /*
-    * We want to sort meshes to reduce the amount of texture loads
+    * We want to sort meshes to reduce the amount of material loads
     * The algorithm works as follows:
-    * - Treat each mesh as a node. For a mesh that loads N textures, you must create N! nodes
-    * - For instance, a mesh that loads texture A and B must have nodes A+B and B+A
-    * - When all nodes are generated, connect every node to each other. If a texture swap occurs, then that edge has weight 1, 0 otherwise.
+    * - Treat each mesh as a node. For a mesh that loads N materials, you must create N! nodes
+    * - For instance, a mesh that loads material A and B must have nodes A+B and B+A
+    * - When all nodes are generated, connect every node to each other. If a material swap occurs, then that edge has weight 1, 0 otherwise.
     * - Once the network has been created, solve the problem using Traveling Salesman
     * Note: If, for instance, the path A+B is taken, B+A must be ignored as it's no longer needed
     */
@@ -554,18 +553,18 @@ static void optimize_textureloads()
     TSPNode* nodeslist;
     linkedList meshes_groupedby_mat = EMPTY_LINKEDLIST;
     linkedList neworder = EMPTY_LINKEDLIST;
-    if (!global_quiet) printf("    Optimizing texture loading order\n");
+    if (!global_quiet) printf("    Optimizing material loading order\n");
     
-    // First, group all meshes by the textures they use
+    // First, group all meshes by the materials they use
     for (listNode* mesh = list_meshes.head; mesh != NULL; mesh = mesh->next)
     {
         bool found = FALSE;
                         
-        // Find meshes that share textures with us
+        // Find meshes that share materials with us
         for (listNode* e = meshes_groupedby_mat.head; e != NULL; e = e->next)
         {
-            s64Mesh* meshcompare = (s64Mesh*)((linkedList*)e->data)->head->data; // Only need to compare first mesh in the list since they all share the same textures
-            if (shares_textures((s64Mesh*)mesh->data, meshcompare))
+            s64Mesh* meshcompare = (s64Mesh*)((linkedList*)e->data)->head->data; // Only need to compare first mesh in the list since they all share the same materials
+            if (shares_materials((s64Mesh*)mesh->data, meshcompare))
             {
                 list_append((linkedList*)e->data, (s64Mesh*)mesh->data);
                 found = TRUE;
@@ -573,7 +572,7 @@ static void optimize_textureloads()
             }
         }
         
-        // There were no meshes that had this collection of textures, so create a new list
+        // There were no meshes that had this collection of materials, so create a new list
         if (!found)
         {
             linkedList* l = (linkedList*)calloc(1, sizeof(linkedList));
@@ -583,7 +582,7 @@ static void optimize_textureloads()
         }
     }
     
-    // Now that we have a list of meshes, sorted by the textures they load, create N factorial nodes for N texture loads
+    // Now that we have a list of meshes, sorted by the materials they load, create N factorial nodes for N materials loads
     // Count how many nodes we must create
     for (listNode* e = meshes_groupedby_mat.head; e != NULL; e = e->next)
     {
@@ -591,27 +590,27 @@ static void optimize_textureloads()
         s64Mesh* mesh = (s64Mesh*)((linkedList*)e->data)->head->data;
         
         // Check for nodes which need to be loaded first, since we don't need to sort them
-        for (listNode* texes = mesh->textures.head; texes != NULL; texes = texes->next)
-            if (((n64Texture*)texes->data)->loadfirst)
+        for (listNode* mats = mesh->materials.head; mats != NULL; mats = mats->next)
+            if (((n64Material*)mats->data)->loadfirst)
                 loadfirstcount++;
                 
-        // Ensure we don't have two or more textures with LOADFIRST in this mesh
+        // Ensure we don't have two or more materials with LOADFIRST in this mesh
         if (loadfirstcount > 1)
-            terminate("Error: Mesh uses two textures with LOADFIRST flag\n");
+            terminate("Error: Mesh uses two materials with LOADFIRST flag\n");
             
-        // Add to our total node count the factorial of the texture count (excluding textures with LOADFIRST)
+        // Add to our total node count the factorial of the material count (excluding materials with LOADFIRST)
         if (has_property(mesh, "NoSort"))
         {
             nodecount += 1;
-            printf("    Skipping texture optimization on %s\n", mesh->name);
+            printf("    Skipping material optimization on %s\n", mesh->name);
         }
         else
         {
-            nodecount += factorial[mesh->textures.size-loadfirstcount];
+            nodecount += factorial[mesh->materials.size-loadfirstcount];
         
-            // Warn for too many textures
-            if (mesh->textures.size > 7)
-                printf("    WARNING: %s has %d textures. Consider using the 'NoSort' property.\n", mesh->name, mesh->textures.size);
+            // Warn for too many materials
+            if (mesh->materials.size > 7)
+                printf("    WARNING: %s has %d materials. Consider using the 'NoSort' property.\n", mesh->name, mesh->materials.size);
         }
     }
     
@@ -626,58 +625,58 @@ static void optimize_textureloads()
         int startid = id;
         char* loadfirst = NULL;
         s64Mesh* mesh = (s64Mesh*)((linkedList*)e->data)->head->data;
-        bool sorttextures = !has_property(mesh, "NoSort");
-        int texcount = sorttextures ? mesh->textures.size : 1;
-        char** textures = (char**) calloc(mesh->textures.size, sizeof(char*));
-        char*** perms = (char***) calloc(factorial[texcount], sizeof(char**));
-        for (i=0 ; i<factorial[texcount]; i++)
-            perms[i] = (char**) calloc(mesh->textures.size, sizeof(char*));
+        bool sortmaterials = !has_property(mesh, "NoSort");
+        int matcount = sortmaterials ? mesh->materials.size : 1;
+        char** materials = (char**) calloc(mesh->materials.size, sizeof(char*));
+        char*** perms = (char***) calloc(factorial[matcount], sizeof(char**));
+        for (i=0 ; i<factorial[matcount]; i++)
+            perms[i] = (char**) calloc(mesh->materials.size, sizeof(char*));
         
-        // Initialize the textures array
+        // Initialize the materials array
         i=0;
-        for (listNode* tex = mesh->textures.head; tex != NULL; tex = tex->next)
-            textures[i++] = ((n64Texture*)tex->data)->name;
+        for (listNode* mat = mesh->materials.head; mat != NULL; mat = mat->next)
+            materials[i++] = ((n64Material*)mat->data)->name;
         
-        // Generate permutations of the textures array
+        // Generate permutations of the material array
         i=0;
-        if (sorttextures)
+        if (sortmaterials)
         {
-            permute(textures, 0, texcount-1, &i, perms, texcount);
+            permute(materials, 0, matcount-1, &i, perms, matcount);
         }
         else
         {
-            for (int j=0; j<mesh->textures.size; j++)
-                perms[i][j] = textures[j];
+            for (int j=0; j<mesh->materials.size; j++)
+                perms[i][j] = materials[j];
         }
         
-        // Get which texture needs to be loaded first
-        for (listNode* tex = mesh->textures.head; tex != NULL; tex = tex->next)
+        // Get which material needs to be loaded first
+        for (listNode* mat = mesh->materials.head; mat != NULL; mat = mat->next)
         {
-            if (((n64Texture*)tex->data)->loadfirst)
+            if (((n64Material*)mat->data)->loadfirst)
             {
-                loadfirst = ((n64Texture*)tex->data)->name;
+                loadfirst = ((n64Material*)mat->data)->name;
                 break;
             }
         }
         
         // Create all the nodes
-        for (i=0; i<factorial[texcount]; i++)
+        for (i=0; i<factorial[matcount]; i++)
         {
-            int end = startid+factorial[texcount];
+            int end = startid+factorial[matcount];
             
-            // Skip if the first texture in this permutation is not the one that needs to be loaded first
+            // Skip if the first material in this permutation is not the one that needs to be loaded first
             if (loadfirst != NULL && strcmp(loadfirst, perms[i][0]) != 0)
                 continue;
             
             // Initialize the node
             nodeslist[id].id = id;
-            for (int j=0; j<mesh->textures.size; j++)
-                list_append(&nodeslist[id].textures, perms[i][j]);
+            for (int j=0; j<mesh->materials.size; j++)
+                list_append(&nodeslist[id].materials, perms[i][j]);
             nodeslist[id].meshes = (linkedList*)e->data;
             
-            // If we load a texture first, then we have less nodes to ignore
+            // If we load a material first, then we have less nodes to ignore
             if (loadfirst != NULL)
-                end = startid+factorial[texcount-1];
+                end = startid+factorial[matcount-1];
             
             // Generate the ignore list
             for (int j=startid; j<end; j++)
@@ -694,10 +693,10 @@ static void optimize_textureloads()
         }
         
         // Free the memory used to generate the permutations
-        for (i=0; i<factorial[texcount]; i++)
+        for (i=0; i<factorial[matcount]; i++)
             free(perms[i]);
         free(perms);
-        free(textures);
+        free(materials);
     }
     
     // Generate the undirected weighted graph
@@ -721,7 +720,7 @@ static void optimize_textureloads()
                 edge->a = (int*)nodeslist[j].id; // It's not a pointer, I'm lying
 
                 // If the exit material is different from the enter material, then create a touple with weight 1
-                if (strcmp((char*)nodeslist[i].textures.tail->data, (char*)nodeslist[j].textures.tail->data) != 0)
+                if (strcmp((char*)nodeslist[i].materials.tail->data, (char*)nodeslist[j].materials.tail->data) != 0)
                     edge->b = (int*)1; // It's not a pointer, I'm lying
                 else
                     edge->b = (int*)0; // It's not a pointer, I'm lying
@@ -788,10 +787,10 @@ static void optimize_textureloads()
                 if (!inlist)
                     continue;
                     
-                // Calculate extra weight due to previous texture switch
+                // Calculate extra weight due to previous material switch
                 #pragma GCC diagnostic push
                 #pragma GCC diagnostic ignored "-Wpointer-to-int-cast"
-                if (prev != NULL && strcmp((char*)nodeslist[(int)t->a].textures.head->data, (char*)prev->textures.tail->data) != 0)
+                if (prev != NULL && strcmp((char*)nodeslist[(int)t->a].materials.head->data, (char*)prev->materials.tail->data) != 0)
                     extra = 1;
                 
                 // Check if this path is the shortest
@@ -852,7 +851,7 @@ static void optimize_textureloads()
             for (listNode* m = nodeslist[shortest[i]].meshes->head; m != NULL; m = m->next)
             {
                 printf("%16s loads ", ((s64Mesh*)m->data)->name);
-                for (listNode* t = nodeslist[shortest[i]].textures.head; t != NULL; t = t->next)
+                for (listNode* t = nodeslist[shortest[i]].materials.head; t != NULL; t = t->next)
                     printf("%s, ", (char*)t->data);
                 printf("\n");
             }
@@ -865,13 +864,13 @@ static void optimize_textureloads()
         for (listNode* m = nodeslist[shortest[i]].meshes->head; m != NULL; m = m->next)
         {
             s64Mesh* mesh = (s64Mesh*)m->data;
-            linkedList faces_by_tex = EMPTY_LINKEDLIST;
+            linkedList faces_by_mat = EMPTY_LINKEDLIST;
             for (listNode* f = mesh->faces.head; f != NULL; f = f->next)
-                for (listNode* t = nodeslist[shortest[i]].textures.head; t != NULL; t = t->next)
-                    if (!strcmp(((s64Face*)f->data)->texture->name, t->data))
-                        list_append(&faces_by_tex, f->data);
+                for (listNode* t = nodeslist[shortest[i]].materials.head; t != NULL; t = t->next)
+                    if (!strcmp(((s64Face*)f->data)->material->name, t->data))
+                        list_append(&faces_by_mat, f->data);
             list_destroy(&mesh->faces);
-            list_combine(&mesh->faces, &faces_by_tex);
+            list_combine(&mesh->faces, &faces_by_mat);
         }
     }
 
@@ -882,30 +881,30 @@ static void optimize_textureloads()
     list_destroy(&list_meshes);
     list_meshes = neworder;
     
-    // Finally, sort the textures list in each mesh, since it's not in the new order
+    // Finally, sort the material list in each mesh, since it's not in the new order
     for (listNode* m = list_meshes.head; m != NULL; m = m->next)
     {
         s64Mesh* mesh = (s64Mesh*)m->data;
-        n64Texture* lasttex = NULL;
-        linkedList newtexorder = EMPTY_LINKEDLIST;
+        n64Material* lastmat = NULL;
+        linkedList newmatorder = EMPTY_LINKEDLIST;
         for (listNode* f = mesh->faces.head; f != NULL; f = f->next)
         {
             s64Face* face = (s64Face*)f->data;
-            if (face->texture != lasttex)
+            if (face->material != lastmat)
             {
-                list_append(&newtexorder, face->texture);
-                lasttex = face->texture;
+                list_append(&newmatorder, face->material);
+                lastmat = face->material;
             }
         }
-        list_destroy(&mesh->textures);
-        mesh->textures = newtexorder;
+        list_destroy(&mesh->materials);
+        mesh->materials = newmatorder;
     }
     
     // Free the memory used by our algorithm
     for (int i=0; i<nodecount; i++)
     {
         list_destroy_deep(&nodeslist[i].edges);
-        list_destroy(&nodeslist[i].textures);
+        list_destroy(&nodeslist[i].materials);
         list_destroy(&nodeslist[i].ignore);
     }
     free(shortest);
@@ -943,7 +942,7 @@ static void optimize_duplicatedverts()
                 {
                     if (face->verts[i] == vert1)
                     {
-                        if (face->texture->type != TYPE_PRIMCOL)
+                        if (face->material->type != TYPE_PRIMCOL)
                         {
                             v1_onlyprimcolor = FALSE;
                             break;
@@ -973,7 +972,7 @@ static void optimize_duplicatedverts()
                         {
                             if (face->verts[i] == vert2)
                             {
-                                if (face->texture->type != TYPE_PRIMCOL)
+                                if (face->material->type != TYPE_PRIMCOL)
                                 {
                                     v2_onlyprimcolor = FALSE;
                                     break;
@@ -1019,18 +1018,18 @@ static void optimize_duplicatedverts()
 
 
 /*==============================
-    split_verts_by_texture
-    Takes in a mesh and splits the vertices and triangles by texture
+    split_verts_by_material
+    Takes in a mesh and splits the vertices and triangles by material
     into separate vertex cache structs
     @param The mesh to parse
 ==============================*/
 
- static void split_verts_by_texture(s64Mesh* mesh)
+ static void split_verts_by_material(s64Mesh* mesh)
 {
-    // Go through each texture
-    for (listNode* texnode = mesh->textures.head; texnode != NULL; texnode = texnode->next)
+    // Go through each material
+    for (listNode* matnode = mesh->materials.head; matnode != NULL; matnode = matnode->next)
     {
-        n64Texture* tex = (n64Texture*) texnode->data;
+        n64Material* mat = (n64Material*) matnode->data;
         vertCache* vcache = (vertCache*) calloc(1, sizeof(vertCache));
         
         // Go through each face in the mesh
@@ -1038,8 +1037,8 @@ static void optimize_duplicatedverts()
         {
             s64Face* face = (s64Face*) facenode->data;
             
-            // If this face uses the texture we're searching for
-            if (face->texture == tex)
+            // If this face uses the material we're searching for
+            if (face->material == mat)
             {
                 // Append it to the vertex cache face list
                 list_append(&vcache->faces, face);
@@ -1129,11 +1128,11 @@ void optimize_mdl()
     // Initialize Forsyth, we might need it
     forsyth_init();
     
-    // First, lets try to optimize the texture loading order in the entire model
-    if (list_meshes.size > 1 && list_textures.size > 1)
-        optimize_textureloads();
+    // First, lets try to optimize the material loading order in the entire model
+    if (list_meshes.size > 1 && list_materials.size > 1)
+        optimize_materialloads();
     
-    // If there's two duplicated vertices with same normals and vcolors, but they're both used for primitive color textures, we can safely merge them (since UV's are useless)
+    // If there's two duplicated vertices with same normals and vcolors, but they're both used for primitive color materials, we can safely merge them (since UV's are useless)
     optimize_duplicatedverts();
     
     // Now that our model is all nice and optimized, go through each model
@@ -1145,12 +1144,12 @@ void optimize_mdl()
         if (mesh->verts.size > global_cachesize)
         {
             int index = 0;
-            printf("    Mesh '%s' too large for vertex cache, splitting by texture.\n", mesh->name);
+            printf("    Mesh '%s' too large for vertex cache, splitting by material.\n", mesh->name);
         
-            // Oh dear, this model doesn't fit... Let's split the mesh by texture and see if that helps
-            split_verts_by_texture(mesh);
+            // Oh dear, this model doesn't fit... Let's split the mesh by material and see if that helps
+            split_verts_by_material(mesh);
             
-            // Try to combine any cache blocks that could fit together after having been split by texture
+            // Try to combine any cache blocks that could fit together after having been split by material
             combine_caches(mesh);
             
             // If that didn't help, then split the vertex block further and duplicate verts with the help of Forsyth

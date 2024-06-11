@@ -8,7 +8,7 @@ Handles the parsing and creation of animations
 #include <string.h>
 #include <stdlib.h>
 #include "main.h"
-#include "texture.h"
+#include "material.h"
 #include "mesh.h"
 #include "animation.h"
 

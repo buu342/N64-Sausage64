@@ -13,7 +13,6 @@ generated exactly from Blender, that's not a big deal.
 #include <string.h>
 #include "main.h"
 #include "parser.h"
-#include "texture.h"
 #include "mesh.h"
 #include "animation.h"
 
@@ -77,7 +76,7 @@ void parse_sausage(FILE* fp)
     s64Anim* curanim;
     s64Keyframe* curkeyframe;
     s64Transform* curframedata;
-    n64Texture* curtex;
+    n64Material* curmat;
     Vector3D tempvec;
     
     if (!global_quiet) printf("Parsing s64 model\n");
@@ -172,7 +171,7 @@ void parse_sausage(FILE* fp)
             }
             else // Handle the rest
             {
-                listNode* mtex = NULL;
+                listNode* mmat = NULL;
                 switch (lexer_curstate)
                 {
                     case STATE_MESH:
@@ -239,29 +238,29 @@ void parse_sausage(FILE* fp)
                             curface->verts[2] = find_vert(curmesh, atof(strtok(NULL, " ")));
                         }
                             
-                        // Get the texture name and check if it exists already
+                        // Get the material name and check if it exists already
                         strdata = strtok(NULL, " ");
                         strdata[strcspn(strdata, "\r\n")] = 0;
-                        curtex = find_texture(strdata);
-                        if (curtex == NULL && strcmp(strdata, "None") != 0)
-                            curtex = request_texture(strdata);
-                        curface->texture = curtex;
+                        curmat = find_material(strdata);
+                        if (curmat == NULL && strcmp(strdata, "None") != 0)
+                            curmat = request_material(strdata);
+                        curface->material = curmat;
                         
                         // Assign the face to the previous face as well, if we have a quad
                         if (prevface != NULL)
                         {
-                            prevface->texture = curtex;
+                            prevface->material = curmat;
                             prevface = NULL;
                         }
                         
-                        // Check if this texture name has been added to this mesh's texture list
-                        for (mtex = curmesh->textures.head; mtex != NULL; mtex = mtex->next)
-                            if (!strcmp(((n64Texture*)mtex->data)->name,  strdata))
+                        // Check if this material name has been added to this mesh's material list
+                        for (mmat = curmesh->materials.head; mmat != NULL; mmat = mmat->next)
+                            if (!strcmp(((n64Material*)mmat->data)->name,  strdata))
                                 break;
                                 
                         // If it hasn't been, add it
-                        if (mtex == NULL)
-                            list_append(&curmesh->textures, curtex);
+                        if (mmat == NULL)
+                            list_append(&curmesh->materials, curmat);
                         break;
                     case STATE_KEYFRAME:
                         curframedata = add_framedata(curkeyframe);
@@ -284,7 +283,7 @@ void parse_sausage(FILE* fp)
     }
         
     // Close the file as we're done with it
-    if (!global_quiet) printf("Finished parsing s64 model\n    Mesh count: %d\n    Animation count: %d\n    Texture count: %d\n", list_meshes.size, list_animations.size, list_textures.size);
+    if (!global_quiet) printf("Finished parsing s64 model\n    Mesh count: %d\n    Animation count: %d\n    Material count: %d\n", list_meshes.size, list_animations.size, list_materials.size);
     fclose(fp);
     
     // Sort the framedata by the order the meshes are in (Note: horrible time complexity as this is a bodge solution)

@@ -50,19 +50,19 @@ typedef struct IUnknown IUnknown;
            Custom Types
 *********************************/
 
-// Texture types
+// Material types
 typedef enum {
     TYPE_UNKNOWN = 0,
     TYPE_TEXTURE = 1,
     TYPE_PRIMCOL = 2
-} texType;
+} matType;
     
     
 /*********************************
             Structures
 *********************************/
 
-// Texture image data
+// Material image data
 typedef struct {
     uint32_t glid;
     wxImage  wximg;
@@ -73,22 +73,22 @@ typedef struct {
     std::string colsize;
     std::string texmodes;
     std::string texmodet;
-} texImage;
+} matImage;
     
-// Texture primitive color data
+// Material primitive color data
 typedef struct {
     uint8_t r;
     uint8_t g;
     uint8_t b;
     uint8_t a;
-} texCol;
+} matCol;
 
 
 /*********************************
              Classes
 *********************************/
 
-class n64Texture
+class n64Material
 {
     private:
     
@@ -103,14 +103,14 @@ class n64Texture
         std::string            combinemode2;
         std::list<std::string> geomode;
         std::string            texfilter;
-        texType                type;
+        matType                type;
         void*                  data;
         bool                   dontload;
         bool                   loadfirst;
-        n64Texture(texType type);
-        ~n64Texture();
-        texImage* GetTextureData();
-        texCol* GetPrimColorData();
+        n64Material(matType type);
+        ~n64Material();
+        matImage* GetTextureData();
+        matCol* GetPrimColorData();
         void CreateDefaultTexture(uint32_t w = 0, uint32_t h = 0);
         void CreateDefaultPrimCol();
         void CreateDefaultUnknown();

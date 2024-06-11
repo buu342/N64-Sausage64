@@ -2,7 +2,7 @@
 
 <img src="../.github/Chorizo.png" width="800" height="430"/>
 
-This folder contains a cross platform sample program that lets you view Sausage64 models, and to create texture definitions for Arabiki in a visual manner.
+This folder contains a cross platform sample program that lets you view Sausage64 models, and to create material definitions for Arabiki in a visual manner.
 
 ### System Requirements
 <details><summary>Windows</summary>

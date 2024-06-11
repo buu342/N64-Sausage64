@@ -48,14 +48,14 @@ Main::Main() : wxFrame(nullptr, wxID_ANY, PROGRAM_NAME, wxPoint(0, 0), wxSize(64
     wxMenuItem* m_MenuItem_FileImport;
     m_MenuItem_FileImport = new wxMenuItem(this->m_Menu_File, wxID_ANY, wxString(wxT("Import S64 Model")) + wxT('\t') + wxT("Ctrl+I"), wxEmptyString, wxITEM_NORMAL);
     this->m_Menu_File->Append(m_MenuItem_FileImport);
-    this->m_MenuItem_FileTextureImport = new wxMenuItem(this->m_Menu_File, wxID_ANY, wxString(wxT("Import Texture Definition")) + wxT('\t') + wxT("Ctrl+T"), wxEmptyString, wxITEM_NORMAL);
-    this->m_Menu_File->Append(this->m_MenuItem_FileTextureImport);
+    this->m_MenuItem_FileMaterialImport = new wxMenuItem(this->m_Menu_File, wxID_ANY, wxString(wxT("Import Material Definition")) + wxT('\t') + wxT("Ctrl+T"), wxEmptyString, wxITEM_NORMAL);
+    this->m_Menu_File->Append(this->m_MenuItem_FileMaterialImport);
     this->m_Menu_File->AppendSeparator();
-    this->m_MenuItem_FileTextureExport = new wxMenuItem(this->m_Menu_File, wxID_ANY, wxString(wxT("Export Texture Definition")) + wxT('\t') + wxT("Ctrl+E"), wxEmptyString, wxITEM_NORMAL);
-    this->m_Menu_File->Append(this->m_MenuItem_FileTextureExport);
+    this->m_MenuItem_FileMaterialExport = new wxMenuItem(this->m_Menu_File, wxID_ANY, wxString(wxT("Export Material Definition")) + wxT('\t') + wxT("Ctrl+E"), wxEmptyString, wxITEM_NORMAL);
+    this->m_Menu_File->Append(this->m_MenuItem_FileMaterialExport);
     this->m_MenuBar->Append(this->m_Menu_File, wxT("File"));
-    this->m_MenuItem_FileTextureImport->Enable(false);
-    this->m_MenuItem_FileTextureExport->Enable(false);
+    this->m_MenuItem_FileMaterialImport->Enable(false);
+    this->m_MenuItem_FileMaterialExport->Enable(false);
 
     // Menu bar 'Animation'
     this->m_Menu_Animation = new wxMenu();
@@ -165,25 +165,25 @@ Main::Main() : wxFrame(nullptr, wxID_ANY, PROGRAM_NAME, wxPoint(0, 0), wxSize(64
     this->m_CheckBox_Mesh_Billboard = new wxCheckBox(this->m_Panel_Bottom, wxID_ANY, wxT("Billboard"), wxDefaultPosition, wxDefaultSize, 0);
     this->m_Sizer_Bottom_Mesh->Add(this->m_CheckBox_Mesh_Billboard, 0, wxALL, 5);
     this->m_Sizer_Bottom->Add(this->m_Sizer_Bottom_Mesh, 1, 0, 5); 
-    this->m_Sizer_Bottom_Texture = new wxFlexGridSizer(0, 1, 0, 0);
-    this->m_Sizer_Bottom_Texture->SetFlexibleDirection(wxBOTH);
-    this->m_Sizer_Bottom_Texture->SetNonFlexibleGrowMode(wxFLEX_GROWMODE_SPECIFIED);
-    wxBoxSizer* m_Sizer_Bottom_Texture_Label;
-    m_Sizer_Bottom_Texture_Label = new wxBoxSizer(wxVERTICAL);
-    wxStaticText* m_Label_TextureType = new wxStaticText(this->m_Panel_Bottom, wxID_ANY, wxT("Texture Type"), wxDefaultPosition, wxDefaultSize, 0);
-    m_Label_TextureType->Wrap(-1);
-    m_Sizer_Bottom_Texture_Label->Add(m_Label_TextureType, 0, wxALL, 5);
-    this->m_Sizer_Bottom_Texture->Add(m_Sizer_Bottom_Texture_Label, 1, wxEXPAND, 5);
-    wxBoxSizer* m_Sizer_Bottom_Texture_Type;
-    m_Sizer_Bottom_Texture_Type = new wxBoxSizer(wxHORIZONTAL);
+    this->m_Sizer_Bottom_Material = new wxFlexGridSizer(0, 1, 0, 0);
+    this->m_Sizer_Bottom_Material->SetFlexibleDirection(wxBOTH);
+    this->m_Sizer_Bottom_Material->SetNonFlexibleGrowMode(wxFLEX_GROWMODE_SPECIFIED);
+    wxBoxSizer* m_Sizer_Bottom_Material_Label;
+    m_Sizer_Bottom_Material_Label = new wxBoxSizer(wxVERTICAL);
+    wxStaticText* m_Label_MaterialType = new wxStaticText(this->m_Panel_Bottom, wxID_ANY, wxT("Material Type"), wxDefaultPosition, wxDefaultSize, 0);
+    m_Label_MaterialType->Wrap(-1);
+    m_Sizer_Bottom_Material_Label->Add(m_Label_MaterialType, 0, wxALL, 5);
+    this->m_Sizer_Bottom_Material->Add(m_Sizer_Bottom_Material_Label, 1, wxEXPAND, 5);
+    wxBoxSizer* m_Sizer_Bottom_Material_Type;
+    m_Sizer_Bottom_Material_Type = new wxBoxSizer(wxHORIZONTAL);
     this->m_Radio_Image = new wxRadioButton(this->m_Panel_Bottom, wxID_ANY, wxT("Image"), wxDefaultPosition, wxDefaultSize, wxRB_GROUP);
     this->m_Radio_Image->SetValue(true);
-    m_Sizer_Bottom_Texture_Type->Add(this->m_Radio_Image, 0, wxALL, 5);
+    m_Sizer_Bottom_Material_Type->Add(this->m_Radio_Image, 0, wxALL, 5);
     this->m_Radio_PrimColor = new wxRadioButton(this->m_Panel_Bottom, wxID_ANY, wxT("Primitive Color"), wxDefaultPosition, wxDefaultSize, 0);
-    m_Sizer_Bottom_Texture_Type->Add(this->m_Radio_PrimColor, 0, wxALL, 5);
+    m_Sizer_Bottom_Material_Type->Add(this->m_Radio_PrimColor, 0, wxALL, 5);
     this->m_Radio_Omit = new wxRadioButton(this->m_Panel_Bottom, wxID_ANY, wxT("Omit"), wxDefaultPosition, wxDefaultSize, 0);
-    m_Sizer_Bottom_Texture_Type->Add(this->m_Radio_Omit, 0, wxALL, 5);
-    this->m_Sizer_Bottom_Texture->Add(m_Sizer_Bottom_Texture_Type, 1, wxEXPAND, 5);
+    m_Sizer_Bottom_Material_Type->Add(this->m_Radio_Omit, 0, wxALL, 5);
+    this->m_Sizer_Bottom_Material->Add(m_Sizer_Bottom_Material_Type, 1, wxEXPAND, 5);
 
     this->m_Sizer_Bottom_Texture_Setup = new wxBoxSizer(wxHORIZONTAL);
     wxBoxSizer* m_Sizer_Bottom_Texture_Image;
@@ -226,7 +226,7 @@ Main::Main() : wxFrame(nullptr, wxID_ANY, PROGRAM_NAME, wxPoint(0, 0), wxSize(64
     m_Sizer_Bottom_Texture_Extra->Add(this->m_CheckBox_Texture_DontLoad, 0, wxALL, 5);
     m_Sizer_Bottom_Texture_Settings->Add(m_Sizer_Bottom_Texture_Extra, 1, wxEXPAND, 5);
     this->m_Sizer_Bottom_Texture_Setup->Add(m_Sizer_Bottom_Texture_Settings, 1, 0, 5);
-    this->m_Sizer_Bottom_Texture->Add(this->m_Sizer_Bottom_Texture_Setup, 1, wxEXPAND, 5);
+    this->m_Sizer_Bottom_Material->Add(this->m_Sizer_Bottom_Texture_Setup, 1, wxEXPAND, 5);
 
     this->m_Sizer_Bottom_PrimCol_Setup = new wxBoxSizer(wxHORIZONTAL);
     wxBoxSizer* m_Sizer_Bottom_PrimCol_Image;
@@ -256,7 +256,7 @@ Main::Main() : wxFrame(nullptr, wxID_ANY, PROGRAM_NAME, wxPoint(0, 0), wxSize(64
     m_Sizer_Bottom_PrimCol_Extra->Add(this->m_CheckBox_PrimCol_DontLoad, 0, wxALL, 5);
     m_Sizer_Bottom_PrimCol_Settings->Add(m_Sizer_Bottom_PrimCol_Extra, 1, wxEXPAND, 5);
     this->m_Sizer_Bottom_PrimCol_Setup->Add(m_Sizer_Bottom_PrimCol_Settings, 1, 0, 5);
-    this->m_Sizer_Bottom_Texture->Add(this->m_Sizer_Bottom_PrimCol_Setup, 1, wxEXPAND, 5);
+    this->m_Sizer_Bottom_Material->Add(this->m_Sizer_Bottom_PrimCol_Setup, 1, wxEXPAND, 5);
 
     // Hide both by default
     this->m_Sizer_Bottom_Texture_Setup->Show(false);
@@ -274,14 +274,14 @@ Main::Main() : wxFrame(nullptr, wxID_ANY, PROGRAM_NAME, wxPoint(0, 0), wxSize(64
     this->m_Sizer_Bottom->Add(this->m_Sizer_Bottom_Animation, 1, wxEXPAND, 5);
 
     // Add all the sizers to the bottom panel
-    this->m_Sizer_Bottom->Add(this->m_Sizer_Bottom_Texture, 1, wxEXPAND, 5);
+    this->m_Sizer_Bottom->Add(this->m_Sizer_Bottom_Material, 1, wxEXPAND, 5);
     this->m_Panel_Bottom->SetSizer(this->m_Sizer_Bottom);
     this->m_Panel_Bottom->Layout();
     this->m_Sizer_Bottom->Fit(this->m_Panel_Bottom);
 
     // Hide the bottom panels by default
     this->m_Sizer_Bottom_Mesh->ShowItems(false);
-    this->m_Sizer_Bottom_Texture->ShowItems(false);
+    this->m_Sizer_Bottom_Material->ShowItems(false);
     this->m_Sizer_Bottom_Animation->ShowItems(false);
 
     // Actually perform the horizontal window splitting
@@ -300,8 +300,8 @@ Main::Main() : wxFrame(nullptr, wxID_ANY, PROGRAM_NAME, wxPoint(0, 0), wxSize(64
 
     // Connect any other events
     this->m_Menu_File->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(Main::m_MenuItem_ImportOnMenuSelection), this, m_MenuItem_FileImport->GetId());
-    this->m_Menu_File->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(Main::m_MenuItem_ImportTextureOnMenuSelection), this, m_MenuItem_FileTextureImport->GetId());
-    this->m_Menu_File->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(Main::m_MenuItem_ExportTextureOnMenuSelection), this, m_MenuItem_FileTextureExport->GetId());
+    this->m_Menu_File->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(Main::m_MenuItem_ImportMaterialOnMenuSelection), this, m_MenuItem_FileMaterialImport->GetId());
+    this->m_Menu_File->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(Main::m_MenuItem_ExportMaterialOnMenuSelection), this, m_MenuItem_FileMaterialExport->GetId());
     this->m_Menu_Animation->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(Main::m_MenuItem_AnimationPlayToggleOnMenuSelection), this, this->m_MenuItem_AnimationPlayToggle->GetId());
     this->m_Menu_Animation->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(Main::m_MenuItem_AnimationReverseOnMenuSelection), this, this->m_MenuItem_AnimationReverse->GetId());
     this->m_SubMenu_AnimationSpeed->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(Main::m_MenuItem_AnimationFasterOnMenuSelection), this, this->m_MenuItem_AnimationFaster->GetId());
@@ -314,9 +314,9 @@ Main::Main() : wxFrame(nullptr, wxID_ANY, PROGRAM_NAME, wxPoint(0, 0), wxSize(64
     this->m_Menu_View->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(Main::m_MenuItem_ViewYUpOnSelected), this, m_MenuItem_ViewYUp->GetId());
     this->m_Menu_View->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(Main::m_MenuItem_ViewHighlightOnSelected), this, m_MenuItem_ViewHighlight->GetId());
     this->m_CheckBox_Mesh_Billboard->Connect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(Main::m_CheckBox_Mesh_BillboardOnCheck), NULL, this);
-    this->m_Radio_Image->Connect(wxEVT_COMMAND_RADIOBUTTON_SELECTED, wxCommandEventHandler(Main::m_Radio_TextureTypeOnButton1), NULL, this);
-    this->m_Radio_PrimColor->Connect(wxEVT_COMMAND_RADIOBUTTON_SELECTED, wxCommandEventHandler(Main::m_Radio_TextureTypeOnButton2), NULL, this);
-    this->m_Radio_Omit->Connect(wxEVT_COMMAND_RADIOBUTTON_SELECTED, wxCommandEventHandler(Main::m_Radio_TextureTypeOnButton3), NULL, this);
+    this->m_Radio_Image->Connect(wxEVT_COMMAND_RADIOBUTTON_SELECTED, wxCommandEventHandler(Main::m_Radio_MaterialTypeOnButton1), NULL, this);
+    this->m_Radio_PrimColor->Connect(wxEVT_COMMAND_RADIOBUTTON_SELECTED, wxCommandEventHandler(Main::m_Radio_MaterialTypeOnButton2), NULL, this);
+    this->m_Radio_Omit->Connect(wxEVT_COMMAND_RADIOBUTTON_SELECTED, wxCommandEventHandler(Main::m_Radio_MaterialTypeOnButton3), NULL, this);
     this->m_Slider_Animation->Connect(wxEVT_SCROLL_TOP, wxScrollEventHandler(Main::m_Slider_AnimationOnScroll), NULL, this);
     this->m_Slider_Animation->Connect(wxEVT_SCROLL_BOTTOM, wxScrollEventHandler(Main::m_Slider_AnimationOnScroll), NULL, this);
     this->m_Slider_Animation->Connect(wxEVT_SCROLL_LINEUP, wxScrollEventHandler(Main::m_Slider_AnimationOnScroll), NULL, this);
@@ -415,15 +415,15 @@ void Main::m_MenuItem_ImportOnMenuSelection(wxCommandEvent& event)
         delete this->m_Sausage64Model;
     }
     this->m_Sausage64Model = newmodel;
-    this->m_MenuItem_FileTextureImport->Enable(true);
-    this->m_MenuItem_FileTextureExport->Enable(true);
+    this->m_MenuItem_FileMaterialImport->Enable(true);
+    this->m_MenuItem_FileMaterialExport->Enable(true);
 
     // Unhighlight the previous model
     highlighted_mesh = NULL;
-    highlighted_texture = NULL;
+    highlighted_material = NULL;
     highlighted_anim = NULL;
     this->m_Sizer_Bottom_Mesh->ShowItems(false);
-    this->m_Sizer_Bottom_Texture->ShowItems(false);
+    this->m_Sizer_Bottom_Material->ShowItems(false);
     this->m_Sizer_Bottom_Animation->ShowItems(false);
 
     // Generate the tree list
@@ -435,11 +435,11 @@ void Main::m_MenuItem_ImportOnMenuSelection(wxCommandEvent& event)
         for (std::list<s64Mesh*>::iterator it = meshlist->begin(); it != meshlist->end(); ++it)
             this->m_TreeCtrl_ModelData->AppendItem(treenode, (*it)->name);
     }
-    if (this->m_Sausage64Model->GetTextureCount() > 0)
+    if (this->m_Sausage64Model->GetMaterialCount() > 0)
     {
-        std::list<n64Texture*>* texlist = this->m_Sausage64Model->GetTextureList();
-        wxTreeItemId treenode = this->m_TreeCtrl_ModelData->AppendItem(MDLData, "Textures");
-        for (std::list<n64Texture*>::iterator it = texlist->begin(); it != texlist->end(); ++it)
+        std::list<n64Material*>* matlist = this->m_Sausage64Model->GetMaterialList();
+        wxTreeItemId treenode = this->m_TreeCtrl_ModelData->AppendItem(MDLData, "Materials");
+        for (std::list<n64Material*>::iterator it = matlist->begin(); it != matlist->end(); ++it)
             this->m_TreeCtrl_ModelData->AppendItem(treenode, (*it)->name);
     }
     if (this->m_Sausage64Model->GetAnimCount() > 0)
@@ -453,16 +453,16 @@ void Main::m_MenuItem_ImportOnMenuSelection(wxCommandEvent& event)
 
 
 /*==============================
-    Main::m_MenuItem_ImportTextureOnMenuSelection
-    Handles clicking on the Texture Def Import menu option
+    Main::m_MenuItem_ImportMaterialOnMenuSelection
+    Handles clicking on the Material Def Import menu option
     @param The wxWidgets command event
 ==============================*/
 
-void Main::m_MenuItem_ImportTextureOnMenuSelection(wxCommandEvent& event)
+void Main::m_MenuItem_ImportMaterialOnMenuSelection(wxCommandEvent& event)
 {
     wxString line;
     wxTextFile file;
-    wxFileDialog dialog(this, _("Import Texture Definition"), "", "", "Texture definition file (*.txt)|*.txt", wxFD_OPEN);
+    wxFileDialog dialog(this, _("Import Material Definition"), "", "", "Material definition file (*.txt)|*.txt", wxFD_OPEN);
 
     // Ensure we didn't cancel the file opening dialog
     if (dialog.ShowModal() == wxID_CANCEL)
@@ -475,33 +475,33 @@ void Main::m_MenuItem_ImportTextureOnMenuSelection(wxCommandEvent& event)
     {
         wxStringTokenizer tkz = wxStringTokenizer(line, wxT(" "));
         wxString token = tkz.GetNextToken();
-        n64Texture* tex = this->m_Sausage64Model->GetTextureFromName(token.ToStdString());
+        n64Material* mat = this->m_Sausage64Model->GetMaterialFromName(token.ToStdString());
 
-        // If we did not find the given texture name, then skip
-        if (tex == NULL)
+        // If we did not find the given material name, then skip
+        if (mat == NULL)
         {
             line = file.GetNextLine();
             continue;
         }
 
-        // Get the texture type
+        // Get the material type
         token = tkz.GetNextToken();
         if (token == "OMIT")
         {
-            tex->CreateDefaultUnknown();
+            mat->CreateDefaultUnknown();
             line = file.GetNextLine();
             continue;
         }
         else if (token == "PRIMCOL")
         {
             unsigned long r, g, b;
-            tex->CreateDefaultPrimCol();
+            mat->CreateDefaultPrimCol();
             tkz.GetNextToken().ToULong(&r);
             tkz.GetNextToken().ToULong(&g);
             tkz.GetNextToken().ToULong(&b);
-            tex->GetPrimColorData()->r = (uint8_t)r;
-            tex->GetPrimColorData()->g = (uint8_t)g;
-            tex->GetPrimColorData()->b = (uint8_t)b;
+            mat->GetPrimColorData()->r = (uint8_t)r;
+            mat->GetPrimColorData()->g = (uint8_t)g;
+            mat->GetPrimColorData()->b = (uint8_t)b;
         }
         else if (token == "TEXTURE")
         {
@@ -511,16 +511,16 @@ void Main::m_MenuItem_ImportTextureOnMenuSelection(wxCommandEvent& event)
             unsigned long w, h;
             tkz.GetNextToken().ToULong(&w);
             tkz.GetNextToken().ToULong(&h);
-            tex->CreateDefaultTexture(w, h);
+            mat->CreateDefaultTexture(w, h);
 
             // See if an image of the texture is in the directory, and if so, load it automatically
             dir.Open(dialog.GetDirectory());
             cont = dir.GetFirst(&imgfilename, wxEmptyString, wxDIR_FILES);
             while (cont)
             {
-                if (imgfilename.ToStdString().find(tex->name) != std::string::npos)
+                if (imgfilename.ToStdString().find(mat->name) != std::string::npos)
                 {
-                    tex->SetImageFromFile((dir.GetName() + "/" + imgfilename).ToStdString());
+                    mat->SetImageFromFile((dir.GetName() + "/" + imgfilename).ToStdString());
                     break;
                 }
                 cont = dir.GetNext(&imgfilename);
@@ -529,7 +529,7 @@ void Main::m_MenuItem_ImportTextureOnMenuSelection(wxCommandEvent& event)
 
         // Now go through each flag until the end
         while (tkz.HasMoreTokens())
-            tex->SetFlag(tkz.GetNextToken().ToStdString());
+            mat->SetFlag(tkz.GetNextToken().ToStdString());
 
         // Go to the next line of the file
         line = file.GetNextLine();
@@ -539,9 +539,9 @@ void Main::m_MenuItem_ImportTextureOnMenuSelection(wxCommandEvent& event)
     file.Close();
 
     // Refresh the bottom panel
-    if (highlighted_texture != NULL)
+    if (highlighted_material != NULL)
     {
-        switch (highlighted_texture->type)
+        switch (highlighted_material->type)
         {
             case TYPE_PRIMCOL:
                 this->m_Radio_PrimColor->SetValue(true);
@@ -562,15 +562,15 @@ void Main::m_MenuItem_ImportTextureOnMenuSelection(wxCommandEvent& event)
 
 
 /*==============================
-    Main::m_MenuItem_ExportTextureOnMenuSelection
-    Handles clicking on the Texture Def Export menu option
+    Main::m_MenuItem_ExportMaterialOnMenuSelection
+    Handles clicking on the Material Def Export menu option
     @param The wxWidgets command event
 ==============================*/
 
-void Main::m_MenuItem_ExportTextureOnMenuSelection(wxCommandEvent& event)
+void Main::m_MenuItem_ExportMaterialOnMenuSelection(wxCommandEvent& event)
 {
     // Pop up a file dialogue
-    wxFileDialog fileDialogue(this, _("Export Texture Definition"), "", "", "Text image (*.txt)|*.txt", wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
+    wxFileDialog fileDialogue(this, _("Export Material Definition"), "", "", "Text file (*.txt)|*.txt", wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
 
     // Ensure the user didn't cancel
     if (fileDialogue.ShowModal() == wxID_CANCEL)
@@ -581,31 +581,31 @@ void Main::m_MenuItem_ExportTextureOnMenuSelection(wxCommandEvent& event)
     file.Create(fileDialogue.GetPath(), true);
     file.Open(fileDialogue.GetPath(), wxFile::write);
 
-    // Iterate through each texture
-    std::list<n64Texture*>* texlist = this->m_Sausage64Model->GetTextureList();
-    for (std::list<n64Texture*>::iterator it = texlist->begin(); it != texlist->end(); ++it)
+    // Iterate through each material
+    std::list<n64Material*>* matlist = this->m_Sausage64Model->GetMaterialList();
+    for (std::list<n64Material*>::iterator it = matlist->begin(); it != matlist->end(); ++it)
     {
-        n64Texture* tex = *it;
+        n64Material* mat = *it;
 
         // Write the name and texture type
-        file.Write(tex->name);
-        switch (tex->type)
+        file.Write(mat->name);
+        switch (mat->type)
         {
             case TYPE_TEXTURE:
                 file.Write(" TEXTURE");
-                file.Write(wxString::Format(wxT(" %zu %zu"), tex->GetTextureData()->w, tex->GetTextureData()->h));
-                if (tex->GetTextureData()->coltype != DEFAULT_IMAGEFORMAT)
-                    file.Write(" " + tex->GetTextureData()->coltype);
-                if (tex->GetTextureData()->colsize != DEFAULT_IMAGESIZE)
-                    file.Write(" " + tex->GetTextureData()->colsize);
-                if (tex->GetTextureData()->texmodes != DEFAULT_TEXFLAGS)
-                    file.Write(" " + tex->GetTextureData()->texmodes);
-                if (tex->GetTextureData()->texmodet != DEFAULT_TEXFLAGT)
-                    file.Write(" " + tex->GetTextureData()->texmodet);
+                file.Write(wxString::Format(wxT(" %zu %zu"), mat->GetTextureData()->w, mat->GetTextureData()->h));
+                if (mat->GetTextureData()->coltype != DEFAULT_IMAGEFORMAT)
+                    file.Write(" " + mat->GetTextureData()->coltype);
+                if (mat->GetTextureData()->colsize != DEFAULT_IMAGESIZE)
+                    file.Write(" " + mat->GetTextureData()->colsize);
+                if (mat->GetTextureData()->texmodes != DEFAULT_TEXFLAGS)
+                    file.Write(" " + mat->GetTextureData()->texmodes);
+                if (mat->GetTextureData()->texmodet != DEFAULT_TEXFLAGT)
+                    file.Write(" " + mat->GetTextureData()->texmodet);
                 break;
             case TYPE_PRIMCOL:
                 file.Write(" PRIMCOL");
-                file.Write(wxString::Format(wxT(" %d %d %d"), tex->GetPrimColorData()->r, tex->GetPrimColorData()->g, tex->GetPrimColorData()->b));
+                file.Write(wxString::Format(wxT(" %d %d %d"), mat->GetPrimColorData()->r, mat->GetPrimColorData()->g, mat->GetPrimColorData()->b));
                 break;
             case TYPE_UNKNOWN:
                 file.Write(" OMIT\r\n");
@@ -613,51 +613,51 @@ void Main::m_MenuItem_ExportTextureOnMenuSelection(wxCommandEvent& event)
         }
 
         // Handle loading flags
-        if (tex->dontload)
+        if (mat->dontload)
             file.Write(" DONTLOAD");
-        if (tex->loadfirst)
+        if (mat->loadfirst)
             file.Write(" LOADFIRST");
 
         // Handle cycle mode
-        if (tex->cycle != DEFAULT_CYCLE)
-            file.Write(" " + tex->cycle);
+        if (mat->cycle != DEFAULT_CYCLE)
+            file.Write(" " + mat->cycle);
 
         // Handle combine modes
-        switch (tex->type)
+        switch (mat->type)
         {
             case TYPE_TEXTURE:
-                if (tex->texfilter != DEFAULT_TEXFILTER)
-                    file.Write(" " + tex->texfilter);
-                if (tex->combinemode1 != DEFAULT_COMBINE1_TEX)
-                    file.Write(" " + tex->combinemode1);
-                if (tex->cycle == "G_CYC_2CYCLE" && tex->combinemode2 != DEFAULT_COMBINE2_TEX)
-                    file.Write(" " + tex->combinemode2);
-                else if (tex->cycle == "G_CYC_1CYCLE" && tex->combinemode1 != DEFAULT_COMBINE1_TEX)
-                    file.Write(" " + tex->combinemode1);
+                if (mat->texfilter != DEFAULT_TEXFILTER)
+                    file.Write(" " + mat->texfilter);
+                if (mat->combinemode1 != DEFAULT_COMBINE1_TEX)
+                    file.Write(" " + mat->combinemode1);
+                if (mat->cycle == "G_CYC_2CYCLE" && mat->combinemode2 != DEFAULT_COMBINE2_TEX)
+                    file.Write(" " + mat->combinemode2);
+                else if (mat->cycle == "G_CYC_1CYCLE" && mat->combinemode1 != DEFAULT_COMBINE1_TEX)
+                    file.Write(" " + mat->combinemode1);
                 break;
             case TYPE_PRIMCOL:
-                if (tex->combinemode1 != DEFAULT_COMBINE1_PRIM)
-                    file.Write(" " + tex->combinemode1);
-                if (tex->cycle == "G_CYC_2CYCLE" && tex->combinemode2 != DEFAULT_COMBINE2_PRIM)
-                    file.Write(" " + tex->combinemode2);
-                else if (tex->cycle == "G_CYC_1CYCLE" && tex->combinemode1 != DEFAULT_COMBINE1_PRIM)
-                    file.Write(" " + tex->combinemode1);
+                if (mat->combinemode1 != DEFAULT_COMBINE1_PRIM)
+                    file.Write(" " + mat->combinemode1);
+                if (mat->cycle == "G_CYC_2CYCLE" && mat->combinemode2 != DEFAULT_COMBINE2_PRIM)
+                    file.Write(" " + mat->combinemode2);
+                else if (mat->cycle == "G_CYC_1CYCLE" && mat->combinemode1 != DEFAULT_COMBINE1_PRIM)
+                    file.Write(" " + mat->combinemode1);
                 break;
             default: break;
         }
 
         // Handle render modes
-        if (tex->rendermode1 != DEFAULT_RENDERMODE1)
-            file.Write(" " + tex->rendermode1);
-        if (tex->cycle == "G_CYC_2CYCLE" && tex->rendermode2 != DEFAULT_RENDERMODE2)
-            file.Write(" " + tex->rendermode2);
-        else if (tex->cycle == "G_CYC_1CYCLE" && tex->rendermode1 != DEFAULT_RENDERMODE1)
-            file.Write(" " + tex->rendermode1 + "2");
+        if (mat->rendermode1 != DEFAULT_RENDERMODE1)
+            file.Write(" " + mat->rendermode1);
+        if (mat->cycle == "G_CYC_2CYCLE" && mat->rendermode2 != DEFAULT_RENDERMODE2)
+            file.Write(" " + mat->rendermode2);
+        else if (mat->cycle == "G_CYC_1CYCLE" && mat->rendermode1 != DEFAULT_RENDERMODE1)
+            file.Write(" " + mat->rendermode1 + "2");
 
         // Write the geometry flags that are new from the defaults
         std::string defaultgeo[] = DEFAULT_GEOFLAGS;
         int size = sizeof(defaultgeo) / sizeof(defaultgeo[0]);
-        for (std::list<std::string>::iterator itflags = tex->geomode.begin(); itflags != tex->geomode.end(); ++itflags)
+        for (std::list<std::string>::iterator itflags = mat->geomode.begin(); itflags != mat->geomode.end(); ++itflags)
         {
             bool skip = false;
             std::string flag = *itflags;
@@ -682,7 +682,7 @@ void Main::m_MenuItem_ExportTextureOnMenuSelection(wxCommandEvent& event)
         for (int i=0; i<size; i++)
         {
             bool hasflag = false;
-            for (std::list<std::string>::iterator itflags = tex->geomode.begin(); itflags != tex->geomode.end(); ++itflags)
+            for (std::list<std::string>::iterator itflags = mat->geomode.begin(); itflags != mat->geomode.end(); ++itflags)
             {
                 std::string flag = *itflags;
                 if (defaultgeo[i] == flag)
@@ -731,32 +731,32 @@ void Main::m_TreeCtrl_ModelDataOnTreeSelChanged(wxTreeEvent& event)
                 break;
             }
         }
-        highlighted_texture = NULL;
+        highlighted_material = NULL;
         this->m_Sizer_Bottom_Mesh->ShowItems(true);
-        this->m_Sizer_Bottom_Texture->ShowItems(false);
+        this->m_Sizer_Bottom_Material->ShowItems(false);
         this->m_Sizer_Bottom_Animation->ShowItems(false);
         this->m_CheckBox_Mesh_Billboard->SetValue(highlighted_mesh->billboard);
         this->m_Sizer_Bottom->Layout();
     }
-    else if (parentname == "Textures")
+    else if (parentname == "Materials")
     {
-        std::list<n64Texture*>* texturelist = this->m_Sausage64Model->GetTextureList();
-        for (std::list<n64Texture*>::iterator it = texturelist->begin(); it != texturelist->end(); ++it)
+        std::list<n64Material*>* materiallist = this->m_Sausage64Model->GetMaterialList();
+        for (std::list<n64Material*>::iterator it = materiallist->begin(); it != materiallist->end(); ++it)
         {
-            n64Texture* tex = *it;
-            if (name == tex->name)
+            n64Material* mat = *it;
+            if (name == mat->name)
             {
-                highlighted_texture = tex;
+                highlighted_material = mat;
                 break;
             }
         }
         highlighted_mesh = NULL;
         this->m_Sizer_Bottom_Mesh->ShowItems(false);
-        this->m_Sizer_Bottom_Texture->ShowItems(true);
+        this->m_Sizer_Bottom_Material->ShowItems(true);
         this->m_Sizer_Bottom_Animation->ShowItems(false);
 
-        // Show the correct stuff based on the texture type
-        switch (highlighted_texture->type)
+        // Show the correct stuff based on the material type
+        switch (highlighted_material->type)
         {
             case TYPE_TEXTURE:
                 this->m_Sizer_Bottom_Texture_Setup->Show(true);
@@ -793,9 +793,9 @@ void Main::m_TreeCtrl_ModelDataOnTreeSelChanged(wxTreeEvent& event)
             }
         }
         highlighted_mesh = NULL;
-        highlighted_texture = NULL;
+        highlighted_material = NULL;
         this->m_Sizer_Bottom_Mesh->ShowItems(false);
-        this->m_Sizer_Bottom_Texture->ShowItems(false);
+        this->m_Sizer_Bottom_Material->ShowItems(false);
         this->m_Sizer_Bottom_Animation->ShowItems(true);
         this->m_Slider_Animation->SetValue(0);
         this->m_Slider_Animation->SetMax(highlighted_anim_length);
@@ -804,9 +804,9 @@ void Main::m_TreeCtrl_ModelDataOnTreeSelChanged(wxTreeEvent& event)
     else
     {
         highlighted_mesh = NULL;
-        highlighted_texture = NULL;
+        highlighted_material = NULL;
         this->m_Sizer_Bottom_Mesh->ShowItems(false);
-        this->m_Sizer_Bottom_Texture->ShowItems(false);
+        this->m_Sizer_Bottom_Material->ShowItems(false);
         this->m_Sizer_Bottom_Animation->ShowItems(false);
     }
 }
@@ -988,37 +988,37 @@ void Main::m_Button_AnimationToggleOnClick(wxCommandEvent& event)
 
 
 /*==============================
-    Main::m_Radio_TextureTypeOnButton1
+    Main::m_Radio_MaterialTypeOnButton1
     Handles clicking on the Texture radio button
     @param The wxWidgets command event
 ==============================*/
 
-void Main::m_Radio_TextureTypeOnButton1(wxCommandEvent& event)
+void Main::m_Radio_MaterialTypeOnButton1(wxCommandEvent& event)
 {
-    if (event.IsChecked() && highlighted_texture->type != TYPE_TEXTURE)
+    if (event.IsChecked() && highlighted_material->type != TYPE_TEXTURE)
     {
         this->m_Sizer_Bottom_Texture_Setup->Show(true);
         this->m_Sizer_Bottom_PrimCol_Setup->Show(false);
         this->m_Panel_Bottom->Layout();
-        highlighted_texture->CreateDefaultTexture();
+        highlighted_material->CreateDefaultTexture();
         this->RefreshTextureImage();
     }
 }
 
 
 /*==============================
-    Main::m_Radio_TextureTypeOnButton2
+    Main::m_Radio_MaterialTypeOnButton2
     Handles clicking on the Primitive Color radio button
     @param The wxWidgets command event
 ==============================*/
 
-void Main::m_Radio_TextureTypeOnButton2(wxCommandEvent& event)
+void Main::m_Radio_MaterialTypeOnButton2(wxCommandEvent& event)
 {
-    if (event.IsChecked() && highlighted_texture->type != TYPE_PRIMCOL)
+    if (event.IsChecked() && highlighted_material->type != TYPE_PRIMCOL)
     {
         this->m_Sizer_Bottom_Texture_Setup->Show(false);
         this->m_Sizer_Bottom_PrimCol_Setup->Show(true);
-        highlighted_texture->CreateDefaultPrimCol();
+        highlighted_material->CreateDefaultPrimCol();
         this->m_Panel_Bottom->Layout();
         this->RefreshPrimColPanel();
     }
@@ -1026,18 +1026,18 @@ void Main::m_Radio_TextureTypeOnButton2(wxCommandEvent& event)
 
 
 /*==============================
-    Main::m_Radio_TextureTypeOnButton3
+    Main::m_Radio_MaterialTypeOnButton3
     Handles clicking on the Omit radio button
     @param The wxWidgets command event
 ==============================*/
 
-void Main::m_Radio_TextureTypeOnButton3(wxCommandEvent& event)
+void Main::m_Radio_MaterialTypeOnButton3(wxCommandEvent& event)
 {
-    if (event.IsChecked() && highlighted_texture->type != TYPE_UNKNOWN)
+    if (event.IsChecked() && highlighted_material->type != TYPE_UNKNOWN)
     {
         this->m_Sizer_Bottom_Texture_Setup->Show(false);
         this->m_Sizer_Bottom_PrimCol_Setup->Show(false);
-        highlighted_texture->CreateDefaultUnknown();
+        highlighted_material->CreateDefaultUnknown();
     }
 }
 
@@ -1057,7 +1057,7 @@ void Main::m_Image_TextureOnLeftDown(wxMouseEvent& event)
         return;
 
     // Get our path and generate the texture from it
-    highlighted_texture->SetImageFromFile(file.GetPath().ToStdString());
+    highlighted_material->SetImageFromFile(file.GetPath().ToStdString());
     this->RefreshTextureImage();
 }
 
@@ -1070,7 +1070,7 @@ void Main::m_Image_TextureOnLeftDown(wxMouseEvent& event)
 
 void Main::m_Choice_Texture_ImgFormatOnChoice(wxCommandEvent& event)
 {
-    highlighted_texture->GetTextureData()->coltype = this->m_Choice_Texture_ImgFormat->GetString(event.GetSelection());
+    highlighted_material->GetTextureData()->coltype = this->m_Choice_Texture_ImgFormat->GetString(event.GetSelection());
 }
 
 
@@ -1082,8 +1082,8 @@ void Main::m_Choice_Texture_ImgFormatOnChoice(wxCommandEvent& event)
 
 void Main::m_Choice_Texture_SFlagOnChoice(wxCommandEvent& event)
 {
-    highlighted_texture->GetTextureData()->texmodes = this->m_Choice_Texture_SFlag->GetString(event.GetSelection());
-    highlighted_texture->RegenerateTexture();
+    highlighted_material->GetTextureData()->texmodes = this->m_Choice_Texture_SFlag->GetString(event.GetSelection());
+    highlighted_material->RegenerateTexture();
 }
 
 
@@ -1095,7 +1095,7 @@ void Main::m_Choice_Texture_SFlagOnChoice(wxCommandEvent& event)
 
 void Main::m_Choice_Texture_ImgDepthOnChoice(wxCommandEvent& event)
 {
-    highlighted_texture->GetTextureData()->colsize = this->m_Choice_Texture_ImgDepth->GetString(event.GetSelection());
+    highlighted_material->GetTextureData()->colsize = this->m_Choice_Texture_ImgDepth->GetString(event.GetSelection());
 }
 
 
@@ -1107,8 +1107,8 @@ void Main::m_Choice_Texture_ImgDepthOnChoice(wxCommandEvent& event)
 
 void Main::m_Choice_Texture_TFlagOnChoice(wxCommandEvent& event)
 {
-    highlighted_texture->GetTextureData()->texmodet = this->m_Choice_Texture_TFlag->GetString(event.GetSelection());
-    highlighted_texture->RegenerateTexture();
+    highlighted_material->GetTextureData()->texmodet = this->m_Choice_Texture_TFlag->GetString(event.GetSelection());
+    highlighted_material->RegenerateTexture();
 }
 
 
@@ -1121,7 +1121,7 @@ void Main::m_Choice_Texture_TFlagOnChoice(wxCommandEvent& event)
 void Main::m_Panel_PrimColOnLeftDown(wxMouseEvent& event)
 {;
     uint8_t oldcols[4];
-    texCol* col = highlighted_texture->GetPrimColorData();
+    matCol* col = highlighted_material->GetPrimColorData();
 
     // Get the old color, in case the user cancels
     oldcols[0] = col->r;
@@ -1155,7 +1155,7 @@ void Main::m_Panel_PrimColOnLeftDown(wxMouseEvent& event)
 
 /*==============================
     Main::m_Panel_PrimColOnLeftDown
-    Handles clicking on the Advanced Texture Settings button
+    Handles clicking on the Advanced Render Settings button
     @param The wxWidgets command event
 ==============================*/
 
@@ -1174,7 +1174,7 @@ void Main::m_Button_AdvancedOnClick(wxCommandEvent& event)
 
 void Main::m_CheckBox_LoadFirstOnCheckBox(wxCommandEvent& event)
 {
-    highlighted_texture->loadfirst = event.IsChecked();
+    highlighted_material->loadfirst = event.IsChecked();
 }
 
 
@@ -1186,7 +1186,7 @@ void Main::m_CheckBox_LoadFirstOnCheckBox(wxCommandEvent& event)
 
 void Main::m_CheckBox_DontLoadOnCheckBox(wxCommandEvent& event)
 {
-    highlighted_texture->dontload = event.IsChecked();
+    highlighted_material->dontload = event.IsChecked();
 }
 
 
@@ -1232,7 +1232,7 @@ void Main::m_Timer_MainLoopOnTimer(wxTimerEvent& event)
 void Main::m_Label_PrimColOnLeftDown(wxMouseEvent& event)
 {
     // Create the dialogue
-    texCol* col = highlighted_texture->GetPrimColorData();
+    matCol* col = highlighted_material->GetPrimColorData();
     ColorPickerHelper* dialog = new ColorPickerHelper(this);
     dialog->SetRGB(col->r, col->g, col->b);
     if (dialog->ShowModal() == wxID_OK)
@@ -1264,7 +1264,7 @@ s64Model* Main::GetLoadedModel()
 
 void Main::OnPrimColChanged(wxColourDialogEvent& event)
 {
-    texCol* col = highlighted_texture->GetPrimColorData();
+    matCol* col = highlighted_material->GetPrimColorData();
     col->r = event.GetColour().Red();
     col->g = event.GetColour().Green();
     col->b = event.GetColour().Blue();
@@ -1280,13 +1280,13 @@ void Main::OnPrimColChanged(wxColourDialogEvent& event)
 
 void Main::RefreshPrimColPanel()
 {
-    texCol* col = highlighted_texture->GetPrimColorData();
+    matCol* col = highlighted_material->GetPrimColorData();
     this->m_Label_PrimColRGB->SetLabel(wxString::Format(wxT("%d, %d, %d"), col->r, col->g, col->b));
     this->m_Label_PrimColHex->SetLabel(wxString::Format(wxT("%02X%02X%02X"), col->r, col->g, col->b));
     this->m_Panel_PrimCol->SetForegroundColour(wxColour(col->r, col->g, col->b));
     this->m_Panel_PrimCol->SetBackgroundColour(wxColour(col->r, col->g, col->b));
-    this->m_CheckBox_PrimCol_LoadFirst->SetValue(highlighted_texture->loadfirst);
-    this->m_CheckBox_PrimCol_DontLoad->SetValue(highlighted_texture->dontload);
+    this->m_CheckBox_PrimCol_LoadFirst->SetValue(highlighted_material->loadfirst);
+    this->m_CheckBox_PrimCol_DontLoad->SetValue(highlighted_material->dontload);
     this->m_Panel_Bottom->Layout();
     this->m_Panel_Bottom->Refresh();
     this->m_Model_Canvas->Refresh();
@@ -1300,15 +1300,15 @@ void Main::RefreshPrimColPanel()
 
 void Main::RefreshTextureImage()
 {
-    texImage* img = highlighted_texture->GetTextureData();
+    matImage* img = highlighted_material->GetTextureData();
     this->m_Image_Texture->SetBitmap(img->wxbmp);
     this->m_Label_Texture->SetLabel(wxString::Format(wxT("%zux%zu"), img->w, img->h));
-    this->m_Choice_Texture_ImgFormat->SetSelection(this->m_Choice_Texture_ImgFormat->FindString(highlighted_texture->GetTextureData()->coltype));
-    this->m_Choice_Texture_ImgDepth->SetSelection(this->m_Choice_Texture_ImgDepth->FindString(highlighted_texture->GetTextureData()->colsize));
-    this->m_Choice_Texture_SFlag->SetSelection(this->m_Choice_Texture_SFlag->FindString(highlighted_texture->GetTextureData()->texmodes));
-    this->m_Choice_Texture_TFlag->SetSelection(this->m_Choice_Texture_TFlag->FindString(highlighted_texture->GetTextureData()->texmodet));
-    this->m_CheckBox_Texture_LoadFirst->SetValue(highlighted_texture->loadfirst);
-    this->m_CheckBox_Texture_DontLoad->SetValue(highlighted_texture->dontload);
+    this->m_Choice_Texture_ImgFormat->SetSelection(this->m_Choice_Texture_ImgFormat->FindString(highlighted_material->GetTextureData()->coltype));
+    this->m_Choice_Texture_ImgDepth->SetSelection(this->m_Choice_Texture_ImgDepth->FindString(highlighted_material->GetTextureData()->colsize));
+    this->m_Choice_Texture_SFlag->SetSelection(this->m_Choice_Texture_SFlag->FindString(highlighted_material->GetTextureData()->texmodes));
+    this->m_Choice_Texture_TFlag->SetSelection(this->m_Choice_Texture_TFlag->FindString(highlighted_material->GetTextureData()->texmodet));
+    this->m_CheckBox_Texture_LoadFirst->SetValue(highlighted_material->loadfirst);
+    this->m_CheckBox_Texture_DontLoad->SetValue(highlighted_material->dontload);
     this->m_Panel_Bottom->Layout();
     this->m_Image_Texture->Update();
     this->m_Image_Texture->Refresh();
@@ -1349,20 +1349,20 @@ AdvancedRenderSettings::AdvancedRenderSettings(wxWindow* parent, wxWindowID id, 
     wxStaticText* m_Label_Filter;
     m_Label_Filter = new wxStaticText(this, wxID_ANY, wxT("Texture Filter"), wxDefaultPosition, wxDefaultSize, 0);
     m_Label_Filter->Wrap(-1);
-    m_Label_Filter->Enable(highlighted_texture->type == TYPE_TEXTURE);
+    m_Label_Filter->Enable(highlighted_material->type == TYPE_TEXTURE);
     m_Sizer_Modes->Add(m_Label_Filter, 0, wxALIGN_CENTER_HORIZONTAL | wxALL, 5);
 
     // Add the second row choices
     wxString m_Choice_CycleChoices[] = { wxT("G_CYC_1CYCLE"), wxT("G_CYC_2CYCLE") };
     int m_Choice_CycleNChoices = sizeof(m_Choice_CycleChoices) / sizeof(wxString);
     this->m_Choice_Cycle = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, m_Choice_CycleNChoices, m_Choice_CycleChoices, 0);
-    this->m_Choice_Cycle->SetSelection(this->m_Choice_Cycle->FindString(highlighted_texture->cycle));
+    this->m_Choice_Cycle->SetSelection(this->m_Choice_Cycle->FindString(highlighted_material->cycle));
     m_Sizer_Modes->Add(this->m_Choice_Cycle, 0, wxALIGN_CENTER_HORIZONTAL | wxALL, 5);
     wxString m_Choice_FilterChoices[] = { wxT("G_TF_POINT"), wxT("G_TF_AVERAGE"), wxT("G_TF_BILERP") };
     int m_Choice_FilterNChoices = sizeof(m_Choice_FilterChoices) / sizeof(wxString);
     this->m_Choice_Filter = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, m_Choice_FilterNChoices, m_Choice_FilterChoices, 0);
-    this->m_Choice_Filter->SetSelection(this->m_Choice_Filter->FindString(highlighted_texture->texfilter));
-    this->m_Choice_Filter->Enable(highlighted_texture->type == TYPE_TEXTURE);
+    this->m_Choice_Filter->SetSelection(this->m_Choice_Filter->FindString(highlighted_material->texfilter));
+    this->m_Choice_Filter->Enable(highlighted_material->type == TYPE_TEXTURE);
     m_Sizer_Modes->Add(this->m_Choice_Filter, 0, wxALIGN_CENTER_HORIZONTAL | wxALL, 5);
 
     // Add the third row labels
@@ -1379,12 +1379,12 @@ AdvancedRenderSettings::AdvancedRenderSettings(wxWindow* parent, wxWindowID id, 
     wxString m_Choice_Combine1Choices[] = { wxT("G_CC_PRIMITIVE"), wxT("G_CC_SHADE"), wxT("G_CC_MODULATEI"), wxT("G_CC_MODULATEIA"), wxT("G_CC_MODULATEIDECALA"), wxT("G_CC_MODULATERGB"), wxT("G_CC_MODULATERGBA"), wxT("G_CC_MODULATERGBDECALA"), wxT("G_CC_MODULATEI_PRIM"), wxT("G_CC_MODULATEIA_PRIM"), wxT("G_CC_MODULATEIDECALA_PRIM"), wxT("G_CC_MODULATERGB_PRIM"), wxT("G_CC_MODULATERGBA_PRIM"), wxT("G_CC_MODULATERGBDECALA_PRIM"), wxT("G_CC_PRIMLITE"), wxT("G_CC_DECALRGB"), wxT("G_CC_DECALRGBA"), wxT("G_CC_BLENDI"), wxT("G_CC_BLENDIA"), wxT("G_CC_BLENDIDECALA"), wxT("G_CC_BLENDRGBA"), wxT("G_CC_BLENDRGBDECALA"), wxT("G_CC_ADDRGB"), wxT("G_CC_ADDRGBDECALA"), wxT("G_CC_REFLECTRGB"), wxT("G_CC_REFLECTRGBDECALA"), wxT("G_CC_HILITERGB"), wxT("G_CC_HILITERGBA"), wxT("G_CC_HILITERGBDECALA"), wxT("G_CC_SHADEDECALA"), wxT("G_CC_BLENDPE"), wxT("G_CC_BLENDPEDECALA"), wxT("G_CC_TRILERP"), wxT("G_CC_INTERFERENCE") };
     int m_Choice_Combine1NChoices = sizeof(m_Choice_Combine1Choices) / sizeof(wxString);
     this->m_Choice_Combine1 = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, m_Choice_Combine1NChoices, m_Choice_Combine1Choices, 0);
-    this->m_Choice_Combine1->SetSelection(this->m_Choice_Combine1->FindString(highlighted_texture->combinemode1));
+    this->m_Choice_Combine1->SetSelection(this->m_Choice_Combine1->FindString(highlighted_material->combinemode1));
     m_Sizer_Modes->Add(this->m_Choice_Combine1, 0, wxALIGN_CENTER_HORIZONTAL | wxALL, 5);
     wxString m_Choice_Combine2Choices[] = { wxT("G_CC_PASS2"), wxT("G_CC_MODULATEI2"), wxT("G_CC_MODULATEIA2"), wxT("G_CC_MODULATERGB2"), wxT("G_CC_MODULATERGBA2"), wxT("G_CC_MODULATEI_PRIM2"), wxT("G_CC_MODULATEIA_PRIM2"), wxT("G_CC_MODULATERGB_PRIM2"), wxT("G_CC_MODULATERGBA_PRIM2"), wxT("G_CC_DECALRGB2"), wxT("G_CC_BLENDI2"), wxT("G_CC_BLENDIA2"), wxT("G_CC_HILITERGB2"), wxT("G_CC_HILITERGBA2"), wxT("G_CC_HILITERGBDECALA2"), wxT("G_CC_HILITERGBPASSA2") };
     int m_Choice_Combine2NChoices = sizeof(m_Choice_Combine2Choices) / sizeof(wxString);
     this->m_Choice_Combine2 = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, m_Choice_Combine2NChoices, m_Choice_Combine2Choices, 0);
-    this->m_Choice_Combine2->SetSelection(this->m_Choice_Combine2->FindString(highlighted_texture->combinemode2));
+    this->m_Choice_Combine2->SetSelection(this->m_Choice_Combine2->FindString(highlighted_material->combinemode2));
     this->m_Choice_Combine2->Enable(this->m_Choice_Cycle->GetSelection() == 1);
     m_Sizer_Modes->Add(m_Choice_Combine2, 0, wxALIGN_CENTER_HORIZONTAL | wxALL, 5);
 
@@ -1402,12 +1402,12 @@ AdvancedRenderSettings::AdvancedRenderSettings(wxWindow* parent, wxWindowID id, 
     wxString m_Choice_Render1Choices[] = { wxT("G_RM_AA_ZB_OPA_SURF"), wxT("G_RM_AA_ZB_XLU_SURF"), wxT("G_RM_AA_ZB_OPA_DECAL"), wxT("G_RM_AA_ZB_XLU_DECAL"), wxT("G_RM_AA_ZB_OPA_INTER"), wxT("G_RM_AA_ZB_XLU_INTER"), wxT("G_RM_AA_ZB_XLU_LINE"), wxT("G_RM_AA_ZB_DEC_LINE"), wxT("G_RM_AA_ZB_TEX_EDGE"), wxT("G_RM_AA_ZB_TEX_INTER"), wxT("G_RM_AA_ZB_SUB_SURF"), wxT("G_RM_AA_ZB_PCL_SURF"), wxT("G_RM_AA_ZB_OPA_TERR"), wxT("G_RM_AA_ZB_TEX_TERR"), wxT("G_RM_AA_ZB_SUB_TERR"), wxT("G_RM_RA_ZB_OPA_SURF"), wxT("G_RM_RA_ZB_OPA_DECAL"), wxT("G_RM_RA_ZB_OPA_INTER"), wxT("G_RM_AA_OPA_SURF"), wxT("G_RM_AA_XLU_SURF"), wxT("G_RM_AA_XLU_LINE"), wxT("G_RM_AA_DEC_LINE"), wxT("G_RM_AA_TEX_EDGE"), wxT("G_RM_AA_SUB_SURF"), wxT("G_RM_AA_PCL_SURF"), wxT("G_RM_AA_OPA_TERR"), wxT("G_RM_AA_TEX_TERR"), wxT("G_RM_AA_SUB_TERR"), wxT("G_RM_RA_OPA_SURF"), wxT("G_RM_ZB_OPA_SURF"), wxT("G_RM_ZB_XLU_SURF"), wxT("G_RM_ZB_OPA_DECAL"), wxT("G_RM_ZB_XLU_DECAL"), wxT("G_RM_ZB_CLD_SURF"), wxT("G_RM_ZB_OVL_SURF"), wxT("G_RM_ZB_PCL_SURF"), wxT("G_RM_OPA_SURF"), wxT("G_RM_XLU_SURF"), wxT("G_RM_CLD_SURF"), wxT("G_RM_TEX_EDGE"), wxT("G_RM_PCL_SURF"), wxT("G_RM_G_RM_ADD"), wxT("G_RM_FOG_SHADE_A"), wxT("G_RM_FOG_PRIM_A"), wxT("G_RM_PASS") };
     int m_Choice_Render1NChoices = sizeof(m_Choice_Render1Choices) / sizeof(wxString);
     this->m_Choice_Render1 = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, m_Choice_Render1NChoices, m_Choice_Render1Choices, 0);
-    this->m_Choice_Render1->SetSelection(this->m_Choice_Render1->FindString(highlighted_texture->rendermode1));
+    this->m_Choice_Render1->SetSelection(this->m_Choice_Render1->FindString(highlighted_material->rendermode1));
     m_Sizer_Modes->Add(this->m_Choice_Render1, 0, wxALIGN_CENTER_HORIZONTAL | wxALL, 5);
     wxString m_Choice_Render2Choices[] = { wxT("G_RM_AA_ZB_OPA_SURF2"), wxT("G_RM_AA_ZB_XLU_SURF2"), wxT("G_RM_AA_ZB_OPA_DECAL2"), wxT("G_RM_AA_ZB_XLU_DECAL2"), wxT("G_RM_AA_ZB_OPA_INTER2"), wxT("G_RM_AA_ZB_XLU_INTER2"), wxT("G_RM_AA_ZB_XLU_LINE2"), wxT("G_RM_AA_ZB_DEC_LINE2"), wxT("G_RM_AA_ZB_TEX_EDGE2"), wxT("G_RM_AA_ZB_TEX_INTER2"), wxT("G_RM_AA_ZB_SUB_SURF2"), wxT("G_RM_AA_ZB_PCL_SURF2"), wxT("G_RM_AA_ZB_OPA_TERR2"), wxT("G_RM_AA_ZB_TEX_TERR2"), wxT("G_RM_AA_ZB_SUB_TERR2"), wxT("G_RM_RA_ZB_OPA_SURF2"), wxT("G_RM_RA_ZB_OPA_DECAL2"), wxT("G_RM_RA_ZB_OPA_INTER2"), wxT("G_RM_AA_OPA_SURF2"), wxT("G_RM_AA_XLU_SURF2"), wxT("G_RM_AA_XLU_LINE2"), wxT("G_RM_AA_DEC_LINE2"), wxT("G_RM_AA_TEX_EDGE2"), wxT("G_RM_AA_SUB_SURF2"), wxT("G_RM_AA_PCL_SURF2"), wxT("G_RM_AA_OPA_TERR2"), wxT("G_RM_AA_TEX_TERR2"), wxT("G_RM_AA_SUB_TERR2"), wxT("G_RM_RA_OPA_SURF2"), wxT("G_RM_ZB_OPA_SURF2"), wxT("G_RM_ZB_XLU_SURF2"), wxT("G_RM_ZB_OPA_DECAL2"), wxT("G_RM_ZB_XLU_DECAL2"), wxT("G_RM_ZB_CLD_SURF2"), wxT("G_RM_ZB_OVL_SURF2"), wxT("G_RM_ZB_PCL_SURF2"), wxT("G_RM_OPA_SURF2"), wxT("G_RM_XLU_SURF2"), wxT("G_RM_CLD_SURF2"), wxT("G_RM_TEX_EDGE2"), wxT("G_RM_PCL_SURF2"), wxT("G_RM_ADD2") };
     int m_Choice_Render2NChoices = sizeof(m_Choice_Render2Choices) / sizeof(wxString);
     this->m_Choice_Render2 = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, m_Choice_Render2NChoices, m_Choice_Render2Choices, 0);
-    this->m_Choice_Render2->SetSelection(this->m_Choice_Render2->FindString(highlighted_texture->rendermode2));
+    this->m_Choice_Render2->SetSelection(this->m_Choice_Render2->FindString(highlighted_material->rendermode2));
     this->m_Choice_Render2->Enable(this->m_Choice_Cycle->GetSelection() == 1);
     m_Sizer_Modes->Add(this->m_Choice_Render2, 0, wxALIGN_CENTER_HORIZONTAL | wxALL, 5);
     m_Sizer_Main->Add(m_Sizer_Modes, 1, wxALIGN_CENTER_HORIZONTAL, 5);
@@ -1422,7 +1422,7 @@ AdvancedRenderSettings::AdvancedRenderSettings(wxWindow* parent, wxWindowID id, 
     m_Sizer_Main->Add(this->m_Checklist_GeoFlags, 0, wxALL | wxEXPAND, 5);
     for (int i=0; i<m_Checklist_GeoFlagsNChoices; i++)
     {
-        for (std::list<std::string>::iterator itgeo = highlighted_texture->geomode.begin(); itgeo != highlighted_texture->geomode.end(); ++itgeo)
+        for (std::list<std::string>::iterator itgeo = highlighted_material->geomode.begin(); itgeo != highlighted_material->geomode.end(); ++itgeo)
         {
             if (*itgeo == this->m_Checklist_GeoFlags->GetString(i))
             {
@@ -1481,7 +1481,7 @@ AdvancedRenderSettings::~AdvancedRenderSettings()
 void AdvancedRenderSettings::m_Choice_CycleOnChoice(wxCommandEvent& event)
 {
     bool is2cycle = event.GetSelection() == 1;
-    highlighted_texture->cycle = this->m_Choice_Cycle->GetString(event.GetSelection());
+    highlighted_material->cycle = this->m_Choice_Cycle->GetString(event.GetSelection());
     this->m_Label_Combine2->Enable(is2cycle);
     this->m_Choice_Combine2->Enable(is2cycle);
     this->m_Label_Render2->Enable(is2cycle);
@@ -1497,8 +1497,8 @@ void AdvancedRenderSettings::m_Choice_CycleOnChoice(wxCommandEvent& event)
 
 void AdvancedRenderSettings::m_Choice_FilterOnChoice(wxCommandEvent& event)
 {
-    highlighted_texture->texfilter = this->m_Choice_Filter->GetString(event.GetSelection());
-    highlighted_texture->RegenerateTexture();
+    highlighted_material->texfilter = this->m_Choice_Filter->GetString(event.GetSelection());
+    highlighted_material->RegenerateTexture();
 }
 
 
@@ -1510,7 +1510,7 @@ void AdvancedRenderSettings::m_Choice_FilterOnChoice(wxCommandEvent& event)
 
 void AdvancedRenderSettings::m_Choice_Combine1OnChoice(wxCommandEvent& event)
 {
-    highlighted_texture->combinemode1 = this->m_Choice_Combine1->GetString(event.GetSelection());
+    highlighted_material->combinemode1 = this->m_Choice_Combine1->GetString(event.GetSelection());
 }
 
 
@@ -1522,7 +1522,7 @@ void AdvancedRenderSettings::m_Choice_Combine1OnChoice(wxCommandEvent& event)
 
 void AdvancedRenderSettings::m_Choice_Combine2OnChoice(wxCommandEvent& event)
 {
-    highlighted_texture->combinemode2 = this->m_Choice_Combine2->GetString(event.GetSelection());
+    highlighted_material->combinemode2 = this->m_Choice_Combine2->GetString(event.GetSelection());
 }
 
 
@@ -1534,7 +1534,7 @@ void AdvancedRenderSettings::m_Choice_Combine2OnChoice(wxCommandEvent& event)
 
 void AdvancedRenderSettings::m_Choice_Render1OnChoice(wxCommandEvent& event)
 {
-    highlighted_texture->rendermode1 = this->m_Choice_Render1->GetString(event.GetSelection());
+    highlighted_material->rendermode1 = this->m_Choice_Render1->GetString(event.GetSelection());
 }
 
 
@@ -1546,7 +1546,7 @@ void AdvancedRenderSettings::m_Choice_Render1OnChoice(wxCommandEvent& event)
 
 void AdvancedRenderSettings::m_Choice_Render2OnChoice(wxCommandEvent& event)
 {
-    highlighted_texture->rendermode2 = this->m_Choice_Render2->GetString(event.GetSelection());
+    highlighted_material->rendermode2 = this->m_Choice_Render2->GetString(event.GetSelection());
 }
 
 
@@ -1561,10 +1561,10 @@ void AdvancedRenderSettings::m_Checklist_GeoFlagsOnToggled(wxCommandEvent& event
     std::string selection = this->m_Checklist_GeoFlags->GetString(event.GetSelection()).ToStdString();
     if (!this->m_Checklist_GeoFlags->IsChecked(event.GetSelection()))
     {
-        highlighted_texture->geomode.remove(selection);
+        highlighted_material->geomode.remove(selection);
     }
     else
-        highlighted_texture->geomode.push_back(selection);
+        highlighted_material->geomode.push_back(selection);
 }
 
 

@@ -14,7 +14,7 @@ Executing the program without any arguments will display a full list of accepted
 
 The following optional arguments are accepted:
 
-* `-t <File>` - A list of textures and their data. More information in the [textures section of the wiki](../../../wiki/4%29-Arabiki64%3A-Example-S64-to-Display-List-Converter#textures).
+* `-t <File>` - A list of materials and their data. More information in the [materials section of the wiki](../../../wiki/4%29-Arabiki64%3A-Example-S64-to-Display-List-Converter#materials).
 * `-s` - Export as C structs.
 * `-g` - Export an OpenGL compatible model instead.
 * `-2` - Disables 2tri optimization (required if using Fast3D) (Libultra only).

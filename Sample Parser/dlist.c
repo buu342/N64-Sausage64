@@ -10,8 +10,6 @@ Constructs a display list string for outputting later.
 #include <stdarg.h>
 #include <math.h>
 #include "main.h"
-#include "texture.h"
-#include "mesh.h"
 #include "dlist.h"
 
 /*********************************
@@ -46,7 +44,7 @@ const DListCName supported_binary[] = {
 }; 
 
 // Global parsing state
-n64Texture* lastTexture = NULL;
+n64Material* lastMaterial = NULL;
 
 
 /*==============================
@@ -221,7 +219,7 @@ static void* _dlist_commandbinary(DListCName c, int size, ...)
             case DPLoadTextureBlock:
                 if (i == 0) // First argument is the texture name, we just want the texture index
                 {
-                    *(((uint16_t*)(&binarydata->data[0]))) = swap_endian16(get_validtexindex(&list_textures, arg));
+                    *(((uint16_t*)(&binarydata->data[0]))) = swap_endian16(get_validtexindex(&list_materials, arg));
                 }
                 else
                 {
@@ -338,49 +336,49 @@ linkedList* dlist_frommesh(s64Mesh* mesh, char isbinary)
         for (listNode* facenode = vcache->faces.head; facenode != NULL; facenode = facenode->next)
         {
             s64Face* face = (s64Face*)facenode->data;
-            n64Texture* tex = face->texture;
+            n64Material* mat = face->material;
             
             // If we want to skip the initial display list setup, then change the value of our last texture to skip the next if statement
-            if (lastTexture == NULL && !global_initialload)
-                lastTexture = tex;
+            if (lastMaterial == NULL && !global_initialload)
+                lastMaterial = mat;
         
             // If a texture change was detected, load the new texture data
-            if (lastTexture != tex && tex->type != TYPE_OMIT)
+            if (lastMaterial != mat && mat->type != TYPE_OMIT)
             {
                 int i;
                 bool pipesync = FALSE;
                 bool changedgeo = FALSE;
                 
                 // Check for different cycle type
-                if (lastTexture == NULL || strcmp(tex->cycle, lastTexture->cycle) != 0)
+                if (lastMaterial == NULL || strcmp(mat->cycle, lastMaterial->cycle) != 0)
                 {
-                    list_append(out, generate(DPSetCycleType, tex->cycle));
+                    list_append(out, generate(DPSetCycleType, mat->cycle));
                     pipesync = TRUE;
                 }
                 
                 // Check for different render mode
-                if (lastTexture == NULL || strcmp(tex->rendermode1, lastTexture->rendermode1) != 0 || strcmp(tex->rendermode2, lastTexture->rendermode2) != 0)
+                if (lastMaterial == NULL || strcmp(mat->rendermode1, lastMaterial->rendermode1) != 0 || strcmp(mat->rendermode2, lastMaterial->rendermode2) != 0)
                 {
-                    list_append(out, generate(DPSetRenderMode, tex->rendermode1, tex->rendermode2));
+                    list_append(out, generate(DPSetRenderMode, mat->rendermode1, mat->rendermode2));
                     pipesync = TRUE;
                 }
                 
                 // Check for different combine mode
-                if (lastTexture == NULL || strcmp(tex->combinemode1, lastTexture->combinemode1) != 0 || strcmp(tex->combinemode2, lastTexture->combinemode2) != 0)
+                if (lastMaterial == NULL || strcmp(mat->combinemode1, lastMaterial->combinemode1) != 0 || strcmp(mat->combinemode2, lastMaterial->combinemode2) != 0)
                 {
-                    list_append(out, generate(DPSetCombineMode, tex->combinemode1, tex->combinemode2));
+                    list_append(out, generate(DPSetCombineMode, mat->combinemode1, mat->combinemode2));
                     pipesync = TRUE;
                 }
                 
                 // Check for different texture filter
-                if (lastTexture == NULL || strcmp(tex->texfilter, lastTexture->texfilter) != 0)
+                if (lastMaterial == NULL || strcmp(mat->texfilter, lastMaterial->texfilter) != 0)
                 {
-                    list_append(out, generate(DPSetTextureFilter, tex->texfilter));
+                    list_append(out, generate(DPSetTextureFilter, mat->texfilter));
                     pipesync = TRUE;
                 }
                 
                 // Check for different geometry mode
-                if (lastTexture != NULL)
+                if (lastMaterial != NULL)
                 {
                     int flagcount_old = 0;
                     int flagcount_new = 0;
@@ -390,14 +388,14 @@ linkedList* dlist_frommesh(s64Mesh* mesh, char isbinary)
                     // Store the pointer to the flags somewhere to make the iteration easier
                     for (i=0; i<MAXGEOFLAGS; i++)
                     {
-                        if (tex->geomode[i][0] != '\0')
+                        if (mat->geomode[i][0] != '\0')
                         {
-                            flags_new[flagcount_new] = tex->geomode[i];
+                            flags_new[flagcount_new] = mat->geomode[i];
                             flagcount_new++;
                         }
-                        if (lastTexture->geomode[i][0] != '\0')
+                        if (lastMaterial->geomode[i][0] != '\0')
                         {
-                            flags_old[flagcount_old] = lastTexture->geomode[i];
+                            flags_old[flagcount_old] = lastMaterial->geomode[i];
                             flagcount_old++;
                         }
                     }
@@ -440,50 +438,50 @@ linkedList* dlist_frommesh(s64Mesh* mesh, char isbinary)
                     strbuff[0] = '\0';
                     for (i=0; i<MAXGEOFLAGS; i++)
                     {
-                        if (tex->geomode[i][0] == '\0')
+                        if (mat->geomode[i][0] == '\0')
                             continue;
                         if (appendline)
                         {
                             strcat(strbuff, " | ");
                             appendline = FALSE;
                         }
-                        strcat(strbuff, tex->geomode[i]);
+                        strcat(strbuff, mat->geomode[i]);
                         appendline = TRUE;
                     }
                     list_append(out, generate(SPSetGeometryMode, strbuff));
                 }
                 
-                // Load the texture if it wasn't marked as DONTLOAD
-                if (!tex->dontload)
+                // Load the material if it wasn't marked as DONTLOAD
+                if (!mat->dontload)
                 {
                     char d1[32], d2[32], d3[32], d4[32];
-                    if (tex->type == TYPE_TEXTURE)
+                    if (mat->type == TYPE_TEXTURE)
                     {
-                        sprintf(d1, "%d", tex->data.image.w);
-                        sprintf(d2, "%d", tex->data.image.h);
-                        sprintf(d3, "%d", nearest_pow2(tex->data.image.w));
-                        sprintf(d4, "%d", nearest_pow2(tex->data.image.h));
-                        if (!strcmp(tex->data.image.colsize, "G_IM_SIZ_4b"))
+                        sprintf(d1, "%d", mat->data.image.w);
+                        sprintf(d2, "%d", mat->data.image.h);
+                        sprintf(d3, "%d", nearest_pow2(mat->data.image.w));
+                        sprintf(d4, "%d", nearest_pow2(mat->data.image.h));
+                        if (!strcmp(mat->data.image.colsize, "G_IM_SIZ_4b"))
                         {
                             list_append(out, generate(DPLoadTextureBlock_4b, 
-                                tex->name, tex->data.image.coltype, d1, d2, "0",
-                                tex->data.image.texmodes, tex->data.image.texmodet, d3, d4, "G_TX_NOLOD", "G_TX_NOLOD")
+                                mat->name, mat->data.image.coltype, d1, d2, "0",
+                                mat->data.image.texmodes, mat->data.image.texmodet, d3, d4, "G_TX_NOLOD", "G_TX_NOLOD")
                             );
                         }
                         else
                         {
                             list_append(out, generate(DPLoadTextureBlock, 
-                                tex->name, tex->data.image.coltype, tex->data.image.colsize, d1, d2, "0",
-                                tex->data.image.texmodes, tex->data.image.texmodet, d3, d4, "G_TX_NOLOD", "G_TX_NOLOD")
+                                mat->name, mat->data.image.coltype, mat->data.image.colsize, d1, d2, "0",
+                                mat->data.image.texmodes, mat->data.image.texmodet, d3, d4, "G_TX_NOLOD", "G_TX_NOLOD")
                             );
                         }
                         pipesync = TRUE;
                     }
-                    else if (tex->type == TYPE_PRIMCOL)
+                    else if (mat->type == TYPE_PRIMCOL)
                     {
-                        sprintf(d1, "%d", tex->data.color.r);
-                        sprintf(d2, "%d", tex->data.color.g);
-                        sprintf(d3, "%d", tex->data.color.b);
+                        sprintf(d1, "%d", mat->data.color.r);
+                        sprintf(d2, "%d", mat->data.color.g);
+                        sprintf(d3, "%d", mat->data.color.b);
                         list_append(out, generate(DPSetPrimColor, "0", "0", d1, d2, d3, "255"));
                     }
                 }
@@ -493,7 +491,7 @@ linkedList* dlist_frommesh(s64Mesh* mesh, char isbinary)
                     list_append(out, generate(DPPipeSync));
 
                 // Update the last texture
-                lastTexture = tex;
+                lastMaterial = mat;
             }
 
             // Load a new vertex block if it hasn't been
@@ -516,7 +514,7 @@ linkedList* dlist_frommesh(s64Mesh* mesh, char isbinary)
             }
             
             // If we can, dump a 2Tri, otherwise dump a single triangle
-            if (!global_no2tri && facenode->next != NULL && ((s64Face*)facenode->next->data)->texture == lastTexture)
+            if (!global_no2tri && facenode->next != NULL && ((s64Face*)facenode->next->data)->material == lastMaterial)
             {
                 char d1[32], d2[32], d3[32], d4[32], d5[32], d6[32];
                 s64Face* prevface = face;
@@ -602,25 +600,25 @@ void construct_dltext()
             {
                 int texturew = 0, textureh = 0;
                 s64Vert* vert = (s64Vert*)vertnode->data;
-                n64Texture* tex = find_texture_fromvert(&vcache->faces, vert);
+                n64Material* mat = find_material_fromvert(&vcache->faces, vert);
                 Vector3D normorcol = {0, 0, 0};
                 
                 // Ensure the texture is valid
-                if (tex == NULL)
+                if (mat == NULL)
                     terminate("Error: Inconsistent face/vertex texture information\n");
                 
                 // Retrieve texture/normal/color data for this vertex
-                switch (tex->type)
+                switch (mat->type)
                 {
                     case TYPE_TEXTURE:
                         // Get the texture size
-                        texturew = (tex->data).image.w;
-                        textureh = (tex->data).image.h;
+                        texturew = (mat->data).image.w;
+                        textureh = (mat->data).image.h;
                         
                         // Intentional fallthrough
                     case TYPE_PRIMCOL:
                         // Pick vertex normals or vertex colors, depending on the texture flag
-                        if (tex_hasgeoflag(tex, "G_LIGHTING"))
+                        if (mat_hasgeoflag(mat, "G_LIGHTING"))
                             normorcol = vector_scale(vert->normal, 127);
                         else
                             normorcol = vector_scale(vert->color, 255);

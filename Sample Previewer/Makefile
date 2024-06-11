@@ -1,4 +1,4 @@
-CODEFILES   = app.cpp main.cpp modelcanvas.cpp sausage.cpp sausage_animation.cpp sausage_mesh.cpp sausage_texture.cpp
+CODEFILES   = app.cpp main.cpp modelcanvas.cpp sausage.cpp sausage_animation.cpp sausage_mesh.cpp sausage_material.cpp
 BUILDDIR = build
 CODEOBJECTS = $(CODEFILES:%.cpp=${BUILDDIR}/%.o)
 PROGNAME = Chorizo

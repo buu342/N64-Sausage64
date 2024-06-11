@@ -105,12 +105,12 @@
             <property name="help"></property>
             <property name="id">wxID_ANY</property>
             <property name="kind">wxITEM_NORMAL</property>
-            <property name="label">Import Texture Definition</property>
-            <property name="name">m_MenuItem_FileTextureImport</property>
+            <property name="label">Import Material Definition</property>
+            <property name="name">m_MenuItem_FileMaterialImport</property>
             <property name="permission">none</property>
             <property name="shortcut">Ctrl+T</property>
             <property name="unchecked_bitmap"></property>
-            <event name="OnMenuSelection">m_MenuItem_ImportTextureOnMenuSelection</event>
+            <event name="OnMenuSelection">m_MenuItem_ImportMaterialOnMenuSelection</event>
           </object>
           <object class="separator" expanded="false">
             <property name="name">m_MenuItem_FileSeparator1</property>
@@ -123,12 +123,12 @@
             <property name="help"></property>
             <property name="id">wxID_ANY</property>
             <property name="kind">wxITEM_NORMAL</property>
-            <property name="label">Export Texture Definition</property>
-            <property name="name">m_MenuItem_FileTextureExport</property>
+            <property name="label">Export Material Definition</property>
+            <property name="name">m_MenuItem_FileMaterialExport</property>
             <property name="permission">none</property>
             <property name="shortcut">Ctrl+E</property>
             <property name="unchecked_bitmap"></property>
-            <event name="OnMenuSelection">m_MenuItem_ExportTextureOnMenuSelection</event>
+            <event name="OnMenuSelection">m_MenuItem_ExportMaterialOnMenuSelection</event>
           </object>
         </object>
         <object class="wxMenu" expanded="false">
@@ -751,7 +751,7 @@
                       <property name="growablerows"></property>
                       <property name="hgap">0</property>
                       <property name="minimum_size"></property>
-                      <property name="name">m_Sizer_Bottom_Texture</property>
+                      <property name="name">m_Sizer_Bottom_Material</property>
                       <property name="non_flexible_grow_mode">wxFLEX_GROWMODE_SPECIFIED</property>
                       <property name="permission">none</property>
                       <property name="rows">0</property>
@@ -762,7 +762,7 @@
                         <property name="proportion">1</property>
                         <object class="wxBoxSizer" expanded="false">
                           <property name="minimum_size"></property>
-                          <property name="name">m_Sizer_Bottom_Texture_Label</property>
+                          <property name="name">m_Sizer_Bottom_Material_Label</property>
                           <property name="orient">wxVERTICAL</property>
                           <property name="permission">none</property>
                           <object class="sizeritem" expanded="false">
@@ -798,7 +798,7 @@
                               <property name="gripper">0</property>
                               <property name="hidden">0</property>
                               <property name="id">wxID_ANY</property>
-                              <property name="label">Texture Type</property>
+                              <property name="label">Material Type</property>
                               <property name="markup">0</property>
                               <property name="max_size"></property>
                               <property name="maximize_button">0</property>
@@ -807,7 +807,7 @@
                               <property name="minimize_button">0</property>
                               <property name="minimum_size"></property>
                               <property name="moveable">1</property>
-                              <property name="name">m_Label_TextureType</property>
+                              <property name="name">m_Label_MaterialType</property>
                               <property name="pane_border">1</property>
                               <property name="pane_position"></property>
                               <property name="pane_size"></property>
@@ -835,7 +835,7 @@
                         <property name="proportion">1</property>
                         <object class="wxBoxSizer" expanded="false">
                           <property name="minimum_size"></property>
-                          <property name="name">m_Sizer_Bottom_Texture_Type</property>
+                          <property name="name">m_Sizer_Bottom_Material_Type</property>
                           <property name="orient">wxHORIZONTAL</property>
                           <property name="permission">none</property>
                           <object class="sizeritem" expanded="false">
@@ -901,7 +901,7 @@
                               <property name="window_extra_style"></property>
                               <property name="window_name"></property>
                               <property name="window_style"></property>
-                              <event name="OnRadioButton">m_Radio_TextureTypeOnButton1</event>
+                              <event name="OnRadioButton">m_Radio_MaterialTypeOnButton1</event>
                             </object>
                           </object>
                           <object class="sizeritem" expanded="false">
@@ -967,7 +967,7 @@
                               <property name="window_extra_style"></property>
                               <property name="window_name"></property>
                               <property name="window_style"></property>
-                              <event name="OnRadioButton">m_Radio_TextureTypeOnButton2</event>
+                              <event name="OnRadioButton">m_Radio_MaterialTypeOnButton2</event>
                             </object>
                           </object>
                           <object class="sizeritem" expanded="false">
@@ -1033,7 +1033,7 @@
                               <property name="window_extra_style"></property>
                               <property name="window_name"></property>
                               <property name="window_style"></property>
-                              <event name="OnRadioButton">m_Radio_TextureTypeOnButton3</event>
+                              <event name="OnRadioButton">m_Radio_MaterialTypeOnButton3</event>
                             </object>
                           </object>
                         </object>
@@ -1364,7 +1364,7 @@
       <property name="window_style">wxTAB_TRAVERSAL</property>
       <object class="wxBoxSizer" expanded="false">
         <property name="minimum_size"></property>
-        <property name="name">m_Sizer_Bottom_Texture_Setup</property>
+        <property name="name">m_Sizer_Bottom_Material_Setup</property>
         <property name="orient">wxHORIZONTAL</property>
         <property name="permission">protected</property>
         <object class="sizeritem" expanded="false">
@@ -1373,7 +1373,7 @@
           <property name="proportion">0</property>
           <object class="wxBoxSizer" expanded="false">
             <property name="minimum_size"></property>
-            <property name="name">m_Sizer_Bottom_Texture_Image</property>
+            <property name="name">m_Sizer_Bottom_Material_Image</property>
             <property name="orient">wxVERTICAL</property>
             <property name="permission">none</property>
             <object class="sizeritem" expanded="false">
@@ -1508,7 +1508,7 @@
             <property name="cols">3</property>
             <property name="hgap">0</property>
             <property name="minimum_size"></property>
-            <property name="name">m_Sizer_Bottom_Texture_Settings</property>
+            <property name="name">m_Sizer_Bottom_Material_Settings</property>
             <property name="permission">none</property>
             <property name="rows">0</property>
             <property name="vgap">0</property>
@@ -1857,7 +1857,7 @@
               <property name="proportion">1</property>
               <object class="wxBoxSizer" expanded="false">
                 <property name="minimum_size"></property>
-                <property name="name">m_Sizer_Bottom_Texture_Extra</property>
+                <property name="name">m_Sizer_Bottom_Material_Extra</property>
                 <property name="orient">wxVERTICAL</property>
                 <property name="permission">none</property>
                 <object class="sizeritem" expanded="false">

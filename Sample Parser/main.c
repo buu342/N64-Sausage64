@@ -8,7 +8,7 @@ Program entrypoint
 #include <stdlib.h>
 #include <string.h>
 #include "main.h"
-#include "texture.h"
+#include "material.h"
 #include "parser.h"
 #include "optimizer.h"
 #include "output.h"
@@ -28,7 +28,7 @@ static void parse_programargs(int argc, char* argv[]);
 // Model data lists
 linkedList list_meshes = EMPTY_LINKEDLIST;
 linkedList list_animations = EMPTY_LINKEDLIST;
-linkedList list_textures = EMPTY_LINKEDLIST;
+linkedList list_materials = EMPTY_LINKEDLIST;
 
 // Program settings
 bool global_quiet = FALSE;
@@ -66,7 +66,7 @@ int main(int argc, char* argv[])
             "Program arguments:\n"
             "\t-f <File>\tThe file to load\n"
             "\t-s \t\t(optional) Export as C structs\n"
-            "\t-t <File>\t(optional) A list of textures and their data\n"
+            "\t-t <File>\t(optional) A list of materials and their data\n"
             "\t-2 \t\t(optional) Disable 2Tri optimization (libultra only)\n"
             "\t-g \t\t(optional) Export an OpenGL compatible model instead\n"
             "\t-c <Int>\t(optional) Vertex cache size (default '32') (libultra only)\n"
@@ -80,10 +80,10 @@ int main(int argc, char* argv[])
     // Parse the command line arguments
     parse_programargs(argc, argv);
     
-    // Parse the textures file if it's given
-    list_append(&list_textures, &texture_none);
+    // Parse the materials file if it's given
+    list_append(&list_materials, &material_none);
     if (fp_t != NULL)
-        parse_textures(fp_t);
+        parse_materials(fp_t);
         
     // Parse the model file
     parse_sausage(fp_m);

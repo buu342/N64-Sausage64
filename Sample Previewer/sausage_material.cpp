@@ -1,6 +1,6 @@
 #include <wx/gdicmn.h>
 #include "Resources/MISSING.h"
-#include "sausage_texture.h"
+#include "sausage_material.h"
 #include <wx/glcanvas.h>
 #ifdef MACOS
     #include <OpenGL/glu.h>
@@ -10,11 +10,11 @@
 
 
 /*==============================
-    n64Texture (Constructor)
+    n64Material (Constructor)
     Initializes the class
 ==============================*/
 
-n64Texture::n64Texture(texType type)
+n64Material::n64Material(matType type)
 {
 	std::string defaultgeo[] = DEFAULT_GEOFLAGS;
 	int size = sizeof(defaultgeo)/sizeof(defaultgeo[0]);
@@ -31,7 +31,7 @@ n64Texture::n64Texture(texType type)
 	this->dontload = false;
 	this->loadfirst = false;
 
-	// Generate the texture data
+	// Generate the material data
 	switch (type)
 	{
 		case TYPE_PRIMCOL:
@@ -48,20 +48,20 @@ n64Texture::n64Texture(texType type)
 
 
 /*==============================
-    n64Texture (Destructor)
+    n64Material (Destructor)
     Cleans up the class before deletion
 ==============================*/
 
-n64Texture::~n64Texture()
+n64Material::~n64Material()
 {
 	switch (this->type)
 	{
 		case TYPE_PRIMCOL:
-			delete ((texCol*)this->data);
+			delete ((matCol*)this->data);
 			break;
 		case TYPE_TEXTURE:
 			glDeleteTextures(1, &this->GetTextureData()->glid);
-			delete ((texImage*)this->data);
+			delete ((matImage*)this->data);
 			break;
 		default:
 			break;
@@ -70,41 +70,41 @@ n64Texture::~n64Texture()
 
 
 /*==============================
-    n64Texture::GetTextureData
-    Gets the texture data
+    n64Material::GetTextureData
+    Gets the material data
     @returns A pointer to the texture data struct
 ==============================*/
 
-texImage* n64Texture::GetTextureData()
+matImage* n64Material::GetTextureData()
 {
 	if (this->type != TYPE_TEXTURE)
 		return NULL;
-	return (texImage*)this->data;
+	return (matImage*)this->data;
 }
 
 
 /*==============================
-    n64Texture::GetPrimColorData
+    n64Material::GetPrimColorData
     Gets the primitive color data
     @returns A pointer to the primitive color data struct
 ==============================*/
 
-texCol* n64Texture::GetPrimColorData()
+matCol* n64Material::GetPrimColorData()
 {
 	if (this->type != TYPE_PRIMCOL)
 		return NULL;
-	return (texCol*)this->data;
+	return (matCol*)this->data;
 }
 
 
 /*==============================
-    n64Texture::CreateDefaultTexture
+    n64Material::CreateDefaultTexture
     Creates a default texture
     @param The width to initialize the texture with
     @param The height to initialize the texture with
 ==============================*/
 
-void n64Texture::CreateDefaultTexture(uint32_t w, uint32_t h)
+void n64Material::CreateDefaultTexture(uint32_t w, uint32_t h)
 {
     // Delete any previous data if it exists
 	switch (this->type)
@@ -113,11 +113,11 @@ void n64Texture::CreateDefaultTexture(uint32_t w, uint32_t h)
 			glDeleteTextures(1, &this->GetTextureData()->glid);
 			break;
 		case TYPE_PRIMCOL:
-			delete ((texCol*)this->data);
+			delete ((matCol*)this->data);
 		default: // Intentional fallthrough
 			this->combinemode1 = DEFAULT_COMBINE1_TEX;
 			this->combinemode2 = DEFAULT_COMBINE2_TEX;
-			this->data = new texImage();
+			this->data = new matImage();
 			break;
 	}
     
@@ -132,11 +132,11 @@ void n64Texture::CreateDefaultTexture(uint32_t w, uint32_t h)
 
 
 /*==============================
-    n64Texture::CreateDefaultPrimCol
+    n64Material::CreateDefaultPrimCol
     Creates a default primitive color
 ==============================*/
 
-void n64Texture::CreateDefaultPrimCol()
+void n64Material::CreateDefaultPrimCol()
 {
     // Delete any previous data if it exists
 	switch (this->type)
@@ -145,15 +145,15 @@ void n64Texture::CreateDefaultPrimCol()
             break;
         case TYPE_TEXTURE:
             glDeleteTextures(1, &this->GetTextureData()->glid);
-            delete ((texCol*)this->data);
+            delete ((matCol*)this->data);
         default: // Intentional fallthrough
             this->combinemode1 = DEFAULT_COMBINE1_PRIM;
             this->combinemode2 = DEFAULT_COMBINE2_PRIM;
-            this->data = new texCol();
+            this->data = new matCol();
             break;
 	}
     
-    // Initialize the texture attributes
+    // Initialize the primcolor attributes
 	this->type = TYPE_PRIMCOL;
 	this->GetPrimColorData()->r = 0;
 	this->GetPrimColorData()->g = 255;
@@ -163,27 +163,27 @@ void n64Texture::CreateDefaultPrimCol()
 
 
 /*==============================
-    n64Texture::CreateDefaultUnknown
+    n64Material::CreateDefaultUnknown
     Creates a default unknown texture
 ==============================*/
 
-void n64Texture::CreateDefaultUnknown()
+void n64Material::CreateDefaultUnknown()
 {
     // Delete any previous data if it exists
 	switch (this->type)
 	{
 		case TYPE_PRIMCOL:
-			delete ((texCol*)this->data);
+			delete ((matCol*)this->data);
 			break;
 		case TYPE_TEXTURE:
 			glDeleteTextures(1, &this->GetTextureData()->glid);
-			delete ((texImage*)this->data);
+			delete ((matImage*)this->data);
 			break;
 		default: 
 			break;
 	}
     
-    // Initialize the texture attributes
+    // Initialize the material attributes
 	this->type = TYPE_UNKNOWN;
 	this->combinemode1 = DEFAULT_COMBINE1_TEX;
 	this->combinemode2 = DEFAULT_COMBINE2_TEX;
@@ -192,12 +192,12 @@ void n64Texture::CreateDefaultUnknown()
 
 
 /*==============================
-    n64Texture::SetImageFromFile
+    n64Material::SetImageFromFile
     Sets the texture image from a file path
     @param The path to the image to load
 ==============================*/
 
-void n64Texture::SetImageFromFile(std::string path)
+void n64Material::SetImageFromFile(std::string path)
 {
 	wxImage img;
 	wxImage old = this->GetTextureData()->wximg;
@@ -252,7 +252,7 @@ void n64Texture::SetImageFromFile(std::string path)
 
 
 /*==============================
-    n64Texture::SetImageFromData
+    n64Material::SetImageFromData
     Sets the texture image from a binary file
     @param The binary data to read
     @param The size of the data
@@ -260,7 +260,7 @@ void n64Texture::SetImageFromFile(std::string path)
     @param The height to force the texture to, or zero
 ==============================*/
 
-void n64Texture::SetImageFromData(const unsigned char* data, size_t size, uint32_t w, uint32_t h)
+void n64Material::SetImageFromData(const unsigned char* data, size_t size, uint32_t w, uint32_t h)
 {
 	wxImage img;
 
@@ -289,11 +289,11 @@ void n64Texture::SetImageFromData(const unsigned char* data, size_t size, uint32
 
 
 /*==============================
-    n64Texture::RegenerateTexture
+    n64Material::RegenerateTexture
     Regenerates the OpenGL texture
 ==============================*/
 
-void n64Texture::RegenerateTexture()
+void n64Material::RegenerateTexture()
 {
 	glDeleteTextures(1, &this->GetTextureData()->glid);
 
@@ -351,13 +351,13 @@ void n64Texture::RegenerateTexture()
 
 
 /*==============================
-    n64Texture::HasGeoFlag
-    Checks if the texture has a given geometry flag
+    n64Material::HasGeoFlag
+    Checks if the material has a given geometry flag
     @param A string with the flag to check
-    @returns Whether the texture has the given flag
+    @returns Whether the material has the given flag
 ==============================*/
 
-bool n64Texture::HasGeoFlag(std::string flag)
+bool n64Material::HasGeoFlag(std::string flag)
 {
 	for (std::list<std::string>::iterator itflag = this->geomode.begin(); itflag != this->geomode.end(); ++itflag)
 		if (flag == *itflag)
@@ -367,13 +367,13 @@ bool n64Texture::HasGeoFlag(std::string flag)
 
 
 /*==============================
-    n64Texture::SetFlag
-    Sets a geometry flag on the texture.
+    n64Material::SetFlag
+    Sets a geometry flag on the material.
     This code was ported from Arabiki
     @param A string with the flag to set
 ==============================*/
 
-void n64Texture::SetFlag(std::string flag)
+void n64Material::SetFlag(std::string flag)
 {
 	// Static variables to keep track of stuff between successive calls to this function
 	static bool render2 = false;

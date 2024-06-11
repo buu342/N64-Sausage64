@@ -21,12 +21,12 @@ typedef struct IUnknown IUnknown;
 *********************************/
 
 // Placeholder missing texture
-extern n64Texture* texture_missing;
+extern n64Material* texture_missing;
 extern GLuint texture_missing_id;
 
 // Highlighted objects
 extern s64Mesh* highlighted_mesh;
-extern n64Texture* highlighted_texture;
+extern n64Material* highlighted_material;
 extern s64Anim* highlighted_anim;
 
 // Highlighted animation information

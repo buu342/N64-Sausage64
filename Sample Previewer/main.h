@@ -73,8 +73,8 @@ class Main : public wxFrame
     protected:
         wxMenuBar* m_MenuBar;
         wxMenu* m_Menu_File;
-        wxMenuItem* m_MenuItem_FileTextureImport;
-        wxMenuItem* m_MenuItem_FileTextureExport;
+        wxMenuItem* m_MenuItem_FileMaterialImport;
+        wxMenuItem* m_MenuItem_FileMaterialExport;
         wxMenu* m_Menu_Animation;
         wxMenuItem* m_MenuItem_AnimationPlayToggle;
         wxMenuItem* m_MenuItem_AnimationReverse;
@@ -89,11 +89,11 @@ class Main : public wxFrame
         ModelCanvas* m_Model_Canvas;
         wxPanel* m_Panel_TreeCtrl;
         wxTreeCtrl* m_TreeCtrl_ModelData;
-        wxTreeItemId* m_TreeItem_Texture;
+        wxTreeItemId* m_TreeItem_Material;
         wxPanel* m_Panel_Bottom;
         wxBoxSizer* m_Sizer_Bottom;
         wxBoxSizer* m_Sizer_Bottom_Mesh;
-        wxFlexGridSizer* m_Sizer_Bottom_Texture;
+        wxFlexGridSizer* m_Sizer_Bottom_Material;
         wxGridBagSizer* m_Sizer_Bottom_Animation;
         wxCheckBox* m_CheckBox_Mesh_Billboard;
         wxSlider* m_Slider_Animation;
@@ -128,8 +128,8 @@ class Main : public wxFrame
         void m_Splitter_VerticalOnIdle(wxIdleEvent& event);
         void m_Timer_MainLoopOnTimer(wxTimerEvent& event);
         void m_MenuItem_ImportOnMenuSelection(wxCommandEvent& event);
-        void m_MenuItem_ImportTextureOnMenuSelection(wxCommandEvent& event);
-        void m_MenuItem_ExportTextureOnMenuSelection(wxCommandEvent& event);
+        void m_MenuItem_ImportMaterialOnMenuSelection(wxCommandEvent& event);
+        void m_MenuItem_ExportMaterialOnMenuSelection(wxCommandEvent& event);
         void m_MenuItem_AnimationPlayToggleOnMenuSelection(wxCommandEvent& event);
         void m_MenuItem_AnimationReverseOnMenuSelection(wxCommandEvent& event);
         void m_MenuItem_AnimationFasterOnMenuSelection(wxCommandEvent& event);
@@ -144,9 +144,9 @@ class Main : public wxFrame
         void m_CheckBox_Mesh_BillboardOnCheck(wxCommandEvent& event);
         void m_Slider_AnimationOnScroll(wxScrollEvent& event);
         void m_Button_AnimationToggleOnClick(wxCommandEvent& event);
-        void m_Radio_TextureTypeOnButton1(wxCommandEvent& event);
-        void m_Radio_TextureTypeOnButton2(wxCommandEvent& event);
-        void m_Radio_TextureTypeOnButton3(wxCommandEvent& event);
+        void m_Radio_MaterialTypeOnButton1(wxCommandEvent& event);
+        void m_Radio_MaterialTypeOnButton2(wxCommandEvent& event);
+        void m_Radio_MaterialTypeOnButton3(wxCommandEvent& event);
         void m_Image_TextureOnLeftDown(wxMouseEvent& event);
         void m_Choice_Texture_ImgFormatOnChoice(wxCommandEvent& event);
         void m_Choice_Texture_SFlagOnChoice(wxCommandEvent& event);

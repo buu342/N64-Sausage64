@@ -13,6 +13,7 @@ The controls are:
 * Hold R and use the control stick to rotate the camera (like in an FPS game).
 * Hold Z and use the control stick to zoom the view.
 * Press START to reset the camera position
+* DPad up and down to change the current animation
 * Hold L to make the character look at the camera..
 
 

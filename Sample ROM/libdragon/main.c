@@ -14,7 +14,7 @@ Program entrypoint.
 #include <math.h>
 #include <stdbool.h>
 
-// Load Sausage64, the model, and the textures for our character
+// Load Sausage64 and the model for our character
 #include "sausage64.h"
 #include "catherineMdl.h"
 
@@ -44,7 +44,7 @@ static s64ModelHelper* catherine;
 static sprite_t* catherine_textures[TEXTURECOUNT_Catherine];
 
 // Catherine face textures
-// Because the face texture was declared as DONTLOAD in Arabiki, we have
+// Because the face texture was declared as DONTLOAD in Arabiki (so we can animate them in code), we have
 // to declare these materials manually.
 GLuint FaceTex;
 static s64Texture matdata_FaceTex = {&FaceTex, 32, 64, GL_LINEAR, GL_MIRRORED_REPEAT_ARB, GL_MIRRORED_REPEAT_ARB};
@@ -55,6 +55,9 @@ static s64Material mat_CatherineBlink1Face = {TYPE_TEXTURE, &matdata_FaceBlink1T
 GLuint FaceBlink2Tex;
 static s64Texture matdata_FaceBlink2Tex = {&FaceBlink2Tex, 32, 64, GL_LINEAR, GL_MIRRORED_REPEAT_ARB, GL_MIRRORED_REPEAT_ARB};
 static s64Material mat_CatherineBlink2Face = {TYPE_TEXTURE, &matdata_FaceBlink2Tex, 1, 0, 1, 1, 1};
+
+// Model animation state
+static uint32_t curanim;
 
 // Catherine face animation variables
 static uint32_t facetick;
@@ -173,6 +176,10 @@ void setup_catherine()
 {
     s64ModelData* mdl;
     char *catherine_texture_paths[TEXTURECOUNT_Catherine];
+    
+    // In order to load our model properly, we must first create a list of textures it will use
+    // These are defined in catherineMdl.h, and the indices *MUST* be respected.
+    // Failure to do so will result in sections of the model loading the wrong texture
     catherine_texture_paths[TEXTURE_BackTex] = "rom:/BackTex.sprite";
     catherine_texture_paths[TEXTURE_BootTex] = "rom:/BootTex.sprite";
     catherine_texture_paths[TEXTURE_ChestTex] = "rom:/ChestTex.sprite";
@@ -181,16 +188,20 @@ void setup_catherine()
     for (uint32_t i=0; i<TEXTURECOUNT_Catherine; i++)
         catherine_textures[i] = sprite_load(catherine_texture_paths[i]);
 
+    // Load the binary model from ROM
     mdl = sausage64_load_binarymodel("rom:/catherineMdl.bin", catherine_textures);
+    //sausage64_unload_binarymodel(mdl);
+    //mdl = sausage64_load_binarymodel("rom:/catherineMdl.bin", catherine_textures);
 
-    // Generate the face textures
+    // Generate the face textures, because we're loading in the face textures dynamically
     sausage64_load_texture((s64Texture*)mat_CatherineFace.data, sprite_load("rom:/FaceTex.sprite"));
     sausage64_load_texture((s64Texture*)mat_CatherineBlink1Face.data, sprite_load("rom:/FaceBlink1Tex.sprite"));
     sausage64_load_texture((s64Texture*)mat_CatherineBlink2Face.data, sprite_load("rom:/FaceBlink2Tex.sprite"));
     
     // Initialize Catherine's model, then set her animation and predraw function
     catherine = sausage64_inithelper(mdl);
-    sausage64_set_anim(catherine, ANIMATION_Catherine_Walk);
+    curanim = ANIMATION_Catherine_Walk;
+    sausage64_set_anim(catherine, curanim);
     sausage64_set_predrawfunc(catherine, catherine_predraw);
 
     // Initialize the face animation variables
@@ -293,6 +304,20 @@ void scene_tick()
     
     
     /* -------- Animation -------- */
+
+    // Animation changing
+    if (input.btn.d_up)
+    {
+        curanim--;
+        if (curanim < 0)
+            curanim = ANIMATIONCOUNT_Catherine - 1;
+        sausage64_set_anim(catherine, curanim);
+    }
+    else if (input.btn.d_down)
+    {
+        curanim = (curanim + 1)%ANIMATIONCOUNT_Catherine;
+        sausage64_set_anim(catherine, curanim);
+    }
     
     // Handle lookat lerp
     if (input.btn.l && lookat_canseecam) 

@@ -141,8 +141,8 @@
         #ifndef LIBDRAGON
             Vtx* _vtxcleanup;
         #else
-            s64Texture* _texcleanup;
-            s64PrimColor* _primcolcleanup;
+            u32 _matscount;
+            s64Material* _matscleanup;
         #endif
     } s64ModelData;
     

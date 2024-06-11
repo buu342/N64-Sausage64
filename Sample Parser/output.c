@@ -1200,13 +1200,12 @@ void write_output_binary()
                 fprintf(fp, "%d\n", tindex);
             }
         }
-        fprintf(fp, "\n");
     }
 
     // Print the extern definitions
     if (!global_opengl)
     {
-        fprintf(fp, "// Extern definitions\n");
+        fprintf(fp, "\n// Extern definitions\n");
         fprintf(fp, "extern u8 _%sSegmentRomStart[];\n", global_modelname);
         fprintf(fp, "extern u8 _%sSegmentRomEnd[];", global_modelname);
     }

@@ -1358,11 +1358,11 @@ s64ModelData* sausage64_load_binarymodel(char* filepath, sprite_t** textures)
     #ifndef LIBDRAGON
         mdl->_vtxcleanup = verts;
     #else
-        mdl->_texcleanup = texes;
-        mdl->_primcolcleanup = primcols;
+        mdl->_matscleanup = mats;
+        mdl->_matscount = header.count_materials;
     #endif
 
-    // Initialize the display lists in Libdragon
+    // Initialize the display lists for Libdragon
     #ifdef LIBDRAGON
         sausage64_load_staticmodel(mdl);
     #endif
@@ -1399,14 +1399,43 @@ void sausage64_unload_binarymodel(s64ModelData* mdl)
     // Because all the data is malloc'd sequentially, to free, we just need to free the first instance of everything
     if (mdl->meshcount > 0)
     {
+        #ifdef LIBDRAGON
+            int i;
+            s64Texture* firsttex = NULL;
+            s64PrimColor* firstprimcol = NULL;
+            for (i=0; i<mdl->_matscount; i++)
+            {
+                s64Material* mat = &mdl->_matscleanup[i];
+                if (mat != NULL)
+                {
+                    switch (mat->type)
+                    {
+                        case TYPE_TEXTURE: 
+                            if (firsttex == NULL) 
+                                firsttex = (s64Texture*)mat->data;
+                            sausage64_unload_texture((s64Texture*)mat->data);
+                            break;
+                        case TYPE_PRIMCOL: 
+                            if (firstprimcol == NULL) 
+                                firstprimcol = (s64PrimColor*)mat->data;
+                            break;
+                        default: break;
+                    }
+                }
+            }
+            free(firsttex->identifier);
+            free(firsttex);
+            free(firstprimcol);
+            free(mdl->_matscleanup);
+            sausage64_unload_staticmodel(mdl);
+            free(mdl->meshes[0].dl->renders[0].verts);
+            free(mdl->meshes[0].dl->renders[0].faces);
+            free(mdl->meshes[0].dl->renders);
+        #else
+            free(mdl->_vtxcleanup);
+        #endif
         free((char*)mdl->meshes[0].name);
         free((s64Gfx*)mdl->meshes[0].dl);
-        #ifndef LIBDRAGON
-            free(mdl->_vtxcleanup);
-        #else
-            free(mdl->_texcleanup);
-            free(mdl->_primcolcleanup);
-        #endif
         free((s64Mesh*)mdl->meshes);
     }
     if (mdl->animcount > 0)

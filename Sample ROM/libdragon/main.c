@@ -57,7 +57,7 @@ static s64Texture matdata_FaceBlink2Tex = {&FaceBlink2Tex, 32, 64, GL_LINEAR, GL
 static s64Material mat_CatherineBlink2Face = {TYPE_TEXTURE, &matdata_FaceBlink2Tex, 1, 0, 1, 1, 1};
 
 // Model animation state
-static uint32_t curanim;
+static int32_t curanim;
 
 // Catherine face animation variables
 static uint32_t facetick;
@@ -220,6 +220,7 @@ void setup_catherine()
 void scene_tick()
 {
     joypad_inputs_t input;
+    joypad_buttons_t input_pressed;
     long long curtick = timer_ticks();
 
     // Advance Catherine's animation    
@@ -229,9 +230,10 @@ void scene_tick()
     /* -------- Controller -------- */
 
     input = joypad_get_inputs(JOYPAD_PORT_1);
+    input_pressed = joypad_get_buttons_pressed(JOYPAD_PORT_1);
 
     // Reset the camera when START is pressed
-    if (input.btn.start)
+    if (input_pressed.start)
     {
         campos[0] = 0;
         campos[1] = -300;
@@ -306,14 +308,14 @@ void scene_tick()
     /* -------- Animation -------- */
 
     // Animation changing
-    if (input.btn.d_up)
+    if (input_pressed.d_up)
     {
         curanim--;
         if (curanim < 0)
             curanim = ANIMATIONCOUNT_Catherine - 1;
         sausage64_set_anim(catherine, curanim);
     }
-    else if (input.btn.d_down)
+    else if (input_pressed.d_down)
     {
         curanim = (curanim + 1)%ANIMATIONCOUNT_Catherine;
         sausage64_set_anim(catherine, curanim);

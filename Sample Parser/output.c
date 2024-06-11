@@ -711,51 +711,16 @@ void write_output_binary()
         }
         else
         {
-            // TODO: This shit should be in opengl.c
-            // Iterate through the vertex cache blocks and create the render blocks we'll need
             int j=0;
-            n64Texture* lastTexture = NULL;
-            linkedList list_vcacherender = EMPTY_LINKEDLIST;
-            BinFile_VCacheRenderBlock* lastrenderblock = NULL;
-            for (vcachenode = mesh->vertcache.head; vcachenode != NULL; vcachenode = vcachenode->next)
-            {
-                listNode* vertnode;
-                vertCache* vcache = (vertCache*)vcachenode->data;
-                for (vertnode = vcache->faces.head; vertnode != NULL; vertnode = vertnode->next)
-                {
-                    s64Face* face = (s64Face*)vertnode->data;
-                    if (face->texture != lastTexture)
-                    {
-                        lastTexture = face->texture;
-                        BinFile_VCacheRenderBlock* vcrb = calloc(1, sizeof(BinFile_VCacheRenderBlock));
-                        if (vcrb == NULL)
-                            terminate("Error: Unable to allocate memory for VCache Render Block\n");
-                        vcrb->matid = get_validmatindex(&list_textures, face->texture->name);
-                        if (lastrenderblock == NULL)
-                        {
-                            vcrb->vertoffset = 0;
-                            vcrb->faceoffset = 0;
-                        }
-                        else
-                        {
-                            vcrb->vertoffset = lastrenderblock->vertcount + lastrenderblock->vertoffset;
-                            vcrb->faceoffset = lastrenderblock->facecount + lastrenderblock->faceoffset;
-                        }
-                        lastrenderblock = vcrb;
-                        list_append(&list_vcacherender, vcrb);
-                    }
-                }
-                lastrenderblock->facecount += vcache->faces.size;
-                lastrenderblock->vertcount += vcache->verts.size;
-            }
+            linkedList* list_vcacherender = generate_opengl_vcachelist(mesh);
 
             // Copy our data to the dldata block
-            dldatas[i] = (uint32_t*)malloc(sizeof(uint32_t)*3*list_vcacherender.size);
+            dldatas[i] = (uint32_t*)malloc(sizeof(uint32_t)*3*list_vcacherender->size);
             if (dldatas[i] == NULL)
                 terminate("Error: Unable to malloc for DLData\n");
-            for (vcachenode = list_vcacherender.head; vcachenode != NULL; vcachenode = vcachenode->next)
+            for (vcachenode = list_vcacherender->head; vcachenode != NULL; vcachenode = vcachenode->next)
             {
-                BinFile_VCacheRenderBlock* vcrb = vcachenode->data;
+                VCacheRenderBlock* vcrb = vcachenode->data;
                 dldatas[i][j*3 + 0] = ((swap_endian16(vcrb->vertoffset) << 16) & 0xFFFF0000) | (swap_endian16(vcrb->vertcount) & 0x0000FFFF);
                 dldatas[i][j*3 + 1] = ((swap_endian16(vcrb->faceoffset) << 16) & 0xFFFF0000) | (swap_endian16(vcrb->facecount) & 0x0000FFFF);
                 dldatas[i][j*3 + 2] = swap_endian32(vcrb->matid);
@@ -763,14 +728,18 @@ void write_output_binary()
             }
 
             // Fill in the dldata info
-            toc_meshes[i].dldata_size = (member_size(BinFile_VCacheRenderBlock, vertcount)
-                                    + member_size(BinFile_VCacheRenderBlock, vertoffset)
-                                    + member_size(BinFile_VCacheRenderBlock, facecount)
-                                    + member_size(BinFile_VCacheRenderBlock, faceoffset)
-                                    + member_size(BinFile_VCacheRenderBlock, matid))
-                                    *list_vcacherender.size;
-            toc_meshes[i].dldata_slotcount = list_vcacherender.size;
+            toc_meshes[i].dldata_size = (member_size(VCacheRenderBlock, vertcount)
+                                    + member_size(VCacheRenderBlock, vertoffset)
+                                    + member_size(VCacheRenderBlock, facecount)
+                                    + member_size(VCacheRenderBlock, faceoffset)
+                                    + member_size(VCacheRenderBlock, matid))
+                                    *list_vcacherender->size;
+            toc_meshes[i].dldata_slotcount = list_vcacherender->size;
             toc_meshes[i].dldata_offset = toc_meshes[i].facedata_offset + align_32bits(toc_meshes[i].facedata_size);
+
+            // Cleanup
+            list_destroy_deep(list_vcacherender);
+            free(list_vcacherender);
         }
 
         // Done

@@ -1,23 +1,24 @@
 ROM=sausage.z64
 BUILD_DIR=build
+FILESYSTEM_DIR=filesystem
 include $(N64_INST)/include/n64.mk
 
 src = main.c sausage64.c
 assets_raw = assets/catherineMdl.bin
 assets_png = $(wildcard assets/*.png)
 
-assets_conv = $(addprefix filesystem/,$(notdir $(assets_png:%.png=%.sprite))) $(addprefix filesystem/,$(notdir $(assets_raw)))
+assets_conv = $(addprefix $(FILESYSTEM_DIR)/,$(notdir $(assets_png:%.png=%.sprite))) $(addprefix $(FILESYSTEM_DIR)/,$(notdir $(assets_raw)))
 
 MKSPRITE_FLAGS ?=
 
 all: $(ROM)
 
-filesystem/%.sprite: assets/%.png
+$(FILESYSTEM_DIR)/%.sprite: assets/%.png
 	@mkdir -p $(dir $@)
 	@echo "    [SPRITE] $@"
 	@$(N64_MKSPRITE) -v -m BOX -o "$(dir $@)" "$<"
 
-filesystem/%.bin: assets/%.bin
+$(FILESYSTEM_DIR)/%.bin: assets/%.bin
 	@mkdir -p $(dir $@)
 	@echo "    [ASSET] $@"
 	cp $< $@
@@ -29,7 +30,7 @@ $(ROM): N64_ROM_TITLE="SAUSAGE64"
 $(ROM): $(BUILD_DIR)/sausage.dfs
 
 clean:
-	rm -rf $(BUILD_DIR) $(ROM)
+	rm -rf $(BUILD_DIR) $(ROM) $(FILESYSTEM_DIR)
 
 -include $(wildcard $(BUILD_DIR)/*.d)
 

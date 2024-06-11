@@ -7,19 +7,14 @@ later.
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
+#include <limits.h>
 #include <math.h>
 #include "main.h"
 #include "texture.h"
 #include "mesh.h"
-
-typedef struct {
-    int vertcount;
-    int vertoffset;
-    int facecount;
-    int faceoffset;
-    n64Texture* tex;
-} VCacheRenderBlock;
+#include "opengl.h"
 
 
 /*********************************
@@ -27,6 +22,79 @@ typedef struct {
 *********************************/
 
 #define STRBUF_SIZE 512
+
+
+/*==============================
+    generate_opengl_vcachelist
+    Constructs an OpenGL vertex cache list for
+    dumping a s64RenderBlock
+    @param  The mesh to generate the vcache list of
+    @return The generated list of vcache blocks
+==============================*/
+
+linkedList* generate_opengl_vcachelist(s64Mesh* mesh)
+{
+    linkedList* list_vcacherender = list_new();
+    int texcount = 0;
+    n64Texture* lastTexture = NULL;
+    VCacheRenderBlock* lastrenderblock = NULL;
+    int vertcount = 0, vertoffset = 0;
+    int facecount = 0, faceoffset = 0;
+    int minvert = INT_MAX, maxvert = 0;
+    
+    // First, cycle through the vertex cache list and register the texture switches
+    for (listNode* vcachenode = mesh->vertcache.head; vcachenode != NULL; vcachenode = vcachenode->next)
+    {
+        vertCache* vcache = (vertCache*)vcachenode->data;
+        for (listNode* vertnode = vcache->faces.head; vertnode != NULL; vertnode = vertnode->next)
+        {
+            int i;
+            s64Face* face = (s64Face*)vertnode->data;
+
+            // If a texture switch happened, register it
+            if (face->texture != lastTexture)
+            {
+                texcount++;
+                lastTexture = face->texture;
+                VCacheRenderBlock* vcrb = calloc(1, sizeof(VCacheRenderBlock));
+                if (vcrb == NULL)
+                    terminate("Error: Unable to allocate memory for VCache Render Block\n");
+                list_append(list_vcacherender, vcrb);
+                if (face->texture->type == TYPE_OMIT || face->texture->dontload)
+                    vcrb->tex = NULL;
+                else
+                    vcrb->tex = face->texture;
+                vcrb->matid = get_validmatindex(&list_textures, face->texture->name);
+                faceoffset = facecount;
+                if (lastrenderblock == NULL)
+                    vcrb->vertoffset = 0;
+                else
+                    vcrb->vertoffset = lastrenderblock->vertoffset + lastrenderblock->vertcount;
+                lastrenderblock = vcrb;
+                minvert = INT_MAX;
+                maxvert = 0;
+            }
+
+            // Get the min and max vert 
+            for (i=0; i<3; i++)
+            {
+                int vertindex = vertcount + list_index_from_data(&vcache->verts, face->verts[i]);
+                if (vertindex < minvert)
+                    minvert = vertindex;
+                if (vertindex > maxvert)
+                    maxvert = vertindex;
+            }
+
+            // Calculate the face count + offset
+            facecount++;
+            lastrenderblock->facecount = facecount - faceoffset;
+            lastrenderblock->faceoffset = faceoffset;
+            lastrenderblock->vertcount = maxvert - minvert + 1;
+        }
+        vertcount += vcache->verts.size;
+    }
+    return list_vcacherender;
+}
 
 
 /*==============================
@@ -39,7 +107,6 @@ void construct_opengl()
 {
     FILE* fp;
     char strbuff[STRBUF_SIZE];
-    n64Texture* lastTexture = NULL;
     bool ismultimesh = (list_meshes.size > 1);
     
     // Open a temp file to write our opengl command list to
@@ -117,47 +184,8 @@ void construct_opengl()
     for (listNode* meshnode = list_meshes.head; meshnode != NULL; meshnode = meshnode->next)
     {
         s64Mesh* mesh = (s64Mesh*)meshnode->data;
-        int texcount = 0;
         int faceindex = 0, vertindex = 0;
-        lastTexture = NULL;
-        VCacheRenderBlock* lastrenderblock = NULL;
-        linkedList list_vcacherender = EMPTY_LINKEDLIST;
-        
-        // First, cycle through the vertex cache list and register the texture switches
-        for (listNode* vcachenode = mesh->vertcache.head; vcachenode != NULL; vcachenode = vcachenode->next)
-        {
-            vertCache* vcache = (vertCache*)vcachenode->data;
-            for (listNode* vertnode = vcache->faces.head; vertnode != NULL; vertnode = vertnode->next)
-            {
-                s64Face* face = (s64Face*)vertnode->data;
-                if (face->texture != lastTexture)
-                {
-                    texcount++;
-                    lastTexture = face->texture;
-                    VCacheRenderBlock* vcrb = calloc(1, sizeof(VCacheRenderBlock));
-                    if (vcrb == NULL)
-                        terminate("Error: Unable to allocate memory for VCache Render Block\n");
-                    if (face->texture->type == TYPE_OMIT || face->texture->dontload)
-                        vcrb->tex = NULL;
-                    else
-                        vcrb->tex = face->texture;
-                    if (lastrenderblock == NULL)
-                    {
-                        vcrb->vertoffset = 0;
-                        vcrb->faceoffset = 0;
-                    }
-                    else
-                    {
-                        vcrb->vertoffset = lastrenderblock->vertcount + lastrenderblock->vertoffset;
-                        vcrb->faceoffset = lastrenderblock->facecount + lastrenderblock->faceoffset;
-                    }
-                    lastrenderblock = vcrb;
-                    list_append(&list_vcacherender, vcrb);
-                }
-            }
-            lastrenderblock->facecount += vcache->faces.size;
-            lastrenderblock->vertcount += vcache->verts.size;
-        }
+        linkedList* list_vcacherender = generate_opengl_vcachelist(mesh);
         
         // Cycle through the vertex cache list and dump the vertices
         vertindex = 0;
@@ -219,7 +247,7 @@ void construct_opengl()
         if (ismultimesh)
             fprintf(fp, "_%s", mesh->name);
         fprintf(fp, "[] = {\n");
-        for (listNode* vcachenode = list_vcacherender.head; vcachenode != NULL; vcachenode = vcachenode->next)
+        for (listNode* vcachenode = list_vcacherender->head; vcachenode != NULL; vcachenode = vcachenode->next)
         {
             VCacheRenderBlock* vcacheb = (VCacheRenderBlock*)vcachenode->data;
             fprintf(fp, "\t{");
@@ -241,14 +269,15 @@ void construct_opengl()
         fprintf(fp, "static s64Gfx gfx_%s", global_modelname);
         if (ismultimesh)
             fprintf(fp, "_%s", mesh->name);
-        fprintf(fp, " = {%d, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, ", list_vcacherender.size);
+        fprintf(fp, " = {%d, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, ", list_vcacherender->size);
         fprintf(fp, "renb_%s", global_modelname);
         if (ismultimesh)
             fprintf(fp, "_%s", mesh->name);
         fprintf(fp, "};\n\n");
         
         // Cleanup
-        list_destroy_deep(&list_vcacherender);
+        list_destroy_deep(list_vcacherender);
+        free(list_vcacherender);
     }
     
     // State we finished

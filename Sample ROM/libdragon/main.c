@@ -190,8 +190,6 @@ void setup_catherine()
 
     // Load the binary model from ROM
     mdl = sausage64_load_binarymodel("rom:/catherineMdl.bin", catherine_textures);
-    //sausage64_unload_binarymodel(mdl);
-    //mdl = sausage64_load_binarymodel("rom:/catherineMdl.bin", catherine_textures);
 
     // Generate the face textures, because we're loading in the face textures dynamically
     sausage64_load_texture((s64Texture*)mat_CatherineFace.data, sprite_load("rom:/FaceTex.sprite"));

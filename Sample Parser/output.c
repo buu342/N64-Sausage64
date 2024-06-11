@@ -401,6 +401,7 @@ void write_output_binary()
     int* kftotal;
     bool makestructs = (list_animations.size > 0 || list_meshes.size > 1);
     int texturecount = 0, primcolorcount = 0;
+    int longesttexname = 0;
     BinFile_TOC_Materials* toc_materials;
     BinFile_MatData* matdatas;
     BinFile_Material_Texture* textures;
@@ -1171,73 +1172,35 @@ void write_output_binary()
     write_header(fp, makestructs);
 
     // Print texture count and texture list
-    if (!global_opengl)
+    texturecount = 0;
+    for (curnode = list_textures.head; curnode != NULL; curnode = curnode->next)
     {
-        int longesttexname = 0;
-        texturecount = 0;
-        for (curnode = list_textures.head; curnode != NULL; curnode = curnode->next)
+        n64Texture* tex = (n64Texture*)curnode->data;
+        if (isvalidmat(tex) && tex->type == TYPE_TEXTURE)
         {
-            n64Texture* tex = (n64Texture*)curnode->data;
-            if (isvalidmat(tex) && tex->type == TYPE_TEXTURE)
-            {
-                int len = strlen(tex->name);
-                texturecount++;
-                if (len > longesttexname)
-                    longesttexname = len;
-            }
-        }
-        if (texturecount > 0)
-        {
-            fprintf(fp, "// Texture data\n#define TEXTURECOUNT_%s %d\n\n", global_modelname, texturecount);
-            for (curnode = list_textures.head; curnode != NULL; curnode = curnode->next)
-            {
-                int nspaces;
-                n64Texture* tex = (n64Texture*)curnode->data;
-                int tindex = get_validtexindex(&list_textures, tex->name);
-                if (tindex != -1)
-                {
-                    fprintf(fp, "#define TEXTURE_%s ", tex->name);
-                    nspaces = strlen(tex->name);
-                    for (i=nspaces; i<longesttexname; i++) fputc(' ', fp);
-                    fprintf(fp, "%d\n", tindex);
-                }
-            }
-            fprintf(fp, "\n");
+            int len = strlen(tex->name);
+            texturecount++;
+            if (len > longesttexname)
+                longesttexname = len;
         }
     }
-    else
+    if (texturecount > 0)
     {
-        int matcount = 0;
-        int longestmatname = 0;
+        fprintf(fp, "// Texture data\n#define TEXTURECOUNT_%s %d\n\n", global_modelname, texturecount);
         for (curnode = list_textures.head; curnode != NULL; curnode = curnode->next)
         {
-            n64Texture* mat = (n64Texture*)curnode->data;
-            if (isvalidmat(mat))
+            int nspaces;
+            n64Texture* tex = (n64Texture*)curnode->data;
+            int tindex = get_validtexindex(&list_textures, tex->name);
+            if (tindex != -1)
             {
-                int len = strlen(mat->name);
-                matcount++;
-                if (len > longestmatname)
-                    longestmatname = len;
+                fprintf(fp, "#define TEXTURE_%s ", tex->name);
+                nspaces = strlen(tex->name);
+                for (i=nspaces; i<longesttexname; i++) fputc(' ', fp);
+                fprintf(fp, "%d\n", tindex);
             }
         }
-        if (matcount > 0)
-        {
-            fprintf(fp, "// Material data\n#define MATERIALCOUNT_%s %d\n\n", global_modelname, matcount);
-            for (curnode = list_textures.head; curnode != NULL; curnode = curnode->next)
-            {
-                int nspaces;
-                n64Texture* mat = (n64Texture*)curnode->data;
-                int mindex = get_validmatindex(&list_textures, mat->name);
-                if (mindex != -1)
-                {
-                    fprintf(fp, "#define MATERIAL_%s ", mat->name);
-                    nspaces = strlen(mat->name);
-                    for (i=nspaces; i<longestmatname; i++) fputc(' ', fp);
-                    fprintf(fp, "%d\n", mindex);
-                }
-            }
-            fprintf(fp, "\n");
-        }
+        fprintf(fp, "\n");
     }
 
     // Print the extern definitions

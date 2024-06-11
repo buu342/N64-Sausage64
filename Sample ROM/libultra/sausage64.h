@@ -140,6 +140,9 @@
         const s64Animation* anims;
         #ifndef LIBDRAGON
             Vtx* _vtxcleanup;
+        #else
+            s64Texture* _texcleanup;
+            s64PrimColor* _primcolcleanup;
         #endif
     } s64ModelData;
     
@@ -171,11 +174,38 @@
     /*********************************
               Asset Loading
     *********************************/
+    
+    /*==============================
+        sausage64_load_binarymodel
+        Load a binary model from ROM
+        @param  (Libultra) The starting address in ROM
+        @param  (Libdragon) The dfs file path of the asset
+        @param  (Libultra) The size of the model
+        @param  (Libultra) The list of textures to use
+        @param  (Libdragon) The list of dfs file paths of textures
+        @return The newly allocated model
+    ==============================*/
+
+    #ifndef LIBDRAGON
+        extern s64ModelData* sausage64_load_binarymodel(u32 romstart, u32 size, u32** textures);
+    #else
+        extern s64ModelData* sausage64_load_binarymodel(char* filepath, sprite_t** textures);        
+    #endif
+
+
+    /*==============================
+        sausage64_unload_binarymodel
+        Free the memory used by a dynamically loaded binary model
+        @param  The model to free
+    ==============================*/
+    
+    extern void sausage64_unload_binarymodel(s64ModelData* mdl);
+    
 
     #ifdef LIBDRAGON
         /*==============================
             sausage64_load_texture
-            Generates a texture for OpenGL.
+            Generates a texture for a static OpenGL model.
             Since the s64Texture struct contains a bunch of information,
             this function lets us create these textures with the correct
             attributes automatically.
@@ -188,7 +218,7 @@
 
         /*==============================
             sausage64_unload_texture
-            Unloads a texture created for OpenGL
+            Unloads a static texture created for OpenGL
             @param The s64 texture to unload
         ==============================*/
 
@@ -216,26 +246,6 @@
 
         extern void sausage64_unload_staticmodel(s64ModelData* mdldata);
     #endif
-    
-    /*==============================
-        sausage64_load_binarymodel
-        Load a binary model from ROM
-        @param  The starting address in ROM
-        @param  The size of the model
-        @param  The list of textures to use
-        @return The newly allocated model
-    ==============================*/
-    
-    extern s64ModelData* sausage64_load_binarymodel(u32 romstart, u32 size, u32** textures);
-
-
-    /*==============================
-        sausage64_unload_binarymodel
-        Free the memory used by a dynamically loaded binary model
-        @param  The model to free
-    ==============================*/
-    
-    extern void sausage64_unload_binarymodel(s64ModelData* mdl);
 
     
     /*********************************

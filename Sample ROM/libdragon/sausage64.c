@@ -10,6 +10,7 @@ https://github.com/buu342/Blender-Sausage64
 #ifdef LIBDRAGON
     #include <math.h>
     #include <rdpq_tex.h>
+    #include <asset.h>
 #endif
 #include <stdlib.h>
 #include <malloc.h>
@@ -75,6 +76,8 @@ typedef struct {
     u32 meshdata_size;
     u32 vertdata_offset;
     u32 vertdata_size;
+    u32 facedata_offset;
+    u32 facedata_size;
     u32 dldata_offset;
     u32 dldata_size;
     u32 dldata_slotcount;
@@ -85,6 +88,23 @@ typedef struct {
     u8    is_billboard;
     char* name;
 } BinFile_MeshData;
+
+typedef struct {
+    u32 matdata_offset;
+    u32 matdata_size;
+    u32 material_offset;
+    u32 material_size;
+} BinFile_TOC_Materials;
+
+typedef struct {
+    u8 type;
+    u8 lighting;
+    u8 cullfront;
+    u8 cullback;
+    u8 smooth;
+    u8 depthtest;
+    char* name;
+} BinFile_MatData;
 
 typedef struct {
     u32 animdata_offset;
@@ -109,7 +129,7 @@ typedef enum {
     DPFillRectangle = 0,
     DPScisFillRectangle,
     DPFullSync,
-    DPLoadSync,
+    DPloSync,
     DPTileSync,
     DPPipeSync,
     DPLoadTLUT_pal16,
@@ -869,41 +889,68 @@ static inline void s64vec_rotate(f32 vec[3], s64Quat rot, f32 result[3])
 #endif
 
 
-#ifndef LIBDRAGON
-    /*==============================
-        sausage64_load_binarymodel
-        Load a binary model from ROM
-        @param  The starting address in ROM
-        @param  The size of the model
-        @param  The list of textures to use
-        @return The newly allocated model
-    ==============================*/
+/*==============================
+    sausage64_load_binarymodel
+    Load a binary model from ROM
+    @param  (Libultra) The starting address in ROM
+    @param  (Libdragon) The dfs file path of the asset
+    @param  (Libultra) The size of the model
+    @param  (Libultra) The list of textures to use
+    @param  (Libdragon) The list of dfs file paths of textures
+    @return The newly allocated model
+==============================*/
 
-    s64ModelData* sausage64_load_binarymodel(u32 romstart, u32 size, u32** textures)
-    {
-        int i;
-        u8 mallocfailed = FALSE;
-            OSMesg   dmamsg;
-            OSIoMesg iomsg;
-            OSMesgQueue msgq;
-            u32 left = size;
-        u8* data;
-        BinFile_Header header;
-        BinFile_TOC_Meshes* toc_meshes;
-        BinFile_MeshData* meshdatas;
-        BinFile_TOC_Anims* toc_anims;
-        BinFile_AnimData* animdatas;
-        u32 mallocsize_strings = 0, mallocsize_verts = 0, mallocsize_gfx = 0, mallocsize_keyframes = 0, mallocsize_transforms = 0;
-        u32 offset_strings = 0, offset_verts = 0, offset_gfx = 0, offset_keyframes = 0, offset_transforms = 0;
-        char* strings = NULL;
+#ifndef LIBDRAGON
+s64ModelData* sausage64_load_binarymodel(u32 romstart, u32 size, u32** textures)
+#else
+s64ModelData* sausage64_load_binarymodel(char* filepath, sprite_t** textures)
+#endif
+{
+    int i;
+    u8 mallocfailed = FALSE;
+    #ifndef LIBDRAGON
+        OSMesg   dmamsg;
+        OSIoMesg iomsg;
+        OSMesgQueue msgq;
+        u32 left = size;
+    #else
+        int size;
+    #endif
+    u8* data;
+    BinFile_Header header;
+    BinFile_TOC_Meshes* toc_meshes = NULL;
+    BinFile_MeshData* meshdatas = NULL;
+    BinFile_TOC_Materials* toc_mats = NULL;
+    BinFile_MatData* matdatas = NULL;
+    BinFile_TOC_Anims* toc_anims = NULL;
+    BinFile_AnimData* animdatas = NULL;
+    u32 mallocsize_strings = 0, mallocsize_verts = 0, mallocsize_gfx = 0, mallocsize_keyframes = 0, mallocsize_transforms = 0;
+    u32 offset_strings = 0, offset_verts = 0, offset_gfx = 0, offset_keyframes = 0, offset_transforms = 0;
+    char* strings = NULL;
+    #ifndef LIBDRAGON
         Vtx* verts = NULL;
-        Gfx* dlists = NULL;
-        s64Mesh* meshes = NULL;
-        s64Animation* anims = NULL;
-        s64KeyFrame* keyframes = NULL;
-        s64Transform* transforms = NULL;
-        s64ModelData* mdl = NULL;
-        
+    #else
+        float* verts = NULL;
+        u16* faces = NULL;
+    #endif
+    s64Gfx* dlists = NULL;
+    s64Mesh* meshes = NULL;
+    s64Animation* anims = NULL;
+    s64KeyFrame* keyframes = NULL;
+    s64Transform* transforms = NULL;
+    s64ModelData* mdl = NULL;
+    #ifdef LIBDRAGON
+        u32 mallocsize_faces = 0, mallocsize_rbs = 0, mallocsize_texes = 0, mallocsize_primcols = 0;
+        u32 offset_faces = 0, offset_rbs = 0;
+        s64RenderBlock* rbs = NULL;
+        s64Material* mats = NULL;
+        s64Texture* texes = NULL;
+        s64PrimColor* primcols = NULL;
+        GLuint* texids = NULL;
+    #endif
+    
+    // Load the asset from ROM
+    #ifndef LIBDRAGON
         // Reserve some memory for the file we're about to read
         data = (u8*)memalign(16, size);
         if (data == NULL)
@@ -929,235 +976,416 @@ static inline void s64vec_rotate(f32 vec[3], s64Quat rot, f32 result[3])
             (void)osRecvMesg(&msgq, &dmamsg, OS_MESG_BLOCK);
             left -= readsize;
         }
-        
-        // Validate
-        header.header[0] = data[0];
-        header.header[1] = data[1];
-        header.header[2] = data[2];
-        header.header[3] = data[3];
-        if (header.header[0] != 'S' || header.header[1] != '6' || header.header[2] != '4' || header.header[3] != BINARY_VERSION)
-        {
-            free(data);
+    #else
+        data = (u8*)asset_load(filepath, &size);
+        if (data == NULL)
             return NULL;
-        }
-        
-        // Get model data
-        header.count_meshes = ((u16*)data)[2];
-        header.offset_meshes = ((u16*)data)[5];
-        header.count_anims = ((u16*)data)[4];
-        header.offset_anims = ((u32*)data)[4];
+    #endif
+    
+    // Validate
+    header.header[0] = data[0];
+    header.header[1] = data[1];
+    header.header[2] = data[2];
+    header.header[3] = data[3];
+    if (header.header[0] != 'S' || header.header[1] != '6' || header.header[2] != '4' || header.header[3] != BINARY_VERSION)
+    {
+        free(data);
+        return NULL;
+    }
+    
+    // Get model data
+    header.count_meshes = ((u16*)data)[2];
+    header.offset_meshes = ((u16*)data)[5];
+    header.count_anims = ((u16*)data)[4];
+    header.offset_anims = ((u32*)data)[4];
+    header.count_materials = ((u16*)data)[3];
+    header.offset_materials = ((u32*)data)[3];
 
-        // Malloc temporary mesh data
-        if (header.count_meshes > 0)
-        {
-            toc_meshes = (BinFile_TOC_Meshes*)malloc(sizeof(BinFile_TOC_Meshes)*header.count_meshes);
-            meshdatas = (BinFile_MeshData*)malloc(sizeof(BinFile_MeshData)*header.count_meshes);
-            if (toc_meshes == NULL || meshdatas == NULL)
-                mallocfailed = TRUE;
-        }
+    // Malloc temporary mesh data
+    if (header.count_meshes > 0)
+    {
+        toc_meshes = (BinFile_TOC_Meshes*)malloc(sizeof(BinFile_TOC_Meshes)*header.count_meshes);
+        meshdatas = (BinFile_MeshData*)malloc(sizeof(BinFile_MeshData)*header.count_meshes);
+        if (toc_meshes == NULL || meshdatas == NULL)
+            mallocfailed = TRUE;
+    }
 
-        // Malloc temporary animation data
-        if (header.count_anims > 0)
-        {
-            toc_anims = (BinFile_TOC_Anims*)malloc(sizeof(BinFile_TOC_Anims)*header.count_anims);
-            animdatas = (BinFile_AnimData*)malloc(sizeof(BinFile_AnimData)*header.count_anims);
-            if (toc_anims == NULL || animdatas == NULL)
-                mallocfailed = TRUE;
+    // Malloc temporary material data
+    if (header.count_materials > 0)
+    {
+        toc_mats = (BinFile_TOC_Materials*)malloc(sizeof(BinFile_TOC_Materials)*header.count_materials);
+        matdatas = (BinFile_MatData*)malloc(sizeof(BinFile_MatData)*header.count_materials);
+        if (toc_mats == NULL || matdatas == NULL)
+            mallocfailed = TRUE;
+    }
 
-        }
+    // Malloc temporary animation data
+    if (header.count_anims > 0)
+    {
+        toc_anims = (BinFile_TOC_Anims*)malloc(sizeof(BinFile_TOC_Anims)*header.count_anims);
+        animdatas = (BinFile_AnimData*)malloc(sizeof(BinFile_AnimData)*header.count_anims);
+        if (toc_anims == NULL || animdatas == NULL)
+            mallocfailed = TRUE;
+    }
 
-        // Test that malloc succeeded
-        if (mallocfailed)
-        {
-            if (toc_meshes != NULL) free(toc_meshes);
-            if (toc_anims != NULL) free(toc_anims);
-            if (meshdatas != NULL) free(meshdatas);
-            if (animdatas != NULL) free(animdatas);
-            free(data);
-            return NULL;
-        }
-        
-        // To reduce memory fragmentation, we're gfloatoing to iterate once through everything
-        // to calculate the size we'll need for all the data,
-        // and then the second iteration is when we'll actually populate the data structures
-        for (i=0; i<header.count_meshes; i++)
-        {
+    // Test that malloc succeeded
+    if (mallocfailed)
+    {
+        free(toc_meshes);
+        free(toc_mats);
+        free(toc_anims);
+        free(meshdatas);
+        free(matdatas);
+        free(animdatas);
+        free(data);
+        return NULL;
+    }
+    
+    // To reduce memory fragmentation, we're going to iterate once through everything
+    // to calculate the size we'll need for all the data,
+    // and then the second iteration is when we'll actually populate the data structures
+    for (i=0; i<header.count_meshes; i++)
+    {
+        #ifndef LIBDRAGON
             int toc_offset = header.offset_meshes + 0x1C*i;
             BinFile_TOC_Meshes toc_mesh = {
-                *((u32*)&data[toc_offset+0*4]),
-                *((u32*)&data[toc_offset+1*4]),
-                *((u32*)&data[toc_offset+2*4]),
-                *((u32*)&data[toc_offset+3*4]),
-                *((u32*)&data[toc_offset+4*4]),
-                *((u32*)&data[toc_offset+5*4]),
-                *((u32*)&data[toc_offset+6*4]),
+                *((u32*)&data[toc_offset+0*sizeof(u32)]),
+                *((u32*)&data[toc_offset+1*sizeof(u32)]),
+                *((u32*)&data[toc_offset+2*sizeof(u32)]),
+                *((u32*)&data[toc_offset+3*sizeof(u32)]),
+                0, // Unused in Libultra
+                0, // Unused in Libultra
+                *((u32*)&data[toc_offset+4*sizeof(u32)]),
+                *((u32*)&data[toc_offset+5*sizeof(u32)]),
+                *((u32*)&data[toc_offset+6*sizeof(u32)]),
             };
-            BinFile_MeshData meshdata = {
-                *((u16*)&data[toc_mesh.meshdata_offset]),
-                data[toc_mesh.meshdata_offset+2],
-                (char*)&data[toc_mesh.meshdata_offset+3]
+        #else
+            int toc_offset = header.offset_meshes + 0x24*i;
+            BinFile_TOC_Meshes toc_mesh = {
+                *((u32*)&data[toc_offset+0*sizeof(u32)]),
+                *((u32*)&data[toc_offset+1*sizeof(u32)]),
+                *((u32*)&data[toc_offset+2*sizeof(u32)]),
+                *((u32*)&data[toc_offset+3*sizeof(u32)]),
+                *((u32*)&data[toc_offset+4*sizeof(u32)]),
+                *((u32*)&data[toc_offset+5*sizeof(u32)]),
+                *((u32*)&data[toc_offset+6*sizeof(u32)]),
+                *((u32*)&data[toc_offset+7*sizeof(u32)]),
+                *((u32*)&data[toc_offset+8*sizeof(u32)]),
             };
-            mallocsize_strings += strlen(meshdata.name)+1;
-            mallocsize_verts += toc_mesh.vertdata_size/16;
+        #endif
+        BinFile_MeshData meshdata = {
+            *((u16*)&data[toc_mesh.meshdata_offset]),
+            data[toc_mesh.meshdata_offset+2],
+            (char*)&data[toc_mesh.meshdata_offset+3]
+        };
+        mallocsize_strings += strlen(meshdata.name)+1;
+        #ifndef LIBDRAGON
+            mallocsize_verts += toc_mesh.vertdata_size/sizeof(Vtx);
             mallocsize_gfx += toc_mesh.dldata_slotcount;
-            
-            // Copy the data
-            toc_meshes[i] = toc_mesh;
-            meshdatas[i] = meshdata;
-        }
-        for (i=0; i<header.count_anims; i++)
-        {
-            int toc_offset = header.offset_anims + 0x10*i;
-            BinFile_TOC_Anims toc_anim = {
-                *((u32*)&data[toc_offset+0*4]),
-                *((u32*)&data[toc_offset+1*4]),
-                *((u32*)&data[toc_offset+2*4]),
-                *((u32*)&data[toc_offset+3*4]),
-            };
-            BinFile_AnimData animdata = {
-                *((u32*)&data[toc_anim.animdata_offset]),
-                (u16*)&data[toc_anim.animdata_offset+4]
-            };
-            animdata.name = (((char*)(animdata.kfindices)) + animdata.kfcount*sizeof(u16));
-            mallocsize_strings += strlen(animdata.name)+1;
-            mallocsize_keyframes += animdata.kfcount;
-            mallocsize_transforms += animdata.kfcount*header.count_meshes;
-            
-            // Copy the data
-            toc_anims[i] = toc_anim;
-            animdatas[i] = animdata;
-        }
+        #else
+            mallocsize_verts += toc_mesh.vertdata_size/(sizeof(f32)*11);
+            mallocsize_faces += toc_mesh.facedata_size/(sizeof(u16)*3);
+            mallocsize_gfx += 1;
+            mallocsize_rbs += toc_mesh.dldata_slotcount;
+        #endif
         
-        // Perform the mallocs for the data we're actually going to need
-        mdl = (s64ModelData*)malloc(sizeof(s64ModelData));
-        strings = (char*)malloc(sizeof(char)*mallocsize_strings);
-        if (mdl == NULL || strings == NULL)
-            mallocfailed = TRUE;
+        // Copy the data
+        toc_meshes[i] = toc_mesh;
+        meshdatas[i] = meshdata;
+    }
+    for (i=0; i<header.count_materials; i++)
+    {
+        int toc_offset = header.offset_materials + 0x10*i;
+        BinFile_TOC_Materials toc_mat = {
+            *((u32*)&data[toc_offset+0*sizeof(u32)]),
+            *((u32*)&data[toc_offset+1*sizeof(u32)]),
+            *((u32*)&data[toc_offset+2*sizeof(u32)]),
+            *((u32*)&data[toc_offset+3*sizeof(u32)]),
+        };
+        BinFile_MatData matdata = {
+            *((u8*)&data[toc_mat.matdata_offset+0]),
+            *((u8*)&data[toc_mat.matdata_offset+1]),
+            *((u8*)&data[toc_mat.matdata_offset+2]),
+            *((u8*)&data[toc_mat.matdata_offset+3]),
+            *((u8*)&data[toc_mat.matdata_offset+4]),
+            *((u8*)&data[toc_mat.matdata_offset+5]),
+            ((char*)&data[toc_mat.matdata_offset+6]),
+        };
+        #ifdef LIBDRAGON
+            switch (matdata.type)
+            {
+                case TYPE_TEXTURE: mallocsize_texes++; break;
+                case TYPE_PRIMCOL: mallocsize_primcols++; break;
+            }
+        #endif
+        
+        // Copy the data
+        toc_mats[i] = toc_mat;
+        matdatas[i] = matdata;
+    }
+    for (i=0; i<header.count_anims; i++)
+    {
+        int toc_offset = header.offset_anims + 0x10*i;
+        BinFile_TOC_Anims toc_anim = {
+            *((u32*)&data[toc_offset+0*sizeof(u32)]),
+            *((u32*)&data[toc_offset+1*sizeof(u32)]),
+            *((u32*)&data[toc_offset+2*sizeof(u32)]),
+            *((u32*)&data[toc_offset+3*sizeof(u32)]),
+        };
+        BinFile_AnimData animdata = {
+            *((u32*)&data[toc_anim.animdata_offset]),
+            (u16*)&data[toc_anim.animdata_offset+2*sizeof(u16)]
+        };
+        animdata.name = (((char*)(animdata.kfindices)) + animdata.kfcount*sizeof(u16));
+        mallocsize_strings += strlen(animdata.name)+1;
+        mallocsize_keyframes += animdata.kfcount;
+        mallocsize_transforms += animdata.kfcount*header.count_meshes;
+        
+        // Copy the data
+        toc_anims[i] = toc_anim;
+        animdatas[i] = animdata;
+    }
+    
+    // Perform the mallocs for the data we're actually going to need
+    mdl = (s64ModelData*)malloc(sizeof(s64ModelData));
+    strings = (char*)malloc(sizeof(char)*mallocsize_strings);
+    if (mdl == NULL || strings == NULL)
+        mallocfailed = TRUE;
 
-        // Malloc mesh data
-        if (header.count_meshes > 0)
-        {
-            meshes = (s64Mesh*)malloc(sizeof(s64Mesh)*header.count_meshes);
+    // Malloc mesh data
+    if (header.count_meshes > 0)
+    {
+        meshes = (s64Mesh*)malloc(sizeof(s64Mesh)*header.count_meshes);
+        #ifndef LIBDRAGON
             verts = (Vtx*)malloc(sizeof(Vtx)*mallocsize_verts);
-            dlists = (Gfx*)malloc(sizeof(Gfx)*mallocsize_gfx);
-            if (meshes == NULL || verts == NULL || dlists == NULL)
+        #else
+            verts = (f32*)malloc(sizeof(f32)*mallocsize_verts*11);
+            faces = (u16*)malloc(sizeof(u16)*mallocsize_faces*3);
+            rbs = (s64RenderBlock*)malloc(sizeof(s64RenderBlock)*mallocsize_rbs);
+            if (faces == NULL || rbs == NULL)
                 mallocfailed = TRUE;
-        }
+        #endif
+        dlists = (s64Gfx*)malloc(sizeof(s64Gfx)*mallocsize_gfx);
+        if (meshes == NULL || verts == NULL || dlists == NULL)
+            mallocfailed = TRUE;
+    }
 
-        // Malloc animation data
-        if (header.count_anims > 0)
+    // Malloc material data
+    #ifdef LIBDRAGON
+        if (header.count_materials > 0)
         {
-            anims = (s64Animation*)malloc(sizeof(s64Animation)*header.count_anims);
-            keyframes = (s64KeyFrame*)malloc(sizeof(s64KeyFrame)*mallocsize_keyframes);
-            transforms = (s64Transform*)malloc(sizeof(s64Transform)*mallocsize_transforms);
-            if (anims == NULL || keyframes == NULL || transforms == NULL)
+            mats = (s64Material*)malloc(sizeof(s64Material)*header.count_materials);
+            if (mats == NULL)
                 mallocfailed = TRUE;
+            if (mallocsize_texes > 0)
+            {
+                texes = (s64Texture*)malloc(sizeof(s64Texture)*mallocsize_texes);
+                texids = (GLuint*)malloc(sizeof(GLuint)*mallocsize_texes);
+                if (texes == NULL || texids == NULL)
+                    mallocfailed = TRUE;
+            }
+            if (mallocsize_primcols > 0)
+            {
+                primcols = (s64PrimColor*)malloc(sizeof(s64PrimColor)*mallocsize_primcols);
+                if (primcols == NULL)
+                    mallocfailed = TRUE;
+            }
         }
+    #endif
 
-        // Test that malloc succeeded
-        if (mallocfailed)
-        {
-            if (mdl != NULL) free(mdl);
-            if (meshes != NULL) free(meshes);
-            if (strings != NULL) free(strings);
-            if (verts != NULL) free(verts);
-            if (dlists != NULL) free(dlists);
-            if (anims != NULL) free(anims);
-            if (keyframes != NULL) free(keyframes);
-            if (transforms != NULL) free(transforms);
-            free(toc_meshes);
-            free(meshdatas);
-            free(toc_anims);
-            free(animdatas);
-            free(data);
-            return NULL;
-        }
-        
-        // Now we will actually pull data from the binary file and copy it over to our s64 data structs
-        for (i=0; i<header.count_meshes; i++)
-        {        
-            // Copy the s64Mesh
-            *(u32*)&meshes[i].is_billboard = meshdatas[i].is_billboard;
-            *(s32*)&meshes[i].parent = meshdatas[i].parent;
-            meshes[i].dl = &dlists[offset_gfx];
-            meshes[i].name = strings+offset_strings;
-            strcpy(strings+offset_strings, meshdatas[i].name);
-            
+    // Malloc animation data
+    if (header.count_anims > 0)
+    {
+        anims = (s64Animation*)malloc(sizeof(s64Animation)*header.count_anims);
+        keyframes = (s64KeyFrame*)malloc(sizeof(s64KeyFrame)*mallocsize_keyframes);
+        transforms = (s64Transform*)malloc(sizeof(s64Transform)*mallocsize_transforms);
+        if (anims == NULL || keyframes == NULL || transforms == NULL)
+            mallocfailed = TRUE;
+    }
+
+    // Test that malloc succeeded
+    if (mallocfailed)
+    {
+        free(mdl);
+        free(meshes);
+        free(strings);
+        free(verts);
+        #ifdef LIBDRAGON
+            free(faces);
+            free(rbs);
+            free(mats);
+            free(texes);
+            free(texids);
+            free(primcols);
+        #endif
+        free(dlists);
+        free(anims);
+        free(keyframes);
+        free(transforms);
+        free(toc_meshes);
+        free(toc_mats);
+        free(toc_anims);
+        free(meshdatas);
+        free(matdatas);
+        free(animdatas);
+        free(data);
+        return NULL;
+    }
+    // Now we will actually pull data from the binary file and copy it over to our s64 data structs
+    for (i=0; i<header.count_meshes; i++)
+    {
+        // Copy the s64Mesh
+        *(u32*)&meshes[i].is_billboard = meshdatas[i].is_billboard;
+        *(s32*)&meshes[i].parent = meshdatas[i].parent;
+        meshes[i].name = strings+offset_strings;
+        strcpy(strings+offset_strings, meshdatas[i].name);
+        meshes[i].dl = &dlists[offset_gfx];
+
+        #ifndef LIBDRAGON
             // Copy the vertex data
             // It's aligned by design (Thanks SGI!), so we can just memcpy
             memcpy(&verts[offset_verts], &data[toc_meshes[i].vertdata_offset], toc_meshes[i].vertdata_size);
             
             // Generate the display list
             sausage64_gendlist((u32*)(&data[toc_meshes[i].dldata_offset]), &dlists[offset_gfx], &verts[offset_verts], textures);
-            meshes[i].dl = &dlists[offset_gfx];
             
             // Increment pointers
-            offset_strings += strlen(meshes[i].name)+1;
-            offset_verts += toc_meshes[i].vertdata_size/16;
+            offset_verts += toc_meshes[i].vertdata_size/sizeof(Vtx);
             offset_gfx += toc_meshes[i].dldata_slotcount;
-        }
-        for (i=0; i<header.count_anims; i++)
-        {
-            int j;
-            
-            // Copy the s64Animation
-            anims[i].name = strings+offset_strings;
-            strcpy(strings+offset_strings, animdatas[i].name);
-            *(u32*)&anims[i].keyframecount = animdatas[i].kfcount;
-            anims[i].keyframes = &keyframes[offset_keyframes];
-            
-            // Copy the s64KeyFrame
-            for (j=0; j<animdatas[i].kfcount; j++)
-            {
-                *(u32*)&keyframes[offset_keyframes + j].framenumber = animdatas[i].kfindices[j];
-                keyframes[offset_keyframes + j].framedata = &transforms[offset_transforms+j*header.count_meshes];
-            }
-            
-            // Memcpy the s64Transforms
-            memcpy(&transforms[offset_transforms], &data[toc_anims[i].kfdata_offset], toc_anims[i].kfdata_size);
-            
-            // Increment pointers
-            offset_strings += strlen(anims[i].name)+1;
-            offset_keyframes += animdatas[i].kfcount;
-            offset_transforms += header.count_meshes*animdatas[i].kfcount;
-        }
-        
-        // Populate the model data struct
-        *(u16*)&mdl->meshcount = header.count_meshes;
-        *(u16*)&mdl->animcount = header.count_anims;
-        mdl->meshes = meshes;
-        mdl->anims = anims;
-        mdl->_vtxcleanup = verts;
-        
-        // Finish by cleaning up memory we used temporarily and returning the model data pointer
-        if (header.count_meshes > 0)
-        {
-            free(toc_meshes);
-            free(meshdatas);
-        }
-        if (header.count_anims > 0)
-        {
-            free(toc_anims);
-            free(animdatas);
-        }
-        free(data);
-        return mdl;
-    }
-#else
-    /*==============================
-        sausage64_load_binarymodel
-        Load a binary model from ROM
-        @param  The starting address in ROM
-        @param  The size of the model
-        @param  The list of textures to use
-        @return The newly allocated model
-    ==============================*/
+        #else
+            // Copy the vertex and face data
+            memcpy(&verts[offset_verts], &data[toc_meshes[i].vertdata_offset], toc_meshes[i].vertdata_size);
+            memcpy(&faces[offset_faces], &data[toc_meshes[i].facedata_offset], toc_meshes[i].facedata_size);
 
-    s64ModelData* sausage64_load_binarymodel(u32 romstart, u32 size, u32** textures)
-    {
-        return NULL;
+            // Copy the s64Gfx data
+            dlists[offset_gfx].blockcount = toc_meshes[i].dldata_slotcount;
+            dlists[offset_gfx].guid_mdl = 0xFFFFFFFF;
+            dlists[offset_gfx].guid_verts = 0xFFFFFFFF;
+            dlists[offset_gfx].guid_faces = 0xFFFFFFFF;
+            dlists[offset_gfx].renders = &rbs[offset_rbs];
+            meshes[i].dl = &dlists[offset_gfx];
+
+            // Copy the render block data
+            for (int j=0; j<toc_meshes[i].dldata_slotcount; j++)
+            {
+                int curoffset = toc_meshes[i].dldata_offset + j*0xC;
+                int matid = *((u32*)&data[curoffset + 2*sizeof(u32)]); 
+                rbs[offset_rbs + j].vertcount = *((u16*)&data[curoffset + 0*sizeof(u16)]);
+                rbs[offset_rbs + j].verts     = (f32(*)[11])(&verts[offset_verts] + (*((u16*)&data[curoffset + 1*sizeof(u16)]))*11);
+                rbs[offset_rbs + j].facecount = *((u16*)&data[curoffset + 2*sizeof(u16)]);
+                rbs[offset_rbs + j].faces     = (u16(*)[3])(&faces[offset_faces] + (*((u16*)&data[curoffset + 3*sizeof(u16)]))*3);
+                if (matid == -1)
+                    rbs[offset_rbs + j].material = NULL;
+                else
+                    rbs[offset_rbs + j].material = &mats[matid];
+            }
+
+            offset_verts += toc_meshes[i].vertdata_size/(sizeof(f32));
+            offset_faces += toc_meshes[i].facedata_size/(sizeof(u16));
+            offset_rbs += toc_meshes[i].dldata_slotcount;
+            offset_gfx += 1;
+        #endif
+        offset_strings += strlen(meshes[i].name)+1;
     }
-#endif
+    #ifdef LIBDRAGON
+        mallocsize_texes = 0;
+        mallocsize_primcols = 0;
+        for (i=0; i<header.count_materials; i++)
+        {
+            mats[i].type = matdatas[i].type;
+            mats[i].lighting = matdatas[i].lighting;
+            mats[i].cullfront = matdatas[i].cullfront;
+            mats[i].cullback = matdatas[i].cullback;
+            mats[i].smooth = matdatas[i].smooth;
+            mats[i].depthtest = matdatas[i].depthtest;
+            switch (mats[i].type)
+            {
+                case TYPE_TEXTURE:
+                    mats[i].data = &texes[mallocsize_texes];
+                    texids[mallocsize_texes] = 0xFFFFFFFF;
+                    texes[mallocsize_texes].identifier = &texids[mallocsize_texes];
+                    texes[mallocsize_texes].w = *(u32*)&data[toc_mats[i].material_offset + 0];
+                    texes[mallocsize_texes].h = *(u32*)&data[toc_mats[i].material_offset + 4];
+                    texes[mallocsize_texes].filter = *(u32*)&data[toc_mats[i].material_offset + 8];
+                    texes[mallocsize_texes].wraps = *(u16*)&data[toc_mats[i].material_offset + 12];
+                    texes[mallocsize_texes].wrapt = *(u16*)&data[toc_mats[i].material_offset + 14];
+                    sausage64_load_texture(&texes[mallocsize_texes], textures[mallocsize_texes]);
+                    mallocsize_texes++;
+                    break;
+                case TYPE_PRIMCOL:
+                    mats[i].data = &primcols[mallocsize_primcols];
+                    primcols[mallocsize_primcols].r = data[toc_mats[i].material_offset + 0];
+                    primcols[mallocsize_primcols].g = data[toc_mats[i].material_offset + 1];
+                    primcols[mallocsize_primcols].b = data[toc_mats[i].material_offset + 2];
+                    primcols[mallocsize_primcols].a = data[toc_mats[i].material_offset + 3];
+                    mallocsize_primcols++;
+                    break;
+                default: break;
+            }
+        }
+    #endif
+    for (i=0; i<header.count_anims; i++)
+    {
+        int j;
+        
+        // Copy the s64Animation
+        anims[i].name = strings+offset_strings;
+        strcpy(strings+offset_strings, animdatas[i].name);
+        *(u32*)&anims[i].keyframecount = animdatas[i].kfcount;
+        anims[i].keyframes = &keyframes[offset_keyframes];
+        
+        // Copy the s64KeyFrame
+        for (j=0; j<animdatas[i].kfcount; j++)
+        {
+            *(u32*)&keyframes[offset_keyframes + j].framenumber = animdatas[i].kfindices[j];
+            keyframes[offset_keyframes + j].framedata = &transforms[offset_transforms+j*header.count_meshes];
+        }
+        
+        // Memcpy the s64Transforms
+        memcpy(&transforms[offset_transforms], &data[toc_anims[i].kfdata_offset], toc_anims[i].kfdata_size);
+        
+        // Increment pointers
+        offset_strings += strlen(anims[i].name)+1;
+        offset_keyframes += animdatas[i].kfcount;
+        offset_transforms += header.count_meshes*animdatas[i].kfcount;
+    }
+    
+    // Populate the model data struct
+    *(u16*)&mdl->meshcount = header.count_meshes;
+    *(u16*)&mdl->animcount = header.count_anims;
+    mdl->meshes = meshes;
+    mdl->anims = anims;
+    #ifndef LIBDRAGON
+        mdl->_vtxcleanup = verts;
+    #else
+        mdl->_texcleanup = texes;
+        mdl->_primcolcleanup = primcols;
+    #endif
+
+    // Initialize the display lists in Libdragon
+    #ifdef LIBDRAGON
+        sausage64_load_staticmodel(mdl);
+    #endif
+    
+    // Finish by cleaning up memory we used temporarily and returning the model data pointer
+    if (header.count_meshes > 0)
+    {
+        free(toc_meshes);
+        free(meshdatas);
+    }
+    if (header.count_materials > 0)
+    {
+        free(toc_mats);
+        free(matdatas);
+    }
+    if (header.count_anims > 0)
+    {
+        free(toc_anims);
+        free(animdatas);
+    }
+    free(data);
+    return mdl;
+}
 
 
 /*==============================
@@ -1175,6 +1403,9 @@ void sausage64_unload_binarymodel(s64ModelData* mdl)
         free((s64Gfx*)mdl->meshes[0].dl);
         #ifndef LIBDRAGON
             free(mdl->_vtxcleanup);
+        #else
+            free(mdl->_texcleanup);
+            free(mdl->_primcolcleanup);
         #endif
         free((s64Mesh*)mdl->meshes);
     }

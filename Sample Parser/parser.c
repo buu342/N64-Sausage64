@@ -283,7 +283,7 @@ void parse_sausage(FILE* fp)
     }
         
     // Close the file as we're done with it
-    if (!global_quiet) printf("Finished parsing s64 model\n    Mesh count: %d\n    Animation count: %d\n    Material count: %d\n", list_meshes.size, list_animations.size, list_materials.size);
+    if (!global_quiet) printf("Finished parsing s64 model\n    Mesh count: %d\n    Animation count: %d\n    Material count: %d\n", list_meshes.size, list_animations.size, list_materials.size-1);
     fclose(fp);
     
     // Sort the framedata by the order the meshes are in (Note: horrible time complexity as this is a bodge solution)

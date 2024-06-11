@@ -431,18 +431,18 @@ void write_output_binary()
     }
 
     // Malloc stuff
-    toc_meshes = (BinFile_TOC_Meshes*)malloc(sizeof(BinFile_TOC_Meshes)*list_meshes.size);
-    meshdatas = (BinFile_MeshData*)malloc(sizeof(BinFile_MeshData)*list_meshes.size);
+    toc_meshes = (BinFile_TOC_Meshes*)calloc(sizeof(BinFile_TOC_Meshes)*list_meshes.size, 1);
+    meshdatas = (BinFile_MeshData*)calloc(sizeof(BinFile_MeshData)*list_meshes.size, 1);
     if (!global_opengl)
-        vertdatas = (BinFile_UltraVert**)malloc(sizeof(BinFile_UltraVert*)*list_meshes.size);
+        vertdatas = (BinFile_UltraVert**)calloc(sizeof(BinFile_UltraVert*)*list_meshes.size, 1);
     else
-        vertdatas = (BinFile_DragonVert**)malloc(sizeof(BinFile_DragonVert*)*list_meshes.size);
-    facedatas = (uint16_t**)malloc(sizeof(uint16_t*)*list_meshes.size);
-    dldatas = (uint32_t**)malloc(sizeof(uint32_t*)*list_meshes.size);
-    vtotal = (int*)malloc(sizeof(int)*list_meshes.size);
-    ftotal = (int*)malloc(sizeof(int)*list_meshes.size);
-    kftotal = (int*)malloc(sizeof(int)*list_animations.size);
-    kfdatas = (BinFile_KeyFrame**)malloc(sizeof(BinFile_KeyFrame*)*list_animations.size);
+        vertdatas = (BinFile_DragonVert**)calloc(sizeof(BinFile_DragonVert*)*list_meshes.size, 1);
+    facedatas = (uint16_t**)calloc(sizeof(uint16_t*)*list_meshes.size, 1);
+    dldatas = (uint32_t**)calloc(sizeof(uint32_t*)*list_meshes.size, 1);
+    vtotal = (int*)calloc(sizeof(int)*list_meshes.size, 1);
+    ftotal = (int*)calloc(sizeof(int)*list_meshes.size, 1);
+    kftotal = (int*)calloc(sizeof(int)*list_animations.size, 1);
+    kfdatas = (BinFile_KeyFrame**)calloc(sizeof(BinFile_KeyFrame*)*list_animations.size, 1);
     if (toc_meshes == NULL || meshdatas == NULL || vertdatas == NULL || facedatas == NULL || dldatas == NULL || vtotal == NULL || ftotal == NULL || kftotal == NULL || kfdatas == NULL)
         terminate("Error: Malloc failure during binary output\n");
 

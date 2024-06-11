@@ -182,7 +182,7 @@
         @param  (Libdragon) The dfs file path of the asset
         @param  (Libultra) The size of the model
         @param  (Libultra) The list of textures to use
-        @param  (Libdragon) The list of dfs file paths of textures
+        @param  (Libdragon)The list of texture sprites
         @return The newly allocated model
     ==============================*/
 

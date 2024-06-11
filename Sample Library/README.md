@@ -158,6 +158,22 @@ void sausage64_drawmodel(Gfx** glistp, s64ModelHelper* mdl);
 *********************************/
 
 /*==============================
+    sausage64_load_binarymodel
+    Load a binary model from ROM
+    @param  The dfs file path of the asset
+    @param  The list of texture sprites
+    @return The newly allocated model
+==============================*/
+s64ModelData* sausage64_load_binarymodel(char* filepath, sprite_t** textures);
+
+/*==============================
+    sausage64_unload_binarymodel
+    Free the memory used by a dynamically loaded binary model
+    @param  The model to free
+==============================*/
+void sausage64_unload_binarymodel(s64ModelData* mdl);
+
+/*==============================
     sausage64_load_texture
     Generates a texture for OpenGL.
     Since the s64Texture struct contains a bunch of information,

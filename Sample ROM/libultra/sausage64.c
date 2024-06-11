@@ -1425,7 +1425,8 @@ void sausage64_unload_binarymodel(s64ModelData* mdl)
                     }
                 }
             }
-            free(firsttex->identifier);
+            if (firsttex != NULL)
+                free(firsttex->identifier);
             free(firsttex);
             free(firstprimcol);
             free(mdl->_matscleanup);

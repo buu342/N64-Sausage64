@@ -690,9 +690,10 @@ static inline void s64vec_rotate(f32 vec[3], s64Quat rot, f32 result[3])
             }
 
             // Generate the array buffers
-            glGenBuffersARB(2, &dl->guid_verts);
+            glGenBuffersARB(1, &dl->guid_verts);
             glBindBufferARB(GL_ARRAY_BUFFER_ARB, dl->guid_verts);
             glBufferDataARB(GL_ARRAY_BUFFER_ARB, vertcount*sizeof(f32)*11, dl->renders[0].verts, GL_STATIC_DRAW_ARB);
+            glGenBuffersARB(1, &dl->guid_faces);
             glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER_ARB, dl->guid_faces);
             glBufferDataARB(GL_ELEMENT_ARRAY_BUFFER_ARB, facecount*sizeof(u16)*3, dl->renders[0].faces, GL_STATIC_DRAW_ARB);
 
@@ -707,6 +708,7 @@ static inline void s64vec_rotate(f32 vec[3], s64Quat rot, f32 result[3])
                 int fc = render->facecount;
                 if (render->material != NULL && render->material != s64_lastmat)
                     sausage64_loadmaterial(render->material);
+                s64_lastmat = render->material;
                 glVertexPointer(3, GL_FLOAT, sizeof(f32)*11, (u8*)(0*sizeof(f32)));
                 glTexCoordPointer(2, GL_FLOAT, sizeof(f32)*11, (u8*)(3*sizeof(f32)));
                 glNormalPointer(GL_FLOAT, sizeof(f32)*11, (u8*)(5*sizeof(f32)));
@@ -739,9 +741,9 @@ static inline void s64vec_rotate(f32 vec[3], s64Quat rot, f32 result[3])
         for (u32 i=0; i<meshcount; i++)
         {
             s64Gfx* dl = (s64Gfx*)mdldata->meshes[i].dl;
-            glDeleteBuffersARB(1, &dl->guid_mdl);
             glDeleteBuffersARB(1, &dl->guid_verts);
             glDeleteBuffersARB(1, &dl->guid_faces);
+            glDeleteLists(dl->guid_mdl, 1);
             dl->guid_mdl = 0xFFFFFFFF;
             dl->guid_verts = 0xFFFFFFFF;
             dl->guid_faces = 0xFFFFFFFF;
@@ -2195,7 +2197,7 @@ void sausage64_lookat(s64ModelHelper* mdl, const u16 mesh, f32 dir[3], f32 amoun
         // Increment the render count for transform calculations
         mdl->rendercount++;
 
-        // Remove the last material to prevent prevent the material state from getting stuck
+        // Remove the last material to prevent the material state from getting stuck
         s64_lastmat = NULL;
     }
 #endif

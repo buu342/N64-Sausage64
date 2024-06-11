@@ -708,6 +708,7 @@ static inline void s64vec_rotate(f32 vec[3], s64Quat rot, f32 result[3])
                 int fc = render->facecount;
                 if (render->material != NULL && render->material != s64_lastmat)
                     sausage64_loadmaterial(render->material);
+                s64_lastmat = render->material;
                 glVertexPointer(3, GL_FLOAT, sizeof(f32)*11, (u8*)(0*sizeof(f32)));
                 glTexCoordPointer(2, GL_FLOAT, sizeof(f32)*11, (u8*)(3*sizeof(f32)));
                 glNormalPointer(GL_FLOAT, sizeof(f32)*11, (u8*)(5*sizeof(f32)));
@@ -2196,7 +2197,7 @@ void sausage64_lookat(s64ModelHelper* mdl, const u16 mesh, f32 dir[3], f32 amoun
         // Increment the render count for transform calculations
         mdl->rendercount++;
 
-        // Remove the last material to prevent prevent the material state from getting stuck
+        // Remove the last material to prevent the material state from getting stuck
         s64_lastmat = NULL;
     }
 #endif

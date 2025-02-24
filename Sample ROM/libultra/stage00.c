@@ -411,7 +411,7 @@ void draw_menu()
     // List the animations
     nuDebConTextPos(NU_DEB_CON_WINDOW0, 3, 3);
     nuDebConCPuts(NU_DEB_CON_WINDOW0, "Anims");
-    for (i=0; i<modeltorender->animcount; i++) // Can also use MODEL_Catherine->animcount (but macro is faster on the CPU)
+    for (i=0; i<modeltorender->animcount; i++)
     {
         nuDebConTextPos(NU_DEB_CON_WINDOW0, 4, 5+i);
         nuDebConCPuts(NU_DEB_CON_WINDOW0, modeltorender->anims[i].name);

@@ -514,7 +514,7 @@ void Main::m_MenuItem_ImportMaterialOnMenuSelection(wxCommandEvent& event)
             mat->CreateDefaultTexture(w, h);
 
             // See if an image of the texture is in the directory, and if so, load it automatically
-            dir.Open(dialog.GetDirectory());
+            dir.Open(wxFileName(dialog.GetPath()).GetPath());
             cont = dir.GetFirst(&imgfilename, wxEmptyString, wxDIR_FILES);
             while (cont)
             {

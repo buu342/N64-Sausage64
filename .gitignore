@@ -407,3 +407,4 @@ FodyWeavers.xsd
 */*/out
 
 **/nuboot.c
+!.github/windows/vs_community.exe

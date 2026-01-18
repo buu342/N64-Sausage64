@@ -88,7 +88,7 @@ int main()
     
     // Initialize the timer subsystem
     timer_init();
-    srand(time(NULL));
+    srand(getentropy32());
 
     // Initialize the screen    
     dfs_init(DFS_DEFAULT_LOCATION);
